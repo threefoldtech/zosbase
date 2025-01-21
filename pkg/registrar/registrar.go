@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zbus"
-	"github.com/threefoldtech/zos/pkg/app"
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/app"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 // should any of this be moved to pkg?
@@ -24,7 +24,7 @@ const (
 	Done       RegistrationState = "Done"
 
 	monitorAccountEvery    = 30 * time.Minute
-	updateNodeInfoInterval = 24 * time.Hour
+	updateNodeInfoInterval = 24 * time.Second
 )
 
 var (

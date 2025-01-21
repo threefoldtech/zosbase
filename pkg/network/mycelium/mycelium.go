@@ -16,8 +16,8 @@ import (
 	"github.com/oasisprotocol/curve25519-voi/primitives/x25519"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg/network/namespace"
-	"github.com/threefoldtech/zos/pkg/zinit"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/zinit"
 )
 
 const (

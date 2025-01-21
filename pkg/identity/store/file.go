@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/versioned"
+	"github.com/threefoldtech/zosbase/pkg/versioned"
 	"github.com/tyler-smith/go-bip39"
 )
 

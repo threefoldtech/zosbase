@@ -9,8 +9,9 @@ import (
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
 )
 
 var _ pkg.SystemMonitor = (*systemMonitor)(nil)
@@ -201,7 +202,26 @@ func (m *systemMonitor) Nics(ctx context.Context) <-chan pkg.NicsIOCounterStat {
 
 // Get the types of workloads can be deployed depending on the network manager running on the node
 func (n *systemMonitor) GetNodeFeatures() []pkg.NodeFeature {
-	feat := []pkg.NodeFeature{
+	feat := []pkg.NodeFeature{}
+	if kernel.GetParams().IsLight() {
+		zosLightFeat := []pkg.NodeFeature{
+			pkg.NodeFeature(zos.ZMachineLightType),
+			pkg.NodeFeature(zos.NetworkLightType),
+			pkg.NodeFeature(zos.ZDBType),
+			pkg.NodeFeature(zos.ZMountType),
+			pkg.NodeFeature(zos.VolumeType),
+			pkg.NodeFeature(zos.QuantumSafeFSType),
+			pkg.NodeFeature(zos.ZLogsType),
+			pkg.NodeFeature("mycelium"),
+		}
+		feat = append(feat, zosLightFeat...)
+		_, found := kernel.GetParams().GetOne("domain")
+		if found {
+			feat = append(feat, pkg.NodeFeature("gateway"))
+		}
+		return feat
+	}
+	feat = []pkg.NodeFeature{
 		pkg.NodeFeature(zos.ZMountType),
 		pkg.NodeFeature(zos.NetworkType),
 		pkg.NodeFeature(zos.ZDBType),

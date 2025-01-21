@@ -16,7 +16,9 @@ import (
 	"github.com/cenkalti/backoff/v3"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
+	"github.com/threefoldtech/zosbase/pkg/netlight/resource"
 )
 
 const (
@@ -58,6 +60,57 @@ func (m *Machine) startCloudConsole(ctx context.Context, namespace string, netwo
 		return "", err
 	}
 	consoleURL := fmt.Sprintf("%s:%d", networkAddr.IP.String(), port)
+	return consoleURL, nil
+}
+
+// startCloudConsoleLight Starts the cloud console for the vm on it's private network ip
+func (m *Machine) startCloudConsoleLight(ctx context.Context, namespace string, machineIP net.IPNet, ptyPath string, logs string) (string, error) {
+	netSeed, err := os.ReadFile(filepath.Join(resource.MyceliumSeedDir, namespace))
+	if err != nil {
+		return "", err
+	}
+
+	inspect, err := resource.InspectMycelium(netSeed)
+	if err != nil {
+		return "", err
+	}
+
+	mycIp := inspect.IP().String()
+
+	ipv4 := machineIP.IP.To4()
+	if ipv4 == nil {
+		return "", fmt.Errorf("invalid vm ip address (%s) not ipv4", machineIP.IP.String())
+	}
+
+	port := 20000 + uint16(ipv4[3])
+	if port == math.MaxUint16 {
+		// this should be impossible since a byte max value is 512 hence 20_000 + 512 can never be over
+		// max of uint16
+		return "", fmt.Errorf("couldn't start cloud console port number exceeds %d", port)
+	}
+
+	args := []string{
+		"setsid",
+		"ip",
+		"netns",
+		"exec", namespace,
+		cloudConsoleBin,
+		ptyPath,
+		mycIp,
+		fmt.Sprint(port),
+		logs,
+	}
+	log.Debug().Msgf("running cloud-console : %+v", args)
+
+	cmd := exec.CommandContext(ctx, "busybox", args...)
+	if err := cmd.Start(); err != nil {
+		return "", errors.Wrap(err, "failed to start cloud-hypervisor")
+	}
+
+	if err := m.release(cmd.Process); err != nil {
+		return "", err
+	}
+	consoleURL := fmt.Sprintf("[%s]:%d", mycIp, port)
 	return consoleURL, nil
 }
 
@@ -230,7 +283,12 @@ func (m *Machine) Run(ctx context.Context, socket, logs string) (pkg.MachineInfo
 	consoleURL := ""
 	for _, ifc := range m.Interfaces {
 		if ifc.Console != nil {
-			consoleURL, err = m.startCloudConsole(ctx, ifc.Console.Namespace, ifc.Console.ListenAddress, ifc.Console.VmAddress, vmData.PTYPath, logs)
+			if kernel.GetParams().IsLight() {
+				consoleURL, err = m.startCloudConsoleLight(ctx, ifc.Console.Namespace, ifc.Console.VmAddress, vmData.PTYPath, logs)
+			} else {
+
+				consoleURL, err = m.startCloudConsole(ctx, ifc.Console.Namespace, ifc.Console.ListenAddress, ifc.Console.VmAddress, vmData.PTYPath, logs)
+			}
 			if err != nil {
 				log.Error().Err(err).Str("vm", m.ID).Msg("failed to start cloud-console for vm")
 			}

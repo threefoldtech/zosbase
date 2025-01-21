@@ -22,6 +22,9 @@ const (
 	// This allows the node to work without ssd disk. If ssd disk is available
 	// it will still be preferred for workloads. Otherwise fall back on HDD
 	MissingSSD = "missing-ssd"
+
+	// Light means zos is running in light mode
+	Light = "light"
 )
 
 // Params represent the parameters passed to the kernel at boot
@@ -61,6 +64,11 @@ func (k Params) GetOne(key string) (string, bool) {
 // IsDebug checks if zos-debug is set
 func (k Params) IsDebug() bool {
 	return k.Exists(Debug)
+}
+
+// IsLight check if node is running in light mode
+func (k Params) IsLight() bool {
+	return k.Exists(Light)
 }
 
 // GPUDisabled checks if gpu is diabled

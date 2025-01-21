@@ -7,7 +7,7 @@ package stubs
 import (
 	"context"
 	zbus "github.com/threefoldtech/zbus"
-	pkg "github.com/threefoldtech/zos/pkg"
+	pkg "github.com/threefoldtech/zosbase/pkg"
 )
 
 type SystemMonitorStub struct {

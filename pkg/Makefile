@@ -23,7 +23,7 @@ testrace: lint build
 
 generate:
 	@echo "Generating modules client stubs"
-	go generate github.com/threefoldtech/zos/pkg
+	go generate github.com/threefoldtech/zosbase/pkg
 
 build:
 	@CGO_ENABLED=0 go build -v ./...

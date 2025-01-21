@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zosbase/pkg"
 )
 
 const (

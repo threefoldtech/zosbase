@@ -13,10 +13,10 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/network/iperf"
-	"github.com/threefoldtech/zos/pkg/perf"
-	"github.com/threefoldtech/zos/pkg/perf/graphql"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/network/iperf"
+	"github.com/threefoldtech/zosbase/pkg/perf"
+	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/zos/pkg/network/options"
+	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/vishvananda/netlink"
 )
 

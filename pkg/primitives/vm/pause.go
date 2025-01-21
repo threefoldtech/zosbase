@@ -3,9 +3,9 @@ package vm
 import (
 	"context"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/provision"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/provision"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 func (m *Manager) Pause(ctx context.Context, wl *gridtypes.WorkloadWithID) error {

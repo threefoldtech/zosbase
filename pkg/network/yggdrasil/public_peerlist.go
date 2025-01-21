@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
 // Peers is a peers list

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/threefoldtech/zos/pkg/perf"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/perf"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 // CPUBenchmarkTask defines CPU benchmark task.

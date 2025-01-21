@@ -13,16 +13,17 @@ import (
 
 	"github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/zbus"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/provision"
-	"github.com/threefoldtech/zos/pkg/zdb"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
+	"github.com/threefoldtech/zosbase/pkg/provision"
+	"github.com/threefoldtech/zosbase/pkg/zdb"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg"
-	nwmod "github.com/threefoldtech/zos/pkg/network"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg"
+	nwmod "github.com/threefoldtech/zosbase/pkg/network"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 const (
@@ -121,6 +122,7 @@ func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZ
 }
 
 func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWithID) (zos.ZDBResult, error) {
+	var containerIPs []net.IP
 	var (
 		// contmod = stubs.NewContainerModuleStub(p.zbus)
 		storage = stubs.NewStorageModuleStub(p.zbus)
@@ -155,8 +157,12 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 			if ns.Name != nsID {
 				continue
 			}
+			if kernel.GetParams().IsLight() {
+				containerIPs, err = p.waitZDBIPsLight(ctx, container.Network.Namespace, container.CreatedAt)
+			} else {
 
-			containerIPs, err := p.waitZDBIPs(ctx, container.Network.Namespace, container.CreatedAt)
+				containerIPs, err = p.waitZDBIPs(ctx, container.Network.Namespace, container.CreatedAt)
+			}
 			if err != nil {
 				return zos.ZDBResult{}, errors.Wrap(err, "failed to find IP address on zdb0 interface")
 			}
@@ -193,8 +199,12 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 			return zos.ZDBResult{}, errors.Wrap(err, "failed to start zdb container")
 		}
 	}
+	if kernel.GetParams().IsLight() {
+		containerIPs, err = p.waitZDBIPsLight(ctx, cont.Network.Namespace, cont.CreatedAt)
+	} else {
 
-	containerIPs, err := p.waitZDBIPs(ctx, cont.Network.Namespace, cont.CreatedAt)
+		containerIPs, err = p.waitZDBIPs(ctx, cont.Network.Namespace, cont.CreatedAt)
+	}
 	if err != nil {
 		return zos.ZDBResult{}, errors.Wrap(err, "failed to find IP address on zdb0 interface")
 	}
@@ -219,7 +229,13 @@ func (p *Manager) ensureZdbContainer(ctx context.Context, device pkg.Device) (tZ
 	cont, err := container.Inspect(ctx, zdbContainerNS, name)
 	if err != nil && strings.Contains(err.Error(), "not found") {
 		// container not found, create one
-		if err := p.createZdbContainer(ctx, device); err != nil {
+		var err error
+		if kernel.GetParams().IsLight() {
+			err = p.createZdbContainerLight(ctx, device)
+		} else {
+			err = p.createZdbContainer(ctx, device)
+		}
+		if err != nil {
 			return tZDBContainer(cont), err
 		}
 		cont, err = container.Inspect(ctx, zdbContainerNS, name)
@@ -353,6 +369,85 @@ func (p *Manager) dataMigration(ctx context.Context, volume string) {
 		}
 	}
 }
+func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device) error {
+	var (
+		name       = pkg.ContainerID(device.ID)
+		cont       = stubs.NewContainerModuleStub(p.zbus)
+		flist      = stubs.NewFlisterStub(p.zbus)
+		volumePath = device.Path
+		network    = stubs.NewNetworkerLightStub(p.zbus)
+
+		slog = log.With().Str("containerID", string(name)).Logger()
+	)
+
+	slog.Debug().Str("flist", zdbFlistURL).Msg("mounting flist")
+
+	rootFS, err := p.zdbRootFS(ctx)
+	if err != nil {
+		return err
+	}
+
+	cleanup := func() {
+		if err := cont.Delete(ctx, zdbContainerNS, name); err != nil {
+			slog.Error().Err(err).Msg("failed to delete 0-db container")
+		}
+
+		if err := flist.Unmount(ctx, string(name)); err != nil {
+			slog.Error().Err(err).Str("path", rootFS).Msgf("failed to unmount")
+		}
+	}
+
+	// create the network namespace and macvlan for the 0-db container
+	netNsName, err := network.AttachZDB(ctx, device.ID)
+	if err != nil {
+		if err := flist.Unmount(ctx, string(name)); err != nil {
+			slog.Error().Err(err).Str("path", rootFS).Msgf("failed to unmount")
+		}
+
+		return errors.Wrap(err, "failed to prepare zdb network")
+	}
+
+	socketDir := socketDir(name)
+	if err := os.MkdirAll(socketDir, 0550); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "failed to create directory: %s", socketDir)
+	}
+
+	cl := zdbConnection(name)
+	if err := cl.Connect(); err == nil {
+		// it seems there is a running container already
+		cl.Close()
+		return nil
+	}
+
+	// make sure the file does not exist otherwise we get the address already in use error
+	if err := os.Remove(socketFile(name)); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	cmd := fmt.Sprintf("/bin/zdb --protect --admin '%s' --data /zdb/data --index /zdb/index  --listen :: --port %d --socket /socket/zdb.sock --dualnet", device.ID, zdbPort)
+
+	err = p.zdbRun(ctx, string(name), rootFS, cmd, netNsName, volumePath, socketDir)
+	if err != nil {
+		cleanup()
+		return errors.Wrap(err, "failed to create container")
+	}
+
+	cl = zdbConnection(name)
+	defer cl.Close()
+
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxInterval = time.Second * 20
+	bo.MaxElapsedTime = time.Minute * 2
+
+	if err := backoff.RetryNotify(cl.Connect, bo, func(err error, d time.Duration) {
+		log.Debug().Err(err).Str("duration", d.String()).Msg("waiting for zdb to start")
+	}); err != nil {
+		cleanup()
+		return errors.Wrapf(err, "failed to establish connection to zdb")
+	}
+
+	return nil
+}
 
 func (p *Manager) zdbRun(ctx context.Context, name string, rootfs string, cmd string, netns string, volumepath string, socketdir string) error {
 	cont := stubs.NewContainerModuleStub(p.zbus)
@@ -456,6 +551,37 @@ func (p *Manager) waitZDBIPs(ctx context.Context, namespace string, created time
 			return nil
 		}
 		return fmt.Errorf("waiting for more addresses")
+	}
+
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxInterval = time.Minute
+	bo.MaxElapsedTime = time.Minute * 2
+
+	if err := backoff.RetryNotify(getIP, bo, func(err error, d time.Duration) {
+		log.Debug().Err(err).Str("duration", d.String()).Msg("failed to get zdb public IP")
+	}); err != nil && len(containerIPs) == 0 {
+		return nil, errors.Wrapf(err, "failed to get an IP for interface")
+	}
+
+	return containerIPs, nil
+}
+func (p *Manager) waitZDBIPsLight(ctx context.Context, namespace string, created time.Time) ([]net.IP, error) {
+	// TODO: is there a need for retrying anymore??
+	var (
+		network      = stubs.NewNetworkerLightStub(p.zbus)
+		containerIPs []net.IP
+	)
+
+	log.Debug().Time("created-at", created).Str("namespace", namespace).Msg("checking zdb container ips")
+	getIP := func() error {
+		ips, err := network.ZDBIPs(ctx, namespace)
+		if err != nil {
+			return err
+		}
+		for _, ip := range ips {
+			containerIPs = append(containerIPs, ip)
+		}
+		return nil
 	}
 
 	bo := backoff.NewExponentialBackOff()
@@ -691,8 +817,12 @@ func (p *Manager) zdbUpdateImpl(ctx context.Context, wl *gridtypes.WorkloadWithI
 				return result, provision.UnChanged(errors.Wrap(err, "failed to set public flag"))
 			}
 		}
-
-		containerIPs, err := p.waitZDBIPs(ctx, container.Network.Namespace, container.CreatedAt)
+		var containerIPs []net.IP
+		if kernel.GetParams().IsLight() {
+			containerIPs, err = p.waitZDBIPsLight(ctx, container.Network.Namespace, container.CreatedAt)
+		} else {
+			containerIPs, err = p.waitZDBIPs(ctx, container.Network.Namespace, container.CreatedAt)
+		}
 		if err != nil {
 			return zos.ZDBResult{}, errors.Wrap(err, "failed to find IP address on zdb0 interface")
 		}
@@ -787,6 +917,14 @@ func isMycelium(ip net.IP) bool {
 
 // InitializeZDB makes sure all required zdbs are running
 func (p *Manager) Initialize(ctx context.Context) error {
+	if kernel.GetParams().IsLight() {
+		return p.initializeLight(ctx)
+	}
+	return p.initialize(ctx)
+}
+
+// InitializeZDB makes sure all required zdbs are running
+func (p *Manager) initialize(ctx context.Context) error {
 	var (
 		storage  = stubs.NewStorageModuleStub(p.zbus)
 		contmod  = stubs.NewContainerModuleStub(p.zbus)
@@ -846,6 +984,61 @@ func (p *Manager) Initialize(ctx context.Context) error {
 	return nil
 }
 
+// InitializeZDB makes sure all required zdbs are running
+func (p *Manager) initializeLight(ctx context.Context) error {
+	var (
+		storage  = stubs.NewStorageModuleStub(p.zbus)
+		contmod  = stubs.NewContainerModuleStub(p.zbus)
+		network  = stubs.NewNetworkerLightStub(p.zbus)
+		flistmod = stubs.NewFlisterStub(p.zbus)
+	)
+	// fetching extected hash
+	log.Debug().Msg("fetching flist hash")
+	expected, err := flistmod.FlistHash(ctx, zdbFlistURL)
+	if err != nil {
+		log.Error().Err(err).Msg("could not load expected flist hash")
+		return err
+	}
+
+	devices, err := storage.Devices(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to list allocated zdb devices")
+	}
+
+	log.Debug().Msgf("alloced devices for zdb: %+v", devices)
+	poolNames := make(map[string]pkg.Device)
+	for _, device := range devices {
+		poolNames[device.ID] = device
+	}
+
+	containers, err := contmod.List(ctx, zdbContainerNS)
+	if err != nil {
+		return errors.Wrap(err, "failed to list running zdb container")
+	}
+
+	for _, container := range containers {
+		if err := p.upgradeRuntime(ctx, expected, container); err != nil {
+			log.Error().Err(err).Msg("failed to upgrade running zdb container")
+		}
+
+		log.Debug().Str("container", string(container)).Msg("enusreing zdb network setup")
+		_, err := network.AttachZDB(ctx, poolNames[string(container)].ID)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to initialize zdb network")
+		}
+
+		delete(poolNames, string(container))
+	}
+
+	// do we still have allocated pools that does not have associated zdbs.
+	for _, device := range poolNames {
+		log.Debug().Str("device", device.Path).Msg("starting zdb")
+		if _, err := p.ensureZdbContainer(ctx, device); err != nil {
+			log.Error().Err(err).Str("pool", device.ID).Msg("failed to create zdb container associated with pool")
+		}
+	}
+	return nil
+}
 func (p *Manager) upgradeRuntime(ctx context.Context, expected string, container pkg.ContainerID) error {
 	var (
 		flistmod = stubs.NewFlisterStub(p.zbus)

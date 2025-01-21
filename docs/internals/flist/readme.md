@@ -4,11 +4,12 @@
 
 Flist module is available on zbus over the following channel:
 
-| module | object | version |
-|--------|--------|---------|
-|flist   |[flist](#public-interface)| 0.0.1
+| module | object                     | version |
+| ------ | -------------------------- | ------- |
+| flist  | [flist](#public-interface) | 0.0.1   |
 
 ## Home Directory
+
 flist keeps some data in the following locations:
 | directory | path|
 |----|---|
@@ -24,7 +25,7 @@ The flist module itself doesn't contain the logic to understand the flist format
 
 Its only job is to download the flist, prepare the isolation of all the data and then start 0-fs with the proper arguments.
 
-## Public interface [![GoDoc](https://godoc.org/github.com/threefoldtech/zos/pkg/flist?status.svg)](https://godoc.org/github.com/threefoldtech/zos/pkg/flist)
+## Public interface [![GoDoc](https://godoc.org/github.com/threefoldtech/zosbase/pkg/flist?status.svg)](https://godoc.org/github.com/threefoldtech/zosbase/pkg/flist)
 
 ```go
 

@@ -20,7 +20,7 @@ productivity and inter-personal interactions.
 In order to contribute a feature you'll need to go through the following steps:
 
 - Create a Github issue to explain the feature you want to create. A member of the core team will engage with
-you and together you will decide if the feature could be accepted and what is the best approach to take to implement it.
+  you and together you will decide if the feature could be accepted and what is the best approach to take to implement it.
 
 - Once the general idea has been accepted, create a draft PR that contains a design document. The design document should explain how the feature is going to be implemented, eventually a test plan and any technical information that could be interesting for other team member to know.
 
@@ -29,7 +29,7 @@ you and together you will decide if the feature could be accepted and what is th
 - Submit PRs with documentation for your feature, including usage examples when possible
 
 > Note that we prefer bite-sized PRs instead of giant monster PRs. It's therefore preferable if you
-can introduce large features in smaller reviewable changes that build on top of one another.
+> can introduce large features in smaller reviewable changes that build on top of one another.
 
 If you would like to skip the process of submitting an issue and
 instead would prefer to just submit a pull request with your desired
@@ -40,8 +40,8 @@ exact code change can help focus discussions, so the choice is up to you.
 
 ## Setting up a development environment
 
-Check out the [documentation](https://github.com/threefoldtech/zos/tree/master/docs) learn about the code
-base and setting up your [development environment](https://github.com/threefoldtech/zos/blob/master/qemu/README.md).
+Check out the [documentation](https://github.com/threefoldtech/zosbase/tree/master/docs) learn about the code
+base and setting up your [development environment](https://github.com/threefoldtech/zosbase/blob/master/qemu/README.md).
 
 ## Pull requests
 
@@ -74,7 +74,7 @@ pull requests.
 
 ## Issues
 
-[GitHub issues](https://github.com/threefoldtech/zos/issues/new) can be used to report bugs or submit feature requests.
+[GitHub issues](https://github.com/threefoldtech/zosbase/issues/new) can be used to report bugs or submit feature requests.
 
 When reporting a bug please include the following key pieces of information:
 

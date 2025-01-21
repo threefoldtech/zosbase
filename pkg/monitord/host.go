@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zosbase/pkg"
 )
 
 // HostMonitor monitor host information

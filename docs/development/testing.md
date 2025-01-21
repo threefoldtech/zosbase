@@ -8,10 +8,9 @@ Beside unit testing, you might want to test your change in an integrated environ
     - [An example to talk to container and qsfs modules](#an-example-to-talk-to-container-and-qsfs-modules)
     - [An example of directly using zinit package](#an-example-of-directly-using-zinit-package)
 
-
 ## Using grid/node client
 
-You can simply use any grid client, e.g. [grid_client_ts](https://github.com/threefoldtech/grid3_client_ts/tree/development/scripts) to deploy a workload of any type, you should specify your node's twin ID (and make sure you are on the correct network). 
+You can simply use any grid client, e.g. [grid_client_ts](https://github.com/threefoldtech/grid3_client_ts/tree/development/scripts) to deploy a workload of any type, you should specify your node's twin ID (and make sure you are on the correct network).
 
 Inside the node, you can do `noded -id` and `noded -net` to get your current node ID and network. Also, [you can check your farm](https://dashboard.dev.grid.tf/explorer/farms) and get node information from there.
 
@@ -26,7 +25,6 @@ If you need to test a specific module or functionality, you can create a simple 
 Inside this simple test app, you can import any module or talk to another one using [zbus](../internals/internals.md#ipc).
 
 ### An example to talk to container and qsfs modules
-
 
 ```go
 // tools/del/main.go
@@ -43,8 +41,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/threefoldtech/zbus"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 func main() {
@@ -121,7 +119,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/threefoldtech/zos/pkg/zinit"
+	"github.com/threefoldtech/zosbase/pkg/zinit"
 )
 
 func main() {

@@ -7,7 +7,7 @@ package stubs
 import (
 	"context"
 	zbus "github.com/threefoldtech/zbus"
-	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
+	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 type ProvisionStub struct {

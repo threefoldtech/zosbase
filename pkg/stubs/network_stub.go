@@ -7,9 +7,9 @@ package stubs
 import (
 	"context"
 	zbus "github.com/threefoldtech/zbus"
-	pkg "github.com/threefoldtech/zos/pkg"
-	gridtypes "github.com/threefoldtech/zos/pkg/gridtypes"
-	zos "github.com/threefoldtech/zos/pkg/gridtypes/zos"
+	pkg "github.com/threefoldtech/zosbase/pkg"
+	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
+	zos "github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"net"
 )
 

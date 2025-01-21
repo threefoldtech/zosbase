@@ -8,9 +8,9 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg/network/ifaceutil"
-	"github.com/threefoldtech/zos/pkg/network/namespace"
-	"github.com/threefoldtech/zos/pkg/network/options"
+	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/vishvananda/netlink"
 )
 

@@ -7,10 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zbus"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/provision"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/provision"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 var (

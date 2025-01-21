@@ -15,12 +15,12 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/network/macvlan"
-	"github.com/threefoldtech/zos/pkg/network/namespace"
-	"github.com/threefoldtech/zos/pkg/perf"
-	"github.com/threefoldtech/zos/pkg/perf/graphql"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/network/macvlan"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/perf"
+	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 	"github.com/vishvananda/netlink"
 )
 

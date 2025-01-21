@@ -8,7 +8,7 @@ import (
 
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/shirou/gopsutil/cpu"
-	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zosbase/pkg"
 
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"

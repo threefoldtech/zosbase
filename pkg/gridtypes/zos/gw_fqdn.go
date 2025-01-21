@@ -5,7 +5,7 @@ import (
 	"io"
 	"regexp"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 var fqdnRegex = regexp.MustCompile(`^([a-zA-Z0-9-_]+\.)+[a-zA-Z0-9-_]{2,}$`)

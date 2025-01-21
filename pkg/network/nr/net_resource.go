@@ -13,13 +13,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/network/ifaceutil"
-	"github.com/threefoldtech/zos/pkg/network/macvlan"
-	"github.com/threefoldtech/zos/pkg/network/options"
-	"github.com/threefoldtech/zos/pkg/network/tuntap"
-	"github.com/threefoldtech/zos/pkg/zinit"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
+	"github.com/threefoldtech/zosbase/pkg/network/macvlan"
+	"github.com/threefoldtech/zosbase/pkg/network/options"
+	"github.com/threefoldtech/zosbase/pkg/network/tuntap"
+	"github.com/threefoldtech/zosbase/pkg/zinit"
 
 	mapset "github.com/deckarep/golang-set"
 
@@ -27,11 +27,11 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/network/bridge"
-	"github.com/threefoldtech/zos/pkg/network/namespace"
-	"github.com/threefoldtech/zos/pkg/network/nft"
-	"github.com/threefoldtech/zos/pkg/network/wireguard"
+	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/network/bridge"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/network/nft"
+	"github.com/threefoldtech/zosbase/pkg/network/wireguard"
 	"github.com/vishvananda/netlink"
 )
 

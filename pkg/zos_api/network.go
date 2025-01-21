@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 func (g *ZosAPI) networkListWGPortsHandler(ctx context.Context, payload []byte) (interface{}, error) {

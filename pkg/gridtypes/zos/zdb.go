@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/threefoldtech/zos/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 // ZDBMode is the enumeration of the modes 0-db can operate in

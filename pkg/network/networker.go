@@ -18,39 +18,39 @@ import (
 	"github.com/blang/semver"
 	"github.com/cenkalti/backoff/v3"
 
-	"github.com/threefoldtech/zos/pkg/cache"
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zos/pkg/network/bootstrap"
-	"github.com/threefoldtech/zos/pkg/network/iperf"
-	"github.com/threefoldtech/zos/pkg/network/mycelium"
-	"github.com/threefoldtech/zos/pkg/network/ndmz"
-	"github.com/threefoldtech/zos/pkg/network/options"
-	"github.com/threefoldtech/zos/pkg/network/public"
-	"github.com/threefoldtech/zos/pkg/network/tuntap"
-	"github.com/threefoldtech/zos/pkg/network/wireguard"
-	"github.com/threefoldtech/zos/pkg/network/yggdrasil"
-	"github.com/threefoldtech/zos/pkg/stubs"
-	"github.com/threefoldtech/zos/pkg/zinit"
+	"github.com/threefoldtech/zosbase/pkg/cache"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/network/bootstrap"
+	"github.com/threefoldtech/zosbase/pkg/network/iperf"
+	"github.com/threefoldtech/zosbase/pkg/network/mycelium"
+	"github.com/threefoldtech/zosbase/pkg/network/ndmz"
+	"github.com/threefoldtech/zosbase/pkg/network/options"
+	"github.com/threefoldtech/zosbase/pkg/network/public"
+	"github.com/threefoldtech/zosbase/pkg/network/tuntap"
+	"github.com/threefoldtech/zosbase/pkg/network/wireguard"
+	"github.com/threefoldtech/zosbase/pkg/network/yggdrasil"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/zinit"
 
 	"github.com/vishvananda/netlink"
 
 	"github.com/pkg/errors"
 
-	"github.com/threefoldtech/zos/pkg/network/ifaceutil"
+	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/threefoldtech/zos/pkg/network/nr"
-	"github.com/threefoldtech/zos/pkg/network/types"
-	"github.com/threefoldtech/zos/pkg/set"
-	"github.com/threefoldtech/zos/pkg/versioned"
+	"github.com/threefoldtech/zosbase/pkg/network/nr"
+	"github.com/threefoldtech/zosbase/pkg/network/types"
+	"github.com/threefoldtech/zosbase/pkg/set"
+	"github.com/threefoldtech/zosbase/pkg/versioned"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/threefoldtech/zos/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
 
-	"github.com/threefoldtech/zos/pkg"
+	"github.com/threefoldtech/zosbase/pkg"
 )
 
 const (

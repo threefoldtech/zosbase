@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/threefoldtech/zos/pkg/identity/store/tpm"
+	"github.com/threefoldtech/zosbase/pkg/identity/store/tpm"
 )
 
 const (

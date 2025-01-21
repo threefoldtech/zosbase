@@ -21,11 +21,12 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg"
-	"github.com/threefoldtech/zos/pkg/environment"
-	"github.com/threefoldtech/zos/pkg/gridtypes"
-	"github.com/threefoldtech/zos/pkg/network/namespace"
-	"github.com/threefoldtech/zos/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
+	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 const (
@@ -68,6 +69,9 @@ func (c cmd) Command(name string, args ...string) *exec.Cmd {
 }
 
 func (c cmd) GetNamespace(name string) (ns.NetNS, error) {
+	if name == "" {
+		return nil, nil
+	}
 	return namespace.GetByName(name)
 }
 
@@ -415,7 +419,11 @@ func (f *flistModule) Exists(name string) (bool, error) {
 }
 
 func (f *flistModule) Mount(name, url string, opt pkg.MountOptions) (string, error) {
-	return f.mountInNamespace(name, url, opt, defaultNamespace)
+	nsName := defaultNamespace
+	if kernel.GetParams().IsLight() {
+		nsName = ""
+	}
+	return f.mountInNamespace(name, url, opt, nsName)
 }
 
 func (f *flistModule) mountInNamespace(name, url string, opt pkg.MountOptions, namespace string) (string, error) {
@@ -616,7 +624,11 @@ func (f *flistModule) FlistHash(url string) (string, error) {
 	// first check if the md5 of the flist is available
 	md5URL := url + ".md5"
 
-	resp, con, err := f.downloadInNamespace(defaultNamespace, md5URL)
+	nsName := defaultNamespace
+	if kernel.GetParams().IsLight() {
+		nsName = ""
+	}
+	resp, con, err := f.downloadInNamespace(nsName, md5URL)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get flist hash from '%s'", md5URL)
 	}
@@ -712,17 +724,13 @@ func (f *flistModule) saveFlist(r io.Reader) (Hash, Path, error) {
 var _ pkg.Flister = (*flistModule)(nil)
 
 func (f *flistModule) downloadInNamespace(name, u string) (resp *http.Response, con net.Conn, err error) {
-	if len(name) == 0 {
-		resp, err = f.httpClient.Get(u)
-		return
-	}
 
-	namespace, err := namespace.GetByName(name)
+	namespace, err := f.commander.GetNamespace(name)
 	if err != nil {
 		return resp, con, errors.Wrapf(err, "failed to get namespace %s", name)
 	}
 
-	err = namespace.Do(func(_ ns.NetNS) error {
+	run := func(_ ns.NetNS) error {
 		hostPort, err := parseURL(u)
 		if err != nil {
 			return err
@@ -744,9 +752,13 @@ func (f *flistModule) downloadInNamespace(name, u string) (resp *http.Response, 
 
 		resp, err = cl.Get(u)
 		return err
-	})
-
-	return
+	}
+	if namespace != nil {
+		err = namespace.Do(run)
+	} else {
+		err = run(nil)
+	}
+	return resp, con, err
 }
 
 func parseURL(u string) (hostPort string, err error) {

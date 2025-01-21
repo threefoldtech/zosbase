@@ -4,10 +4,12 @@ We want to make sure every member has a shared understanding of the goals and
 values we hold as a team:
 
 - Optimize for the **overall project**, not your own area or feature
+
   - A shortcut for one individual can mean a lot of extra work or disruption for
     the rest of the team.
 
 - Our repos (at least the master branch) should always be in release shape: **Always Green**
+
   - This lets us move faster in the mid and long term
   - This implies investments in build/test infrastructure to have fast, reliable
     tests to ensure that we can release at any time.
@@ -15,12 +17,13 @@ values we hold as a team:
     good state, but less work overall for the team.
 
 - Be **specific**, **respectful** and **courteous**
+
   - Disagreements are expected, but don't use broad
     generalizations, exaggerations, or judgement words that can be taken
     personally. Consider other people’s perspectives. Empathize with our users. Focus on the specific
     issue at hand, and remember that we all care about the project, first and
     foremost.
-  - [GitHub issues](https://github.com/threefoldtech/zos/issues/new),
+  - [GitHub issues](https://github.com/threefoldtech/zosbase/issues/new),
     document comments, or meetings are often better and higher bandwidth ways to
     communicate complex and nuanced design issues, as opposed to protracted
     heated live chats.
@@ -29,6 +32,7 @@ values we hold as a team:
     communication, please define the terms you are using in context.
 
 - Raising issues is great, suggesting solutions is even better
+
   - Think of a proposed alternative and improvement rather than just what you
     perceive as wrong.
   - If you have no immediate solution even after thinking about it - if

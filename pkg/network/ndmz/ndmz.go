@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/threefoldtech/zos/pkg/network/types"
+	"github.com/threefoldtech/zosbase/pkg/network/types"
 	"github.com/vishvananda/netlink"
 )
 

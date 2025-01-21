@@ -3,13 +3,13 @@ package bootstrap
 import (
 	"fmt"
 
-	"github.com/threefoldtech/zos/pkg/network/ifaceutil"
-	"github.com/threefoldtech/zos/pkg/network/options"
-	"github.com/threefoldtech/zos/pkg/network/types"
+	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
+	"github.com/threefoldtech/zosbase/pkg/network/options"
+	"github.com/threefoldtech/zosbase/pkg/network/types"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zos/pkg/network/bridge"
+	"github.com/threefoldtech/zosbase/pkg/network/bridge"
 	"github.com/vishvananda/netlink"
 )
 
