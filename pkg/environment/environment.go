@@ -52,6 +52,8 @@ type Environment struct {
 	GraphQL       []string
 	KycURL        string
 
+	RegistrarURL string
+
 	// private vlan to join
 	// if set, zos will use this as its priv vlan
 	PrivVlan *uint16
@@ -125,7 +127,8 @@ var (
 			"https://graphql.dev.grid.tf/graphql",
 			"https://graphql.02.dev.grid.tf/graphql",
 		},
-		KycURL: "https://kyc.dev.grid.tf",
+		KycURL:       "https://kyc.dev.grid.tf",
+		RegistrarURL: "https://registrar.dev4.grid.tf",
 	}
 
 	envTest = Environment{
@@ -148,7 +151,8 @@ var (
 			"https://graphql.test.grid.tf/graphql",
 			"https://graphql.02.test.grid.tf/graphql",
 		},
-		KycURL: "https://kyc.test.grid.tf",
+		KycURL:       "https://kyc.test.grid.tf",
+		RegistrarURL: "",
 	}
 
 	envQA = Environment{
@@ -171,7 +175,8 @@ var (
 			"https://graphql.qa.grid.tf/graphql",
 			"https://graphql.02.qa.grid.tf/graphql",
 		},
-		KycURL: "https://kyc.qa.grid.tf",
+		KycURL:       "https://kyc.qa.grid.tf",
+		RegistrarURL: "",
 	}
 
 	envProd = Environment{
@@ -197,7 +202,8 @@ var (
 			"https://graphql.grid.tf/graphql",
 			"https://graphql.02.grid.tf/graphql",
 		},
-		KycURL: "https://kyc.grid.tf",
+		KycURL:       "https://kyc.grid.tf",
+		RegistrarURL: "https://registrar.prod4.grid.tf",
 	}
 )
 
