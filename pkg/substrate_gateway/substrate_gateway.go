@@ -207,7 +207,6 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 	defer g.mu.Unlock()
 	return g.sub.UpdateNodeUptimeV2(g.identity, uptime, timestampHint)
 }
-
 func (g *substrateGateway) GetTime() (time.Time, error) {
 	log.Trace().Str("method", "Time").Msg("method called")
 
