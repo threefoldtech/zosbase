@@ -51,8 +51,7 @@ type Environment struct {
 	ActivationURL []string
 	GraphQL       []string
 	KycURL        string
-
-	RegistrarURL string
+	RegistrarURL  string
 
 	// private vlan to join
 	// if set, zos will use this as its priv vlan

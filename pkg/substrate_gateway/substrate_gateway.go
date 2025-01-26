@@ -45,7 +45,6 @@ func (g *substrateGateway) CreateNode(node substrate.Node) (uint32, error) {
 		Msg("method called")
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	// we need to change this file to use the new registrar
 	return g.sub.CreateNode(g.identity, node)
 }
 

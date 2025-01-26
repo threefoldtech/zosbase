@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -104,9 +103,10 @@ func registerNode(
 	info RegistrationInfo,
 ) (nodeID, twinID uint32, err error) {
 	var (
-		mgr              = stubs.NewIdentityManagerStub(cl)
-		netMgr           = stubs.NewNetworkerLightStub(cl)
-		substrateGateway = stubs.NewSubstrateGatewayStub(cl)
+		mgr    = stubs.NewIdentityManagerStub(cl)
+		netMgr = stubs.NewNetworkerLightStub(cl)
+		// substrateGateway = stubs.NewSubstrateGatewayStub(cl)
+		registrarGateway = stubs.NewRegistrarGatewayStub(cl)
 	)
 
 	infs, err := netMgr.Interfaces(ctx, "zos", "")
@@ -114,29 +114,26 @@ func registerNode(
 		return 0, 0, errors.Wrap(err, "failed to get zos bridge information")
 	}
 
-	interfaces := []substrate.Interface{
-		{
-			Name: infs.Interfaces["zos"].Name,
-			Mac:  infs.Interfaces["zos"].Mac,
-			IPs: func() []string {
-				ips := make([]string, 0)
-				for _, ip := range infs.Interfaces["zos"].IPs {
-
-					ips = append(ips, ip.IP.String())
-				}
-				return ips
-			}(),
-		},
+	interfaces := gridtypes.Interface{
+		Name: infs.Interfaces["zos"].Name,
+		Mac:  infs.Interfaces["zos"].Mac,
+		IPs: func() []string {
+			ips := make([]string, 0)
+			for _, ip := range infs.Interfaces["zos"].IPs {
+				ips = append(ips, ip.IP.String())
+			}
+			return ips
+		}(),
 	}
 
-	resources := substrate.Resources{
-		HRU: types.U64(info.Capacity.HRU),
-		SRU: types.U64(info.Capacity.SRU),
-		CRU: types.U64(info.Capacity.CRU),
-		MRU: types.U64(info.Capacity.MRU),
+	resources := gridtypes.Resources{
+		HRU: uint64(info.Capacity.HRU),
+		SRU: uint64(info.Capacity.SRU),
+		CRU: uint64(info.Capacity.CRU),
+		MRU: uint64(info.Capacity.MRU),
 	}
 
-	location := substrate.Location{
+	location := gridtypes.Location{
 		Longitude: fmt.Sprint(info.Location.Longitude),
 		Latitude:  fmt.Sprint(info.Location.Latitude),
 		Country:   info.Location.Country,
@@ -148,37 +145,36 @@ func registerNode(
 
 	sk := ed25519.PrivateKey(mgr.PrivateKey(ctx))
 
-	if _, err := substrateGateway.EnsureAccount(ctx, env.ActivationURL, tcUrl, tcHash); err != nil {
+	if _, err := registrarGateway.EnsureAccount(ctx, env.ActivationURL, tcUrl, tcHash); err != nil {
 		return 0, 0, errors.Wrap(err, "failed to ensure account")
 	}
 
-	twinID, err = ensureTwin(ctx, substrateGateway, sk)
+	twinID, err = ensureTwin(ctx, registrarGateway, sk)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "failed to ensure twin")
 	}
-	var subErr pkg.SubstrateError
-	nodeID, subErr = substrateGateway.GetNodeByTwinID(ctx, twinID)
+	nodeID, err = registrarGateway.GetNodeByTwinID(ctx, twinID)
 
-	var serial substrate.OptionBoardSerial
+	var serial gridtypes.OptionBoardSerial
 	if len(info.SerialNumber) != 0 {
-		serial = substrate.OptionBoardSerial{HasValue: true, AsValue: info.SerialNumber}
+		serial = gridtypes.OptionBoardSerial{HasValue: true, AsValue: info.SerialNumber}
 	}
 
-	real := substrate.Node{
-		FarmID:      types.U32(env.FarmID),
-		TwinID:      types.U32(twinID),
+	real := gridtypes.Node{
+		FarmID:      uint64(env.FarmID),
+		TwinID:      uint64(twinID),
 		Resources:   resources,
 		Location:    location,
-		Interfaces:  interfaces,
+		Interface:   interfaces,
 		SecureBoot:  info.SecureBoot,
 		Virtualized: info.Virtualized,
 		BoardSerial: serial,
 	}
 
-	var onChain substrate.Node
+	var onChain gridtypes.Node
 	if subErr.IsCode(pkg.CodeNotFound) {
 		// node not found, create node
-		nodeID, err = substrateGateway.CreateNode(ctx, real)
+		nodeID, err = registrarGateway.CreateNode(ctx, real)
 		if err != nil {
 			return 0, 0, errors.Wrap(err, "failed to create node on chain")
 		}
@@ -188,7 +184,7 @@ func registerNode(
 		return 0, 0, errors.Wrapf(subErr.Err, "failed to get node information for twin id: %d", twinID)
 	} else {
 		// node exists
-		onChain, err = substrateGateway.GetNode(ctx, nodeID)
+		onChain, err = registrarGateway.GetNode(ctx, nodeID)
 		if err != nil {
 			return 0, 0, errors.Wrapf(err, "failed to get node with id: %d", nodeID)
 		}
@@ -199,7 +195,7 @@ func registerNode(
 		}
 	}
 
-	real.ID = types.U32(nodeID)
+	real.ID = uint64(nodeID)
 
 	// node exists. we validate everything is good
 	// otherwise we update the node
@@ -207,7 +203,7 @@ func registerNode(
 
 	if !real.Eq(&onChain) {
 		log.Debug().Msgf("node data have changing, issuing an update node: %+v", real)
-		_, err := substrateGateway.UpdateNode(ctx, real)
+		_, err := registrarGateway.UpdateNode(ctx, real)
 		if err != nil {
 			return 0, 0, errors.Wrapf(err, "failed to update node data with id: %d", nodeID)
 		}
@@ -216,14 +212,14 @@ func registerNode(
 	return nodeID, twinID, err
 }
 
-func ensureTwin(ctx context.Context, substrateGateway *stubs.SubstrateGatewayStub, sk ed25519.PrivateKey) (uint32, error) {
+func ensureTwin(ctx context.Context, registrarGateway *stubs.RegistrarGatewayStub, sk ed25519.PrivateKey) (uint32, error) {
 	identity, err := substrate.NewIdentityFromEd25519Key(sk)
 	if err != nil {
 		return 0, err
 	}
-	twinID, subErr := substrateGateway.GetTwinByPubKey(ctx, identity.PublicKey())
+	twinID, subErr := registrarGateway.GetTwinByPubKey(ctx, identity.PublicKey())
 	if subErr.IsCode(pkg.CodeNotFound) {
-		return substrateGateway.CreateTwin(ctx, "", nil)
+		return registrarGateway.CreateTwin(ctx, "", nil)
 	} else if subErr.IsError() {
 		return 0, errors.Wrap(subErr.Err, "failed to list twins")
 	}
