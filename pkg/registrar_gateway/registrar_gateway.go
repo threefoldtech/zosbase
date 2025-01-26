@@ -61,6 +61,7 @@ func (r *registrarGateway) GetZosVersion() (string, error) {
 	}
 
 	defer resp.Body.Close()
+
 	var version gridtypes.Versioned
 	err = json.NewDecoder(resp.Body).Decode(&version)
 
@@ -196,6 +197,9 @@ func (r *registrarGateway) GetNodeByTwinID(twin uint32) (result uint32, err erro
 
 	url := fmt.Sprintf("%s/v1/nodes", r.baseURL)
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
 
 	q := req.URL.Query()
 	q.Add("twin_id", fmt.Sprint(twin))
@@ -222,7 +226,7 @@ func (r *registrarGateway) GetNodeByTwinID(twin uint32) (result uint32, err erro
 		return
 	}
 	if len(nodes) == 0 {
-		return 0, errors.New(fmt.Sprintf("failed to get node with twin id %d", twin))
+		return 0, fmt.Errorf("failed to get node with twin id %d", twin)
 	}
 
 	return uint32(nodes[0].NodeID), nil
@@ -246,6 +250,9 @@ func (r *registrarGateway) GetNodes(farmID uint32) (nodeIDs []uint32, err error)
 
 	url := fmt.Sprintf("%s/v1/nodes", r.baseURL)
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
 
 	q := req.URL.Query()
 	q.Add("farm_id", fmt.Sprint(farmID))

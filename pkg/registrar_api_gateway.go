@@ -29,7 +29,7 @@ type RegistrarGateway interface {
 	SetContractConsumption(resources ...substrate.ContractResources) error
 	SetNodePowerState(up bool) (hash types.Hash, err error)
 	UpdateNode(node gridtypes.Node) (uint32, error)
-	UpdateNodeUptimeV2(timestampHint uint64) (hash types.Hash, err error)
+	UpdateNodeUptimeV2(uptime uint64, timestampHint uint64) (hash types.Hash, err error)
 	GetTime() (time.Time, error)
 	GetZosVersion() (string, error)
 }

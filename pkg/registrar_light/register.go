@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/geoip"
 	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
+	registrargw "github.com/threefoldtech/zosbase/pkg/registrar_gateway"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
@@ -153,7 +155,6 @@ func registerNode(
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "failed to ensure twin")
 	}
-	nodeID, err = registrarGateway.GetNodeByTwinID(ctx, twinID)
 
 	var serial gridtypes.OptionBoardSerial
 	if len(info.SerialNumber) != 0 {
@@ -171,38 +172,38 @@ func registerNode(
 		BoardSerial: serial,
 	}
 
-	var onChain gridtypes.Node
-	if subErr.IsCode(pkg.CodeNotFound) {
-		// node not found, create node
-		nodeID, err = registrarGateway.CreateNode(ctx, real)
-		if err != nil {
-			return 0, 0, errors.Wrap(err, "failed to create node on chain")
+	nodeID, regErr := registrarGateway.GetNodeByTwinID(ctx, twinID)
+	if regErr != nil {
+		if errors.Is(regErr, registrargw.ErrorRecordNotFound) {
+			// node not found, create node
+			nodeID, err = registrarGateway.CreateNode(ctx, real)
+			if err != nil {
+				return 0, 0, errors.Wrap(err, "failed to create node on chain")
+			}
 		}
-
-	} else if subErr.IsError() {
-		// other error occurred
-		return 0, 0, errors.Wrapf(subErr.Err, "failed to get node information for twin id: %d", twinID)
-	} else {
-		// node exists
-		onChain, err = registrarGateway.GetNode(ctx, nodeID)
-		if err != nil {
-			return 0, 0, errors.Wrapf(err, "failed to get node with id: %d", nodeID)
-		}
-
-		// ignore virt-what value if the node is marked as real on the chain
-		if !onChain.Virtualized {
-			real.Virtualized = false
-		}
+		return 0, 0, errors.Wrapf(regErr, "failed to get node information for twin id: %d", twinID)
 	}
 
-	real.ID = uint64(nodeID)
+	// node exists
+	var onChain gridtypes.Node
+	onChain, err = registrarGateway.GetNode(ctx, nodeID)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "failed to get node with id: %d", nodeID)
+	}
+
+	// ignore virt-what value if the node is marked as real on the chain
+	if !onChain.Virtualized {
+		real.Virtualized = false
+	}
+
+	real.NodeID = uint64(nodeID)
 
 	// node exists. we validate everything is good
 	// otherwise we update the node
 	log.Debug().Uint32("node", nodeID).Msg("node already found on blockchain")
 
-	if !real.Eq(&onChain) {
-		log.Debug().Msgf("node data have changing, issuing an update node: %+v", real)
+	if !reflect.DeepEqual(real, onChain) {
+		log.Debug().Msgf("node data have changed, issuing an update node: %+v", real)
 		_, err := registrarGateway.UpdateNode(ctx, real)
 		if err != nil {
 			return 0, 0, errors.Wrapf(err, "failed to update node data with id: %d", nodeID)
