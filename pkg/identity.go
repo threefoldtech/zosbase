@@ -33,17 +33,17 @@ type IdentityManager interface {
 	NodeID() StrIdentifier
 
 	// Address return the node address (SS58Address address)
-	// Address() (Address, error)
+	Address() (Address, error)
 
 	// FarmID return the farm id this node is part of. this is usually a configuration
 	// that the node is booted with. An error is returned if the farmer id is not configured
-	FarmID() FarmID
+	FarmID() (FarmID, error)
 
 	// Farm returns name of the farm. Or error
 	Farm() (string, error)
 
-	// FarmSecret get the farm secret as defined in the boot params
-	FarmSecret() string
+	//FarmSecret get the farm secret as defined in the boot params
+	FarmSecret() (string, error)
 
 	// Sign signs the message with privateKey and returns a signature.
 	Sign(message []byte) ([]byte, error)
