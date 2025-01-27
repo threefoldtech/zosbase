@@ -1,10 +1,17 @@
-package gridtypes
+package zos4types
 
 import (
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
+
+type Account struct {
+	TwinID    uint64 `json:"twin_id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	PublicKey string `json:"public_key"` // ED25519 public key in the more standard base64 since we are moving from substarte echo system? (still SS58 can be used or plain base58 ,TBD)
+}
 
 // Node type
 type Node struct {

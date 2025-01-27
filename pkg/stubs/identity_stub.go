@@ -27,23 +27,6 @@ func NewIdentityManagerStub(client zbus.Client) *IdentityManagerStub {
 	}
 }
 
-func (s *IdentityManagerStub) Address(ctx context.Context) (ret0 pkg.Address, ret1 error) {
-	args := []interface{}{}
-	result, err := s.client.RequestContext(ctx, s.module, s.object, "Address", args...)
-	if err != nil {
-		panic(err)
-	}
-	result.PanicOnError()
-	ret1 = result.CallError()
-	loader := zbus.Loader{
-		&ret0,
-	}
-	if err := result.Unmarshal(&loader); err != nil {
-		panic(err)
-	}
-	return
-}
-
 func (s *IdentityManagerStub) Decrypt(ctx context.Context, arg0 []uint8) (ret0 []uint8, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "Decrypt", args...)
@@ -129,14 +112,13 @@ func (s *IdentityManagerStub) Farm(ctx context.Context) (ret0 string, ret1 error
 	return
 }
 
-func (s *IdentityManagerStub) FarmID(ctx context.Context) (ret0 pkg.FarmID, ret1 error) {
+func (s *IdentityManagerStub) FarmID(ctx context.Context) (ret0 pkg.FarmID) {
 	args := []interface{}{}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "FarmID", args...)
 	if err != nil {
 		panic(err)
 	}
 	result.PanicOnError()
-	ret1 = result.CallError()
 	loader := zbus.Loader{
 		&ret0,
 	}
@@ -146,14 +128,13 @@ func (s *IdentityManagerStub) FarmID(ctx context.Context) (ret0 pkg.FarmID, ret1
 	return
 }
 
-func (s *IdentityManagerStub) FarmSecret(ctx context.Context) (ret0 string, ret1 error) {
+func (s *IdentityManagerStub) FarmSecret(ctx context.Context) (ret0 string) {
 	args := []interface{}{}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "FarmSecret", args...)
 	if err != nil {
 		panic(err)
 	}
 	result.PanicOnError()
-	ret1 = result.CallError()
 	loader := zbus.Loader{
 		&ret0,
 	}

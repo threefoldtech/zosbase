@@ -372,8 +372,8 @@ func (s *RegistrarGatewayStub) UpdateNode(ctx context.Context, arg0 gridtypes.No
 	return
 }
 
-func (s *RegistrarGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 uint64) (ret0 types.Hash, ret1 error) {
-	args := []interface{}{arg0}
+func (s *RegistrarGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 uint64, arg1 uint64) (ret0 types.Hash, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "UpdateNodeUptimeV2", args...)
 	if err != nil {
 		panic(err)

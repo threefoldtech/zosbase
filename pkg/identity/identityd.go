@@ -1,12 +1,18 @@
 package identity
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+
+	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zosbase/pkg/crypto"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/identity/store"
+	registrargw "github.com/threefoldtech/zosbase/pkg/registrar_gateway"
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zosbase/pkg"
@@ -16,7 +22,6 @@ import (
 type identityManager struct {
 	kind string
 	key  KeyPair
-	sub  substrate.Manager
 	env  environment.Environment
 
 	farm string
@@ -55,10 +60,6 @@ func NewManager(root string, debug bool) (pkg.IdentityManager, error) {
 		pair = KeyPairFromKey(key)
 	}
 
-	sub, err := environment.GetSubstrate()
-	if err != nil {
-		return nil, err
-	}
 	env, err := environment.Get()
 	if err != nil {
 		return nil, err
@@ -67,7 +68,6 @@ func NewManager(root string, debug bool) (pkg.IdentityManager, error) {
 	return &identityManager{
 		kind: st.Kind(),
 		key:  pair,
-		sub:  sub,
 		env:  env,
 	}, nil
 }
@@ -83,52 +83,53 @@ func (d *identityManager) NodeID() pkg.StrIdentifier {
 }
 
 // NodeID returns the node identity
-func (d *identityManager) Address() (pkg.Address, error) {
-	id, err := substrate.NewIdentityFromEd25519Key(d.key.PrivateKey)
-	if err != nil {
-		return "", err
-	}
-	return pkg.Address(id.Address()), nil
-}
+// func (d *identityManager) Address() (pkg.Address, error) {
+// 	id, err := substrate.NewIdentityFromEd25519Key(d.key.PrivateKey)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return pkg.Address(id.Address()), nil
+// }
 
-func (d *identityManager) Farm() (string, error) {
+func (d *identityManager) Farm() (name string, err error) {
 	if len(d.farm) != 0 {
 		return d.farm, nil
 	}
 
-	cl, err := d.sub.Substrate()
+	// we need to not use substrate
+	url := fmt.Sprintf("%s/v1/farms/%d", d.env.RegistrarURL, d.env.FarmID)
+
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
-		return "", err
-	}
-	defer cl.Close()
-
-	farm, err := cl.GetFarm(uint32(d.env.FarmID))
-	if errors.Is(err, substrate.ErrNotFound) {
-		return "", fmt.Errorf("wrong farm id")
-	} else if err != nil {
-		return "", err
+		return
 	}
 
-	d.farm = farm.Name
-	return farm.Name, nil
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return name, registrargw.ErrorRecordNotFound
+	}
+
+	defer resp.Body.Close()
+
+	var farm gridtypes.Farm
+	err = json.NewDecoder(resp.Body).Decode(&farm)
+	if err != nil {
+		return
+	}
+	return farm.FarmName, nil
 }
 
 // FarmID returns the farm ID of the node or an error if no farm ID is configured
-func (d *identityManager) FarmID() (pkg.FarmID, error) {
-	env, err := environment.Get()
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to parse node environment")
-	}
-	return env.FarmID, nil
+func (d *identityManager) FarmID() pkg.FarmID {
+	return d.env.FarmID
 }
 
 // FarmSecret returns farm secret from kernel params
-func (d *identityManager) FarmSecret() (string, error) {
-	env, err := environment.Get()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to parse node environment")
-	}
-	return env.FarmSecret, nil
+func (d *identityManager) FarmSecret() string {
+	return d.env.FarmSecret
 }
 
 // Sign signs the message with privateKey and returns a signature.

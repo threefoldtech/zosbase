@@ -2,10 +2,14 @@ package registrargw
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -79,9 +83,13 @@ func (r *registrarGateway) CreateNode(node gridtypes.Node) (uint32, error) {
 	defer r.mu.Unlock()
 
 	url := fmt.Sprintf("%s/v1/nodes", r.baseURL)
+	req, err := buildRequest("POST", url, node)
+	if err != nil {
+		return 0, err
+	}
 
-	var body bytes.Buffer
-	_, err := r.httpClient.Post(url, "application/json", &body)
+	// update this
+	_, err = r.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -93,6 +101,14 @@ func (g *registrarGateway) CreateTwin(relay string, pk []byte) (uint32, error) {
 	log.Debug().Str("method", "CreateTwin").Str("relay", relay).Str("pk", hex.EncodeToString(pk)).Msg("method called")
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	url := fmt.Sprintf("%s/v1/accounts", g.baseURL)
+
+	var body bytes.Buffer
+	_, err := g.httpClient.Post(url, "application/json", &body)
+	if err != nil {
+		return 0, err
+	}
+
 	return g.sub.CreateTwin(g.identity, relay, pk)
 }
 
@@ -412,5 +428,43 @@ func buildSubstrateError(err error) (serr pkg.SubstrateError) {
 	} else if errors.Is(err, substrate.ErrMintTransactionNotFound) {
 		serr.Code = pkg.CodeMintTransactionNotFound
 	}
+	return
+}
+
+func getNodeSignature(pubKey, privKey []byte) (signatureBase64 string) {
+	publicKeyBase64 := base64.StdEncoding.EncodeToString(pubKey)
+	// Create challenge
+	timestamp := time.Now().Unix()
+	challenge := createChallenge(timestamp, publicKeyBase64)
+
+	// Sign challenge (client side)
+	signature := ed25519.Sign(privKey, []byte(challenge))
+	signatureBase64 = base64.StdEncoding.EncodeToString(signature)
+	return
+}
+
+func createChallenge(timestamp int64, publicKey string) string {
+	// Create a unique message combining action, timestamp, and public key
+	message := fmt.Sprintf("create_account:%d:%s", timestamp, publicKey)
+
+	// Hash the message to create a fixed-length challenge
+	hash := sha256.Sum256([]byte(message))
+	return hex.EncodeToString(hash[:])
+}
+
+func buildRequest(method, url string, bodyVal any) (req *http.Request, err error) {
+	var body io.ReadWriter
+	err = json.NewEncoder(body).Encode(bodyVal)
+	if err != nil {
+		return
+	}
+
+	req, err = http.NewRequest(method, url, body)
+	if err != nil {
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
 	return
 }

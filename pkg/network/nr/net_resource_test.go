@@ -36,14 +36,14 @@ func (t *testIdentityManager) Farm() (string, error) {
 	return "test-farm", nil
 }
 
-func (t *testIdentityManager) FarmSecret() (string, error) {
-	return "", nil
+func (t *testIdentityManager) FarmSecret() string {
+	return ""
 }
 
 // FarmID return the farm id this node is part of. this is usually a configuration
 // that the node is booted with. An error is returned if the farmer id is not configured
-func (t *testIdentityManager) FarmID() (pkg.FarmID, error) {
-	return pkg.FarmID(t.farm), nil
+func (t *testIdentityManager) FarmID() pkg.FarmID {
+	return pkg.FarmID(t.farm)
 }
 
 // Sign signs the message with privateKey and returns a signature.
@@ -197,8 +197,8 @@ func TestMyceliumGw(t *testing.T) {
 	require.Equal(t, net.ParseIP("3b4:ca67:822d:b0c1::1"), gw.IP)
 	require.Equal(t, "3b4:ca67:822d:b0c1::1/64", gw.String())
 	require.Equal(t, "3b4:ca67:822d:b0c1::/64", subnet.String())
-
 }
+
 func TestMyceliumIP(t *testing.T) {
 	data := MyceliumInspection{
 		Address: net.ParseIP("3b4:ca67:822d:b0c1:5d6f:c647:1ed8:6ced"),
@@ -209,5 +209,4 @@ func TestMyceliumIP(t *testing.T) {
 
 	require.Equal(t, net.ParseIP("3b4:ca67:822d:b0c1:ff0f:11:2233:4455"), ip.IP)
 	require.Equal(t, "3b4:ca67:822d:b0c1::1/64", gw.String())
-
 }
