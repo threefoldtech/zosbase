@@ -4,9 +4,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/google/shlex"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -68,7 +67,25 @@ func (k Params) IsDebug() bool {
 
 // IsLight check if node is running in light mode
 func (k Params) IsLight() bool {
-	return k.Exists(Light)
+	return k.IsV3Light() || k.IsV4()
+}
+
+// ISV3Light check if node is running in v3light mode
+func (k Params) IsV3Light() bool {
+	version, found := GetParams().GetOne("version")
+	return found && version == "v3light"
+}
+
+// IsV4 checks if node is running version 4
+func (k Params) IsV4() bool {
+	version, found := GetParams().GetOne("version")
+	return found && version == "v4"
+}
+
+// IsV3 checks if node is running normal version 3
+func (k Params) IsV3() bool {
+	version, found := GetParams().GetOne("version")
+	return found && version == "v3"
 }
 
 // GPUDisabled checks if gpu is diabled
