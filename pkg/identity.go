@@ -42,7 +42,7 @@ type IdentityManager interface {
 	// Farm returns name of the farm. Or error
 	Farm() (string, error)
 
-	//FarmSecret get the farm secret as defined in the boot params
+	// FarmSecret get the farm secret as defined in the boot params
 	FarmSecret() (string, error)
 
 	// Sign signs the message with privateKey and returns a signature.
