@@ -76,6 +76,12 @@ func (k Params) IsV3Light() bool {
 	return found && version == "v3light"
 }
 
+// getVersion checks if node is running version 4
+func (k Params) GetVersion() string {
+	version, _ := GetParams().GetOne("version")
+	return version
+}
+
 // IsV4 checks if node is running version 4
 func (k Params) IsV4() bool {
 	version, found := GetParams().GetOne("version")
