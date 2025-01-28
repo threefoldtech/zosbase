@@ -159,6 +159,23 @@ func (s *NetworkerLightStub) Interfaces(ctx context.Context, arg0 string, arg1 s
 	return
 }
 
+func (s *NetworkerLightStub) LoadPublicConfig(ctx context.Context) (ret0 pkg.PublicConfig, ret1 error) {
+	args := []interface{}{}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "LoadPublicConfig", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret1 = result.CallError()
+	loader := zbus.Loader{
+		&ret0,
+	}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
 func (s *NetworkerLightStub) Namespace(ctx context.Context, arg0 string) (ret0 string) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "Namespace", args...)

@@ -24,6 +24,7 @@ type NetworkerLight interface {
 	GetSubnet(networkID NetID) (net.IPNet, error)
 	SetPublicConfig(cfg PublicConfig) error
 	UnSetPublicConfig() error
+	LoadPublicConfig() (PublicConfig, error)
 }
 
 type TapDevice struct {

@@ -416,6 +416,11 @@ func (n *networker) SetPublicConfig(cfg pkg.PublicConfig) error {
 	return nil
 }
 
+func (n *networker) LoadPublicConfig() (pkg.PublicConfig, error) {
+	cfg, err := public.LoadPublicConfig()
+	return *cfg, err
+}
+
 func CreateNDMZBridge() (*netlink.Bridge, error) {
 	return createNDMZBridge(NDMZBridge, NDMZGw)
 }

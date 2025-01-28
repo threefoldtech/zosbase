@@ -20,7 +20,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/cache"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zosbase/pkg/netlight/public"
 	"github.com/threefoldtech/zosbase/pkg/netlight/types"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
@@ -343,7 +342,8 @@ func (g *gatewayModule) validateNameContracts() error {
 	defer cancel()
 	e := stubs.NewProvisionStub(g.cl)
 
-	config, err := public.LoadPublicConfig()
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	config, err := netStub.LoadPublicConfig(context.Background())
 	baseDomain := config.Domain
 	if baseDomain == "" || err == nil {
 		// domain doesn't exist so no name workloads exist
@@ -429,7 +429,8 @@ func (g *gatewayModule) traefikBinary(ctx context.Context, z *zinit.Client) (str
 func (g *gatewayModule) ensureGateway(ctx context.Context, forceResstart bool) (string, error) {
 	flistd := stubs.NewFlisterStub(g.cl)
 
-	config, err := public.LoadPublicConfig()
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	config, err := netStub.LoadPublicConfig(context.Background())
 	domain := config.Domain
 	if domain == "" || err != nil {
 		return "", fmt.Errorf("gateway is not supported on this node, domain is not set")

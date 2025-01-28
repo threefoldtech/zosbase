@@ -9,10 +9,11 @@ import (
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
-	"github.com/threefoldtech/zosbase/pkg/netlight/public"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 var _ pkg.SystemMonitor = (*systemMonitor)(nil)
@@ -21,15 +22,16 @@ var _ pkg.SystemMonitor = (*systemMonitor)(nil)
 type systemMonitor struct {
 	duration time.Duration
 	node     uint32
+	cl       zbus.Client
 }
 
 // NewSystemMonitor creates new system of system monitor
-func NewSystemMonitor(node uint32, duration time.Duration) (pkg.SystemMonitor, error) {
+func NewSystemMonitor(node uint32, duration time.Duration, cl zbus.Client) (pkg.SystemMonitor, error) {
 	if duration == 0 {
 		duration = 2 * time.Second
 	}
 
-	return &systemMonitor{duration: duration, node: node}, nil
+	return &systemMonitor{duration: duration, node: node, cl: cl}, nil
 }
 
 func (m *systemMonitor) NodeID() uint32 {
@@ -217,8 +219,10 @@ func (n *systemMonitor) GetNodeFeatures() []pkg.NodeFeature {
 		}
 		feat = append(feat, zosLightFeat...)
 
-		current, err := public.LoadPublicConfig()
-		if current.Domain != "" && err == nil {
+		netStub := stubs.NewNetworkerLightStub(n.cl)
+		config, err := netStub.LoadPublicConfig(context.Background())
+
+		if config.Domain != "" && err == nil {
 			feat = append(feat, pkg.NodeFeature("gateway"))
 		}
 		return feat
