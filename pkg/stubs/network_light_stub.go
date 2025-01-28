@@ -190,6 +190,36 @@ func (s *NetworkerLightStub) Ready(ctx context.Context) (ret0 error) {
 	return
 }
 
+func (s *NetworkerLightStub) SetPublicConfig(ctx context.Context, arg0 pkg.PublicConfig) (ret0 error) {
+	args := []interface{}{arg0}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "SetPublicConfig", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret0 = result.CallError()
+	loader := zbus.Loader{}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
+func (s *NetworkerLightStub) UnSetPublicConfig(ctx context.Context) (ret0 error) {
+	args := []interface{}{}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "UnSetPublicConfig", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret0 = result.CallError()
+	loader := zbus.Loader{}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
 func (s *NetworkerLightStub) ZDBIPs(ctx context.Context, arg0 string) (ret0 [][]uint8, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "ZDBIPs", args...)

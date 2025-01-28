@@ -12,6 +12,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
+	"github.com/threefoldtech/zosbase/pkg/netlight/public"
 )
 
 var _ pkg.SystemMonitor = (*systemMonitor)(nil)
@@ -215,8 +216,9 @@ func (n *systemMonitor) GetNodeFeatures() []pkg.NodeFeature {
 			pkg.NodeFeature("mycelium"),
 		}
 		feat = append(feat, zosLightFeat...)
-		_, found := kernel.GetParams().GetOne("domain")
-		if found {
+
+		current, err := public.LoadPublicConfig()
+		if current.Domain != "" && err == nil {
 			feat = append(feat, pkg.NodeFeature("gateway"))
 		}
 		return feat
