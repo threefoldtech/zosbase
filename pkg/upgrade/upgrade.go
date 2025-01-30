@@ -23,6 +23,7 @@ import (
 	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg/app"
 	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 	"github.com/threefoldtech/zosbase/pkg/upgrade/hub"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
@@ -55,6 +56,7 @@ const (
 type ChainVersion struct {
 	SafeToUpgrade bool   `json:"safe_to_upgrade"`
 	Version       string `json:"version"`
+	VersionLight  string `json:"version_light"`
 }
 
 func getRolloutConfig(ctx context.Context, gw *stubs.SubstrateGatewayStub) (ChainVersion, []uint32, error) {
@@ -75,6 +77,7 @@ func getRolloutConfig(ctx context.Context, gw *stubs.SubstrateGatewayStub) (Chai
 		chainVersion = ChainVersion{
 			SafeToUpgrade: true,
 			Version:       v,
+			VersionLight:  "",
 		}
 	}
 
@@ -243,9 +246,13 @@ func (u *Upgrader) nextUpdate() time.Duration {
 func (u *Upgrader) remote() (remote hub.TagLink, err error) {
 	mode := u.boot.RunMode()
 	// find all taglinks that matches the same run mode (ex: development)
+	matchName := mode.String()
+	if kernel.GetParams().IsLight() {
+		matchName = fmt.Sprintf("%s-%s", mode.String(), kernel.GetParams().GetVersion())
+	}
 	matches, err := u.hub.Find(
 		ZosRepo,
-		hub.MatchName(mode.String()),
+		hub.MatchName(matchName),
 		hub.MatchType(hub.TypeTagLink),
 	)
 	if err != nil {
@@ -253,7 +260,7 @@ func (u *Upgrader) remote() (remote hub.TagLink, err error) {
 	}
 
 	if len(matches) != 1 {
-		return remote, fmt.Errorf("can't find taglink that matches '%s'", mode.String())
+		return remote, fmt.Errorf("can't find taglink that matches '%s'", matchName)
 	}
 
 	return hub.NewTagLink(matches[0]), nil
@@ -286,10 +293,17 @@ func (u *Upgrader) update(ctx context.Context) error {
 	}
 
 	remoteVer := remote.Target[strings.LastIndex(remote.Target, "/")+1:]
+	if kernel.GetParams().IsLight() {
+		if env.RunningMode != environment.RunningDev && (remoteVer != chainVer.VersionLight) {
+			// nothing to do! hub version is not the same as the chain
+			return nil
+		}
+	} else {
 
-	if env.RunningMode != environment.RunningDev && remoteVer != chainVer.Version {
-		// nothing to do! hub version is not the same as the chain
-		return nil
+		if env.RunningMode != environment.RunningDev && (remoteVer != chainVer.Version) {
+			// nothing to do! hub version is not the same as the chain
+			return nil
+		}
 	}
 
 	if !chainVer.SafeToUpgrade {
