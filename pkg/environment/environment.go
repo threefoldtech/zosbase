@@ -220,7 +220,15 @@ func MustGet() Environment {
 // Get return the running environment of the node
 func Get() (Environment, error) {
 	params := kernel.GetParams()
-	return getEnvironmentFromParams(params)
+	env, err := getEnvironmentFromParams(params)
+	if err != nil {
+		return Environment{}, err
+	}
+	if params.IsV4() {
+		env.FlistURL = "redis://v4.hub.grid.tf:9900"
+	}
+
+	return env, nil
 }
 
 // GetSubstrate gets a client to subsrate blockchain

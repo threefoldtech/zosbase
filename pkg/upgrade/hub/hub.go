@@ -15,14 +15,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/0-fs/meta"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
 )
 
 const (
 	// hubBaseURL base hub url
-	hubBaseURL = "https://hub.grid.tf/"
+	hubBaseURL   = "https://hub.grid.tf/"
+	hubv4BaseURL = "https://v4.hub.grid.tf/"
 
 	// hubStorage default hub db
-	hubStorage = "zdb://hub.grid.tf:9900"
+	hubStorage   = "zdb://hub.grid.tf:9900"
+	hubv4Storage = "zdb://v4.hub.grid.tf:9900"
 
 	defaultHubCallTimeout = 20 * time.Second
 )
@@ -81,7 +84,7 @@ func NewHubClient(timeout time.Duration) *HubClient {
 
 // MountURL returns the full url of given flist.
 func (h *HubClient) MountURL(flist string) string {
-	url, err := url.Parse(hubBaseURL)
+	url, err := url.Parse(h.HubBaseURL())
 	if err != nil {
 		panic("invalid base url")
 	}
@@ -91,12 +94,23 @@ func (h *HubClient) MountURL(flist string) string {
 
 // StorageURL return hub storage url
 func (h *HubClient) StorageURL() string {
+	if kernel.GetParams().IsV4() {
+		return hubv4Storage
+	}
 	return hubStorage
+}
+
+// StorageURL return hub storage url
+func (h *HubClient) HubBaseURL() string {
+	if kernel.GetParams().IsV4() {
+		return hubv4BaseURL
+	}
+	return hubBaseURL
 }
 
 // Info gets flist info from hub
 func (h *HubClient) Info(repo, name string) (info FList, err error) {
-	u, err := url.Parse(hubBaseURL)
+	u, err := url.Parse(h.HubBaseURL())
 	if err != nil {
 		panic("invalid base url")
 	}
@@ -145,7 +159,7 @@ next:
 
 // List list repo flists
 func (h *HubClient) List(repo string) ([]FList, error) {
-	u, err := url.Parse(hubBaseURL)
+	u, err := url.Parse(h.HubBaseURL())
 	if err != nil {
 		panic("invalid base url")
 	}
@@ -175,7 +189,7 @@ func (h *HubClient) List(repo string) ([]FList, error) {
 }
 
 func (h *HubClient) ListTag(repo, tag string) ([]Symlink, error) {
-	u, err := url.Parse(hubBaseURL)
+	u, err := url.Parse(h.HubBaseURL())
 	if err != nil {
 		panic("invalid base url")
 	}
@@ -237,7 +251,7 @@ func (h *HubClient) Download(cache, repo, name string) (string, error) {
 		}
 	}
 
-	u, err := url.Parse(hubBaseURL)
+	u, err := url.Parse(h.HubBaseURL())
 	if err != nil {
 		panic("invalid base url")
 	}
@@ -290,8 +304,11 @@ func (b *Regular) Files(repo string) ([]FileInfo, error) {
 	var content struct {
 		Content []FileInfo `json:"content"`
 	}
-
-	u, err := url.Parse(hubBaseURL)
+	baseURL := hubBaseURL
+	if kernel.GetParams().IsV4() {
+		baseURL = hubv4BaseURL
+	}
+	u, err := url.Parse(baseURL)
 	if err != nil {
 		panic("invalid base url")
 	}
