@@ -13,10 +13,8 @@ const (
 	publicConfigFile = "public-config.json"
 )
 
-var (
-	// persistencePath is path to config file.
-	persistencePath = ""
-)
+// persistencePath is path to config file.
+var persistencePath = ""
 
 func SetPersistence(path string) {
 	stat, err := os.Stat(path)
