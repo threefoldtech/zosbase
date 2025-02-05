@@ -42,8 +42,9 @@ var (
 const (
 	service = "upgrader"
 
-	defaultHubStorage  = "zdb://hub.grid.tf:9900"
-	defaultZinitSocket = "/var/run/zinit.sock"
+	defaultHubStorage   = "zdb://hub.grid.tf:9900"
+	defaultHubv4Storage = "zdb://hub.grid.tf:9940"
+	defaultZinitSocket  = "/var/run/zinit.sock"
 
 	checkForUpdateEvery = 60 * time.Minute
 	checkJitter         = 10 // minutes
@@ -160,10 +161,13 @@ func NewUpgrader(root string, opts ...UpgraderOption) (*Upgrader, error) {
 			return nil, err
 		}
 	}
-
+	hub_storage := defaultHubStorage
+	if kernel.GetParams().IsV4() {
+		hub_storage = defaultHubv4Storage
+	}
 	if u.storage == nil {
 		// no storage option was set. use default
-		if err := Storage(defaultHubStorage)(u); err != nil {
+		if err := Storage(hub_storage)(u); err != nil {
 			return nil, err
 		}
 	}

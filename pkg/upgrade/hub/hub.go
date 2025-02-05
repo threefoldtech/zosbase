@@ -25,7 +25,7 @@ const (
 
 	// hubStorage default hub db
 	hubStorage   = "zdb://hub.grid.tf:9900"
-	hubv4Storage = "zdb://v4.hub.grid.tf:9900"
+	hubv4Storage = "zdb://hub.grid.tf:9940"
 
 	defaultHubCallTimeout = 20 * time.Second
 )
