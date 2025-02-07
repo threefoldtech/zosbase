@@ -225,7 +225,7 @@ func Get() (Environment, error) {
 		return Environment{}, err
 	}
 	if params.IsV4() {
-		env.FlistURL = "redis://v4.hub.grid.tf:9900"
+		env.FlistURL = "redis://v4.hub.grid.tf:9940"
 	}
 
 	return env, nil
