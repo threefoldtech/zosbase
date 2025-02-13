@@ -175,7 +175,7 @@ var (
 			"https://graphql.02.qa.grid.tf/graphql",
 		},
 		KycURL:       "https://kyc.qa.grid.tf",
-		RegistrarURL: "",
+		RegistrarURL: "https://registrar.qa4.grid.tf",
 	}
 
 	envProd = Environment{
