@@ -602,6 +602,9 @@ func (m *Module) Inspect(name string) (pkg.VMInfo, error) {
 }
 
 func (m *Module) removeConfig(name string) {
+	if true {
+		return
+	}
 	if name == "" {
 		return
 	}

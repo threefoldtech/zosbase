@@ -224,6 +224,18 @@ func (n *NodeClient) NetworkListPublicIPs(ctx context.Context) ([]string, error)
 	return result, nil
 }
 
+// NetworkListPublicIPs list taken public IPs on the node
+func (n *NodeClient) GetVmLogs(ctx context.Context, path string) (string, error) {
+	const cmd = "zos.logs.vm"
+	var result string
+
+	if err := n.bus.Call(ctx, n.nodeTwin, cmd, path, &result); err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
 // NetworkListPrivateIPs list private ips reserved for a network
 func (n *NodeClient) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]string, error) {
 	const cmd = "zos.network.list_private_ips"

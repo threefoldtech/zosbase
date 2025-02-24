@@ -51,4 +51,7 @@ func (g *ZosAPI) SetupRoutes(router *peer.Router) {
 
 	location := root.SubRoute("location")
 	location.WithHandler("get", g.locationGet)
+
+	logs := root.SubRoute("logs")
+	logs.WithHandler("vm", g.getVmLogsHandler)
 }
