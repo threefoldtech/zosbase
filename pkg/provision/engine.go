@@ -1149,7 +1149,9 @@ func (n *NativeEngine) ListPrivateIPs(twin uint32, network gridtypes.Name) ([]st
 	ips := make([]string, 0)
 	for _, deployment := range deployments {
 		vms := deployment.ByType(zos.ZMachineType)
+		vms = append(vms, deployment.ByType(zos.ZMachineLightType)...)
 		for _, vm := range vms {
+
 			if vm.Result.State.IsAny(gridtypes.StateDeleted, gridtypes.StateError) {
 				continue
 			}
