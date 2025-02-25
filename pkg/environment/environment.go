@@ -151,7 +151,7 @@ var (
 			"https://graphql.02.test.grid.tf/graphql",
 		},
 		KycURL:       "https://kyc.test.grid.tf",
-		RegistrarURL: "",
+		RegistrarURL: "http://registrar.test4.grid.tf",
 	}
 
 	envQA = Environment{
