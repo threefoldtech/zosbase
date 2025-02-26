@@ -20,7 +20,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/cache"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
-	"github.com/threefoldtech/zosbase/pkg/kernel"
 	"github.com/threefoldtech/zosbase/pkg/netlight/types"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
@@ -342,12 +341,15 @@ func (g *gatewayModule) validateNameContracts() error {
 	ctx, cancel := context.WithTimeout(context.Background(), validationPeriod/2)
 	defer cancel()
 	e := stubs.NewProvisionStub(g.cl)
-	baseDomain, found := kernel.GetParams().GetOne("domain")
-	if !found {
+
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	config, err := netStub.LoadPublicConfig(context.Background())
+	if err != nil || config.Domain == "" {
 		// domain doesn't exist so no name workloads exist
 		return nil
 	}
 
+	baseDomain := config.Domain
 	reservedDomains := g.copyReservedDomain()
 
 	for domain, id := range reservedDomains {
@@ -425,14 +427,15 @@ func (g *gatewayModule) traefikBinary(ctx context.Context, z *zinit.Client) (str
 // ensureGateway makes sure that gateway infrastructure is in place and
 // that it is supported.
 func (g *gatewayModule) ensureGateway(ctx context.Context, forceResstart bool) (string, error) {
-	var (
-		flistd = stubs.NewFlisterStub(g.cl)
-	)
+	flistd := stubs.NewFlisterStub(g.cl)
 
-	domain, found := kernel.GetParams().GetOne("domain")
-	if !found {
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	config, err := netStub.LoadPublicConfig(context.Background())
+	if err != nil || config.Domain == "" {
 		return "", fmt.Errorf("gateway is not supported on this node, domain is not set")
 	}
+
+	domain := config.Domain
 
 	z := zinit.Default()
 	running, err := g.isTraefikStarted(z)
@@ -478,9 +481,10 @@ func (g *gatewayModule) ensureGateway(ctx context.Context, forceResstart bool) (
 		return domain, nil
 	}
 
-	//other wise we start traefik
+	// other wise we start traefik
 	return domain, g.startTraefik(z)
 }
+
 func (g *gatewayModule) verifyDomainDestination(ctx context.Context, domain string) error {
 	networker := stubs.NewNetworkerLightStub(g.cl)
 
@@ -508,7 +512,6 @@ func (g *gatewayModule) verifyDomainDestination(ctx context.Context, domain stri
 }
 
 func (g *gatewayModule) startTraefik(z *zinit.Client) error {
-
 	cmd := fmt.Sprintf(
 		"%s --configfile %s",
 		g.binPath,
@@ -540,7 +543,6 @@ func (g *gatewayModule) configPath(name string) string {
 }
 
 func (g *gatewayModule) validateNameContract(name string, twinID uint32) error {
-
 	contractID, subErr := g.substrateGateway.GetContractIDByNameRegistration(context.Background(), name)
 	if subErr.IsCode(pkg.CodeNotFound) {
 		return ErrContractNotReserved

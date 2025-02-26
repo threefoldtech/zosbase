@@ -4,7 +4,7 @@ DOMAIN="$2"
 DOMAIN=${DOMAIN#"*."}
 DOMAIN=${DOMAIN%%"."}
 TOKEN="$3"
-IP=`ip -4 addr show public | grep inet | tr -s ' ' | cut -d' ' -f3 | cut -d'/' -f1 | tail -n 1`
+IP=$(ip -4 addr show zos | grep inet | tr -s ' ' | cut -d' ' -f3 | cut -d'/' -f1 | tail -n 1)
 PIDFILE="/tmp/certbot-dnsmasq.pid"
 CONFFILE="/tmp/dnsmasq.conf"
 

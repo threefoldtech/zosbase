@@ -11,15 +11,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg"
-	"github.com/threefoldtech/zosbase/pkg/netlight/namespace"
 )
 
 const (
-	publicNS   = "public"
 	metricsURL = "http://127.0.0.1:8082/metrics"
 
 	metricRequest  = "traefik_service_requests_bytes_total"
@@ -149,7 +145,6 @@ func metrics(rawUrl string) (map[string]*metric, error) {
 	}
 
 	response, err := cl.Get(rawUrl)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get metrics")
 	}
@@ -170,21 +165,10 @@ func (g *gatewayModule) Metrics() (result pkg.GatewayMetrics, err error) {
 	// metric is only available if traefik is running. we can instead of doing
 	// all the checks, we can try to directly get the metrics and see if we
 	// can get it. we need to do these operations anyway.
-	pubNS, err := namespace.GetByName(publicNS)
-	if err != nil {
-		// gateway is not enabled
-		return result, nil
-	}
 
-	defer pubNS.Close()
 	var values map[string]*metric
-	err = pubNS.Do(func(_ ns.NetNS) error {
-		log.Debug().Str("namespace", publicNS).Str("url", metricsURL).Msg("requesting metrics from traefik")
-		values, err = metrics(metricsURL)
 
-		return err
-	})
-
+	values, err = metrics(metricsURL)
 	if errors.Is(err, ErrMetricsNotAvailable) {
 		// traefik is not running because there
 		// are no gateway configured
