@@ -22,6 +22,9 @@ type NetworkerLight interface {
 	Ready() error
 	ZOSAddresses(ctx context.Context) <-chan NetlinkAddresses
 	GetSubnet(networkID NetID) (net.IPNet, error)
+  SetPublicConfig(cfg PublicConfig) error
+	UnSetPublicConfig() error
+	LoadPublicConfig() (PublicConfig, error)
 }
 
 type TapDevice struct {
