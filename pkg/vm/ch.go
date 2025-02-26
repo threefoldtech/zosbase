@@ -133,7 +133,7 @@ func (m *Machine) Run(ctx context.Context, socket, logs string) (pkg.MachineInfo
 
 	var devices []string
 	for _, dev := range m.Devices {
-		devices = append(devices, fmt.Sprintf("path=/sys/bus/pci/devices/%s/", dev))
+		devices = append(devices, fmt.Sprintf("path=/sys/bus/pci/devices/%s", dev))
 	}
 
 	if len(devices) > 0 {

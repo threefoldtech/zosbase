@@ -227,9 +227,9 @@ func Get(name string) (*Resource, error) {
 	return nil, fmt.Errorf("resource not found: %s", name)
 }
 
-var networkResourceNet = net.IPNet{
-	IP:   net.ParseIP("100.64.0.0"),
-	Mask: net.IPv4Mask(0xff, 0xff, 0, 0),
+var defaultNet = net.IPNet{
+	IP:   net.ParseIP("0.0.0.0"),
+	Mask: net.IPv4Mask(0, 0, 0, 0),
 }
 
 func (r *Resource) AttachPrivate(id string, vmIp net.IP) (device localPkg.TapDevice, err error) {
@@ -290,11 +290,9 @@ func (r *Resource) AttachPrivate(id string, vmIp net.IP) (device localPkg.TapDev
 	}
 
 	routes := []localPkg.Route{
+
 		{
-			Gateway: gw.IP,
-		},
-		{
-			Net:     networkResourceNet,
+			Net:     defaultNet,
 			Gateway: gw.IP,
 		},
 	}

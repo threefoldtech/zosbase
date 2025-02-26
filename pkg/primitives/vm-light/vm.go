@@ -154,7 +154,8 @@ func (p *Manager) virtualMachineProvisionImpl(ctx context.Context, wl *gridtypes
 	}
 
 	for _, device := range devices {
-		machine.Devices = append(machine.Devices, device.Slot)
+		gpuDevice := fmt.Sprintf("%s,iommu=on", device.Slot)
+		machine.Devices = append(machine.Devices, gpuDevice)
 	}
 
 	// the config is validated by the engine. we now only support only one
