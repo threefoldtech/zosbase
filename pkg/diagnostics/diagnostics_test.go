@@ -13,15 +13,16 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-//go:generate mockgen -destination=mock_zbus.go -package=diagnostics github.com/threefoldtech/zbus Client
-//go:generate mockgen -destination=mock_redis.go -package=diagnostics github.com/gomodule/redigo/redis Conn
-
 type mockRedisPool struct {
 	conn redis.Conn
 }
 
 func (m *mockRedisPool) Get() redis.Conn {
 	return m.conn
+}
+
+type redisKeyValue struct {
+	Result map[string][]string `json:"result"`
 }
 
 func TestGetSystemDiagnostics(t *testing.T) {
@@ -41,7 +42,6 @@ func TestGetSystemDiagnostics(t *testing.T) {
 	t.Run("success scenario", func(t *testing.T) {
 		ctx := context.Background()
 
-		// Setup zbus mock expectations
 		status := zbus.Status{
 			Objects: []zbus.ObjectID{{Name: "test", Version: "1.0"}},
 			Workers: []zbus.WorkerStatus{{
@@ -57,11 +57,8 @@ func TestGetSystemDiagnostics(t *testing.T) {
 				Return(status, nil)
 		}
 
-		// Setup redis mock expectations
 		healthyResponse := map[string][]string{"test": {}}
-		healthyBytes, _ := json.Marshal(struct {
-			Result map[string][]string `json:"result"`
-		}{Result: healthyResponse})
+		healthyBytes, _ := json.Marshal(redisKeyValue{Result: healthyResponse})
 
 		mockRedis.EXPECT().
 			Do("GET", testNetworkKey).
@@ -71,10 +68,8 @@ func TestGetSystemDiagnostics(t *testing.T) {
 			Close().
 			Return(nil)
 
-		// Execute test
 		diagnostics, err := manager.GetSystemDiagnostics(ctx)
 
-		// Verify results
 		require.NoError(t, err)
 		require.True(t, diagnostics.SystemStatusOk)
 		require.True(t, diagnostics.Healthy)
@@ -102,10 +97,7 @@ func TestIsHealthy(t *testing.T) {
 			name: "healthy system",
 			setup: func() {
 				response := map[string][]string{"test": {}}
-				bytes, _ := json.Marshal(struct {
-					Result map[string][]string `json:"result"`
-				}{Result: response})
-
+				bytes, _ := json.Marshal(redisKeyValue{Result: response})
 				mockRedis.EXPECT().
 					Do("GET", testNetworkKey).
 					Return(bytes, nil)
@@ -119,10 +111,7 @@ func TestIsHealthy(t *testing.T) {
 			name: "unhealthy system",
 			setup: func() {
 				response := map[string][]string{"test": {"error"}}
-				bytes, _ := json.Marshal(struct {
-					Result map[string][]string `json:"result"`
-				}{Result: response})
-
+				bytes, _ := json.Marshal(redisKeyValue{Result: response})
 				mockRedis.EXPECT().
 					Do("GET", testNetworkKey).
 					Return(bytes, nil)
