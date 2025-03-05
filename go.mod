@@ -1,8 +1,8 @@
 module github.com/threefoldtech/zosbase
 
-go 1.21
+go 1.22
 
-toolchain go1.21.0
+toolchain go1.24.0
 
 require (
 	github.com/BurntSushi/toml v1.1.0
@@ -53,6 +53,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/whs/nacl-sealed-box v0.0.0-20180930164530-92b9ba845d8d
 	github.com/yggdrasil-network/yggdrasil-go v0.4.0
+	go.uber.org/mock v0.5.0
 	golang.org/x/crypto v0.29.0
 	golang.org/x/sys v0.27.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
