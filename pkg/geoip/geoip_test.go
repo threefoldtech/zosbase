@@ -9,7 +9,7 @@ import (
 )
 
 func TestGetLocation(t *testing.T) {
-	httpmock.Activate()
+	httpmock.ActivateNonDefault(defaultHTTPClient.HTTPClient)
 	defer httpmock.DeactivateAndReset()
 
 	require := require.New(t)
