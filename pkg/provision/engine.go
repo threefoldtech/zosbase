@@ -1149,7 +1149,6 @@ func (n *NativeEngine) ListPrivateIPs(twin uint32, network gridtypes.Name) ([]st
 	ips := make([]string, 0)
 	for _, deployment := range deployments {
 		vms := deployment.ByType(zos.ZMachineType)
-		vms = append(vms, deployment.ByType(zos.ZMachineLightType)...)
 		for _, vm := range vms {
 
 			if vm.Result.State.IsAny(gridtypes.StateDeleted, gridtypes.StateError) {
@@ -1160,6 +1159,24 @@ func (n *NativeEngine) ListPrivateIPs(twin uint32, network gridtypes.Name) ([]st
 				return nil, err
 			}
 			zmachine := data.(*zos.ZMachine)
+			for _, inf := range zmachine.Network.Interfaces {
+				if inf.Network == network {
+					ips = append(ips, inf.IP.String())
+				}
+			}
+		}
+
+		vmsLight := deployment.ByType(zos.ZMachineLightType)
+		for _, vm := range vmsLight {
+
+			if vm.Result.State.IsAny(gridtypes.StateDeleted, gridtypes.StateError) {
+				continue
+			}
+			data, err := vm.WorkloadData()
+			if err != nil {
+				return nil, err
+			}
+			zmachine := data.(*zos.ZMachineLight)
 			for _, inf := range zmachine.Network.Interfaces {
 				if inf.Network == network {
 					ips = append(ips, inf.IP.String())
