@@ -28,9 +28,9 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/netutils/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/bridge"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
-	"github.com/threefoldtech/zosbase/pkg/network/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/wireguard"
 	"github.com/vishvananda/netlink"
 )
@@ -87,7 +87,6 @@ func (m *MyceliumInspection) Gateway() (subnet net.IPNet, gw net.IPNet, err erro
 }
 
 func (m *MyceliumInspection) IP(seed zos.Bytes) (ip net.IPNet, gw net.IPNet, err error) {
-
 	if slices.ContainsFunc(invalidMyceliumSeeds, func(b []byte) bool {
 		return slices.Equal(seed, b)
 	}) {
@@ -128,7 +127,7 @@ type NetResource struct {
 // is stored.
 func New(nr pkg.Network, keyDir string) *NetResource {
 	return &NetResource{
-		//fix here
+		// fix here
 		id:             nr.NetID,
 		resource:       nr,
 		networkIPRange: nr.NetworkIPRange.IPNet,
@@ -326,7 +325,6 @@ func (nr *NetResource) SetMycelium() (err error) {
 	err = zinit.AddService(name, zinit.InitService{
 		Exec: strings.Join(args, " "),
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "failed to add mycelium service for nr")
 	}
@@ -417,7 +415,6 @@ func (nr *NetResource) ensureMyceliumNetwork(keyFile string) error {
 
 		return nil
 	})
-
 }
 
 func (nr *NetResource) inspectMycelium(keyFile string) (inspection MyceliumInspection, err error) {
@@ -494,7 +491,6 @@ func (nr *NetResource) ConfigureWG(privateKey string) error {
 	}
 
 	handler := func(_ ns.NetNS) error {
-
 		wgName, err := nr.WGName()
 		if err != nil {
 			return err
@@ -633,7 +629,6 @@ func (nr *NetResource) Delete() error {
 }
 
 func (nr *NetResource) wgPeers() ([]*wireguard.Peer, error) {
-
 	wgPeers := make([]*wireguard.Peer, 0, len(nr.resource.Peers)+1)
 
 	for _, peer := range nr.resource.Peers {
@@ -716,7 +711,7 @@ func (nr *NetResource) attachToNRBridge() error {
 		}
 	}
 
-	var handler = func(_ ns.NetNS) error {
+	handler := func(_ ns.NetNS) error {
 		link, err := netlink.LinkByName(nrIfaceName)
 		if err != nil {
 			return err
@@ -878,5 +873,4 @@ func AppendFunc[A any, B any, S []A, D []B](d D, s S, f func(A) B) D {
 	}
 
 	return d
-
 }

@@ -13,10 +13,10 @@ import (
 	"github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
+	"github.com/threefoldtech/zosbase/pkg/netutils/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/bridge"
 	"github.com/threefoldtech/zosbase/pkg/network/dhcp"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
-	"github.com/threefoldtech/zosbase/pkg/network/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/threefoldtech/zosbase/pkg/network/types"
 	"github.com/threefoldtech/zosbase/pkg/network/yggdrasil"
@@ -34,10 +34,10 @@ import (
 
 const (
 
-	//NdmzBridge is the name of the ipv4 routing bridge in the host namespace
+	// NdmzBridge is the name of the ipv4 routing bridge in the host namespace
 	NdmzBridge = "br-ndmz"
 
-	//dmzNamespace name of the dmz namespace
+	// dmzNamespace name of the dmz namespace
 	dmzNamespace = "ndmz"
 
 	ndmzNsMACDerivationSuffix6 = "-ndmz6"
@@ -48,7 +48,7 @@ const (
 	// dmzPub6 ipv6 public interface
 	dmzPub6 = "npub6"
 
-	//nrPubIface is the name of the public interface in a network resource
+	// nrPubIface is the name of the public interface in a network resource
 	nrPubIface = "public"
 
 	toNrsIface = "tonrs"
@@ -229,7 +229,6 @@ func (d *dmzImpl) AttachNR(networkID, nrNSName string, ipamLeaseDir string) erro
 }
 
 func (d *dmzImpl) GetIPFor(inf string) ([]net.IPNet, error) {
-
 	netns, err := namespace.GetByName(dmzNamespace)
 	if err != nil {
 		return nil, err
@@ -399,7 +398,6 @@ func waitIP4() error {
 	defer cancel()
 
 	probe, err := dhcp.Probe(ctx, dmzPub4)
-
 	if err != nil {
 		return errors.Wrapf(err, "error while proping interface '%s'", dmzPub4)
 	}
@@ -496,7 +494,6 @@ func createRoutingBridge(name string, netNS ns.NetNS) error {
 	}
 
 	return netNS.Do(func(_ ns.NetNS) error {
-
 		link, err := netlink.LinkByName(toNrsIface)
 		if err != nil {
 			return err
@@ -556,6 +553,10 @@ func applyFirewall() error {
 
 	if err := nft.Apply(&buf, dmzNamespace); err != nil {
 		return errors.Wrap(err, "failed to apply nft rule set")
+	}
+
+	if err := nft.DropTrafficToLAN(dmzNamespace); err != nil {
+		return errors.Wrap(err, "failed to drop traffic to lan")
 	}
 
 	return nil
