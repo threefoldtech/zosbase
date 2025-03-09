@@ -109,7 +109,6 @@ func (p *Manager) mountVolume(ctx context.Context, wl *gridtypes.WorkloadWithID,
 }
 
 func (p *Manager) mountQsfs(wl *gridtypes.WorkloadWithID, mount zos.MachineMount, vm *pkg.VM) error {
-
 	var info zos.QuatumSafeFSResult
 	if err := wl.Result.Unmarshal(&info); err != nil {
 		return fmt.Errorf("invalid qsfs result '%s': %w", mount.Name, err)
@@ -276,7 +275,6 @@ func (p *Manager) virtualMachineProvisionImpl(ctx context.Context, wl *gridtypes
 		if err = p.prepVirtualMachine(ctx, cloudImage, imageInfo, &machine, &config, &deployment, wl); err != nil {
 			return result, err
 		}
-
 	}
 
 	// - Attach mounts
@@ -351,14 +349,14 @@ func (p *Manager) Deprovision(ctx context.Context, wl *gridtypes.WorkloadWithID)
 	}
 
 	if cfg.Network.Planetary {
-		var tapName string
-		if cfg.Network.Mycelium == nil {
-			// yggdrasil network
-			tapName = wl.ID.Unique("ygg")
-		} else {
-			tapName = wl.ID.Unique("mycelium")
+		tapName := wl.ID.Unique("ygg")
+		if err := network.RemoveTap(ctx, tapName); err != nil {
+			return errors.Wrap(err, "could not clean up tap device")
 		}
+	}
 
+	if cfg.Network.Mycelium != nil {
+		tapName := wl.ID.Unique("mycelium")
 		if err := network.RemoveTap(ctx, tapName); err != nil {
 			return errors.Wrap(err, "could not clean up tap device")
 		}
