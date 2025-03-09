@@ -346,7 +346,10 @@ next:
 				continue next
 			}
 		}
-
+		// skip audio controller of the gpu cards as @delandtj suggested until we found better sol
+		if strings.HasSuffix(pci.Slot, ".1") {
+			continue next
+		}
 		devices = append(devices, pci)
 	}
 

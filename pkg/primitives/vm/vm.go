@@ -14,6 +14,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/primitives/vmgpu"
 	"github.com/threefoldtech/zosbase/pkg/provision"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
@@ -40,7 +41,7 @@ func NewManager(zbus zbus.Client) *Manager {
 }
 
 func (m *Manager) Initialize(ctx context.Context) error {
-	return m.initGPUs()
+	return vmgpu.InitGPUs()
 }
 
 func (p *Manager) Provision(ctx context.Context, wl *gridtypes.WorkloadWithID) (interface{}, error) {
@@ -148,7 +149,7 @@ func (p *Manager) virtualMachineProvisionImpl(ctx context.Context, wl *gridtypes
 	}
 
 	// expand GPUs
-	devices, err := p.expandGPUs(config.GPU)
+	devices, err := vmgpu.ExpandGPUs(config.GPU)
 	if err != nil {
 		return result, errors.Wrap(err, "failed to prepare requested gpu device(s)")
 	}
