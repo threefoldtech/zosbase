@@ -1,10 +1,11 @@
-package vm
+package vmgpu
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -22,7 +23,7 @@ var (
 	modules = []string{"vfio", "vfio-pci", "vfio_iommu_type1"}
 )
 
-func (m *Manager) initGPUVfioModules() error {
+func InitGPUVfioModules() error {
 	for _, mod := range modules {
 		if err := exec.Command("modprobe", mod).Run(); err != nil {
 			return errors.Wrapf(err, "failed to probe module: %s", mod)
@@ -38,7 +39,7 @@ func (m *Manager) initGPUVfioModules() error {
 }
 
 // unbindBootVga is a helper method to disconnect the boot vga if needed
-func (m *Manager) unbindBootVga() error {
+func UnbindBootVga() error {
 	const vtConsole = "/sys/class/vtconsole"
 	vts, err := os.ReadDir(vtConsole)
 	if err != nil && !os.IsNotExist(err) {
@@ -59,11 +60,11 @@ func (m *Manager) unbindBootVga() error {
 }
 
 // this function will make sure ALL gpus are bind to the right driver
-func (m *Manager) initGPUs() error {
+func InitGPUs() error {
 	if kernel.GetParams().IsGPUDisabled() {
 		return nil
 	}
-	if err := m.initGPUVfioModules(); err != nil {
+	if err := InitGPUVfioModules(); err != nil {
 		return err
 	}
 
@@ -79,7 +80,7 @@ func (m *Manager) initGPUs() error {
 		}
 
 		if bootVga > 0 {
-			if err := m.unbindBootVga(); err != nil {
+			if err := UnbindBootVga(); err != nil {
 				log.Warn().Err(err).Msg("error while unbinding boot vga")
 			}
 		}
@@ -130,7 +131,7 @@ func (m *Manager) initGPUs() error {
 // It's required that all devices in an iommu group to be passed together to a VM
 // hence we need that for each GPU in the list add all the devices from each device
 // IOMMU group
-func (m *Manager) expandGPUs(gpus []zos.GPU) ([]capacity.PCI, error) {
+func ExpandGPUs(gpus []zos.GPU) ([]capacity.PCI, error) {
 	if kernel.GetParams().IsGPUDisabled() {
 		return nil, fmt.Errorf("GPU is disabled on this node")
 	}
@@ -154,6 +155,10 @@ func (m *Manager) expandGPUs(gpus []zos.GPU) ([]capacity.PCI, error) {
 		sub, err := capacity.IoMMUGroup(device, capacity.Not(capacity.PCIBridge))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to list all devices belonging to '%s'", device.Slot)
+		}
+		// skip audio controller of the gpu cards as @delandtj suggested until we found better sol
+		if strings.HasSuffix(device.Slot, ".1") {
+			continue
 		}
 
 		devices = append(devices, sub...)

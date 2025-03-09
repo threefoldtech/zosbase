@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
-	"github.com/threefoldtech/zosbase/pkg/provision"
+	provision "github.com/threefoldtech/zosbase/pkg/provision"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
