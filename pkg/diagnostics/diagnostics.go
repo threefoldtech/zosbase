@@ -48,11 +48,17 @@ type Diagnostics struct {
 	Healthy bool `json:"healthy"`
 }
 
+// RedisPooler is a redis interface to be used in mocking redis database
+type RedisPooler interface {
+	Get() redis.Conn
+}
+
 type DiagnosticsManager struct {
-	redisPool  *redis.Pool
+	redisPool  RedisPooler
 	zbusClient zbus.Client
 }
 
+// NewDiagnosticsManager creates a new diagnostics manager
 func NewDiagnosticsManager(
 	msgBrokerCon string,
 	busClient zbus.Client,
@@ -67,6 +73,7 @@ func NewDiagnosticsManager(
 	}, nil
 }
 
+// GetSystemDiagnostics returns the health of the system
 func (m *DiagnosticsManager) GetSystemDiagnostics(ctx context.Context) (Diagnostics, error) {
 	results := Diagnostics{
 		SystemStatusOk: true,
