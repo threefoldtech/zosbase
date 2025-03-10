@@ -14,9 +14,9 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/netlight/bridge"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/netlight/namespace"
-	"github.com/threefoldtech/zosbase/pkg/netlight/nft"
 	"github.com/threefoldtech/zosbase/pkg/netlight/options"
 	"github.com/threefoldtech/zosbase/pkg/netlight/tuntap"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
 	"github.com/vishvananda/netlink"
 )
@@ -148,7 +148,6 @@ func Create(name string, master *netlink.Bridge, ndmzIP *net.IPNet, ndmzGwIP *ne
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +191,6 @@ func Delete(name string) error {
 	}
 
 	return bridge.Delete(myBr)
-
 }
 
 func setLinkAddr(name string, ip *net.IPNet) error {
@@ -290,7 +288,6 @@ func (r *Resource) AttachPrivate(id string, vmIp net.IP) (device localPkg.TapDev
 	}
 
 	routes := []localPkg.Route{
-
 		{
 			Net:     defaultNet,
 			Gateway: gw.IP,
@@ -338,7 +335,6 @@ func (r *Resource) AttachMycelium(id string, seed []byte) (device localPkg.TapDe
 	}
 
 	route := localPkg.Route{
-
 		Net: net.IPNet{
 			IP:   net.ParseIP("400::"),
 			Mask: net.CIDRMask(7, 128),
@@ -420,12 +416,10 @@ func (r *Resource) AttachMyceliumZDB(id string, zdbNS ns.NetNS) (err error) {
 				},
 				Gw: gw.IP,
 			})
-
 		})
 	}
 	return nil
 	//
-
 }
 
 func (r *Resource) Seed() (seed []byte, err error) {

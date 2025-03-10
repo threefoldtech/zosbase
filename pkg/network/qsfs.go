@@ -6,9 +6,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
-	"github.com/threefoldtech/zosbase/pkg/network/nft"
 )
 
 var _nft = `
@@ -55,6 +55,7 @@ func (n networker) QSFSNamespace(id string) string {
 	hw := ifaceutil.HardwareAddrFromInputBytes([]byte(netId))
 	return qsfsNamespacePrefix + strings.Replace(hw.String(), ":", "", -1)
 }
+
 func (n networker) QSFSYggIP(id string) (string, error) {
 	hw := ifaceutil.HardwareAddrFromInputBytes([]byte("ygg:" + id))
 
@@ -64,6 +65,7 @@ func (n networker) QSFSYggIP(id string) (string, error) {
 	}
 	return ip.IP.String(), nil
 }
+
 func (n networker) QSFSPrepare(id string) (string, string, error) {
 	netId := "qsfs:" + id
 	netNSName := n.QSFSNamespace(id)
