@@ -22,7 +22,9 @@ func CleanupUnusedLinks() error {
 
 		interfaceName := attrs.Name
 
-		if attrs.OperState == netlink.OperDown && hasNoCarrier(interfaceName) {
+		if attrs.OperState == netlink.OperDown &&
+			hasNoCarrier(interfaceName) &&
+			isOrphanVMTap(interfaceName) {
 			if err := netlink.LinkDel(link); err != nil {
 				return fmt.Errorf("failed to delete interface %s: %w", interfaceName, err)
 			}
@@ -40,4 +42,8 @@ func hasNoCarrier(interfaceName string) bool {
 	}
 
 	return strings.Contains(string(output), "NO-CARRIER")
+}
+
+func isOrphanVMTap(interfaceName string) bool {
+	return len(interfaceName) == 15 && strings.HasPrefix(interfaceName, "t-")
 }
