@@ -13,7 +13,7 @@ import (
 	"github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
-	"github.com/threefoldtech/zosbase/pkg/netutils/nft"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/bridge"
 	"github.com/threefoldtech/zosbase/pkg/network/dhcp"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
@@ -553,10 +553,6 @@ func applyFirewall() error {
 
 	if err := nft.Apply(&buf, dmzNamespace); err != nil {
 		return errors.Wrap(err, "failed to apply nft rule set")
-	}
-
-	if err := nft.DropTrafficToLAN(dmzNamespace); err != nil {
-		return errors.Wrap(err, "failed to drop traffic to lan")
 	}
 
 	return nil

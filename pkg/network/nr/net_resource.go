@@ -28,7 +28,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg"
-	"github.com/threefoldtech/zosbase/pkg/netutils/nft"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/bridge"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
 	"github.com/threefoldtech/zosbase/pkg/network/wireguard"

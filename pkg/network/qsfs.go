@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zosbase/pkg/netutils/nft"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
 )
