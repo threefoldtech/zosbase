@@ -278,19 +278,23 @@ func (s *statsStream) ListGPUs() ([]pkg.GPUInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+		type vmType struct {
+			GPU []zos.GPU `json:"gpu,omitempty"`
+		}
 		for _, dl := range active.Deployments {
 			for _, wl := range dl.Workloads {
-				if wl.Type != zos.ZMachineType {
-					continue
-				}
-				var vm zos.ZMachine
-				if err := json.Unmarshal(wl.Data, &vm); err != nil {
-					return nil, errors.Wrapf(err, "invalid workload data (%d.%s)", dl.ContractID, wl.Name)
+
+				if wl.Type == zos.ZMachineType || wl.Type == zos.ZMachineLightType {
+					var vm vmType
+					if err := json.Unmarshal(wl.Data, &vm); err != nil {
+						return nil, errors.Wrapf(err, "invalid workload data (%d.%s)", dl.ContractID, wl.Name)
+					}
+
+					for _, gpu := range vm.GPU {
+						gpus[string(gpu)] = dl.ContractID
+					}
 				}
 
-				for _, gpu := range vm.GPU {
-					gpus[string(gpu)] = dl.ContractID
-				}
 			}
 		}
 		return gpus, nil
