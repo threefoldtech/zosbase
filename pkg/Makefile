@@ -17,7 +17,7 @@ lint:
 
 check: test
 test: lint build
-	go test -vet=off -v $(shell go list ./... | grep -Ev "stubs|network" )
+	sudo -E ${GOBINARY} test -vet=off -v $(shell go list ./... | grep -Ev "stubs|network" )
 
 testrace: lint build
 	sudo -E ${GOBINARY} test -vet=off -v $(shell go list ./... | grep -Ev "stubs|network" )
