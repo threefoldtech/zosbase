@@ -558,10 +558,6 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	// if len(config.Backends) != 1 {
-	// 	return "", fmt.Errorf("only one backend is supported got '%d'", len(config.Backends))
-	// }
-
 	twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
 	if err != nil {
 		return "", errors.Wrap(err, "invalid workload id")
@@ -599,10 +595,6 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-
-	if len(config.Backends) != 1 {
-		return fmt.Errorf("only one backend is supported got '%d'", len(config.Backends))
-	}
 
 	cfg, err := g.ensureGateway(ctx, false)
 	if err != nil {
@@ -661,21 +653,21 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 		return errors.Wrap(err, "failed to get user network")
 	}
 	ns := net.Namespace(ctx, netID)
-	
-	processedBackends := make([]zos.Backend, 0, len(config.Backends))
-    for _, backend := range config.Backends {
-		processedBackend, err := g.nncEnsure(wlID, ns, backend)
-        if err != nil {
-            return errors.Wrap(err, "failed to ensure local gateway")
-        }
 
-        if !config.TLSPassthrough {
-            // Format for non-TLS passthrough
-            processedBackend = zos.Backend(fmt.Sprintf("http://%s", processedBackend))
-        }
-        
-        processedBackends = append(processedBackends, processedBackend)
-    
+	processedBackends := make([]zos.Backend, 0, len(config.Backends))
+	for _, backend := range config.Backends {
+		processedBackend, err := g.nncEnsure(wlID, ns, backend)
+		if err != nil {
+			return errors.Wrap(err, "failed to ensure local gateway")
+		}
+
+		if !config.TLSPassthrough {
+			// Format for non-TLS passthrough
+			processedBackend = zos.Backend(fmt.Sprintf("http://%s", processedBackend))
+		}
+
+		processedBackends = append(processedBackends, processedBackend)
+
 	}
 
 	config.Backends = processedBackends
@@ -696,12 +688,12 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 	servers := make([]Server, 0, len(config.Backends))
 	for _, backend := range config.Backends {
 		var server Server
-        if config.TLSPassthrough {
-            server = Server{Address: string(backend)}
-        } else {
-            server = Server{Url: string(backend)}
-        }
-        servers = append(servers, server)
+		if config.TLSPassthrough {
+			server = Server{Address: string(backend)}
+		} else {
+			server = Server{Url: string(backend)}
+		}
+		servers = append(servers, server)
 	}
 
 	route := fmt.Sprintf("%s-route", wlID)

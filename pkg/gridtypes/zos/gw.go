@@ -105,10 +105,6 @@ func (g GatewayBase) Valid(getter gridtypes.WorkloadGetter) error {
 		return fmt.Errorf("backends list can not be empty")
 	}
 
-	// if len(g.Backends) != 1 {
-	// 	return fmt.Errorf("only one backend is supported")
-	// }
-
 	for _, backend := range g.Backends {
 		if err := backend.Valid(g.TLSPassthrough); err != nil {
 			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
