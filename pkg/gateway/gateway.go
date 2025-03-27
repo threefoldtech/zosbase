@@ -558,10 +558,9 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	if len(config.Backends) != 1 {
-		return "", fmt.Errorf("only one backend is supported got '%d'", len(config.Backends))
+	if len(config.Backends) == 0 {
+		return "", fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
 	}
-
 	twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
 	if err != nil {
 		return "", errors.Wrap(err, "invalid workload id")
@@ -600,10 +599,9 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	if len(config.Backends) != 1 {
-		return fmt.Errorf("only one backend is supported got '%d'", len(config.Backends))
+	if len(config.Backends) == 0 {
+		return fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
 	}
-
 	cfg, err := g.ensureGateway(ctx, false)
 	if err != nil {
 		return err
@@ -631,14 +629,12 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 	g.domainLock.Lock()
 	defer g.domainLock.Unlock()
 
-	backend := config.Backends[0]
-
-	if err := backend.Valid(config.TLSPassthrough); err != nil {
-		return errors.Wrapf(err, "failed to validate backend '%s'", backend)
+	if err := zos.ValidateBackends(config.Backends, config.TLSPassthrough); err != nil {
+		return err
 	}
 
 	if _, ok := g.getReservedDomain(fqdn); ok {
-		return errors.New("domain already registered")
+		return errors.Errorf("domain already registered: %s", fqdn)
 	}
 
 	if config.Network == nil {
@@ -661,23 +657,28 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 		return errors.Wrap(err, "failed to get user network")
 	}
 	ns := net.Namespace(ctx, netID)
-	backend, err = g.nncEnsure(wlID, ns, config.Backends[0])
-	if err != nil {
-		return errors.Wrap(err, "failed to ensure local gateway")
+
+	processedBackends := []zos.Backend{}
+	for _, backend := range config.Backends {
+		processedBackend, err := g.nncEnsure(wlID, ns, backend)
+		if err != nil {
+			return errors.Wrap(err, "failed to ensure local gateway")
+		}
+
+		if !config.TLSPassthrough {
+			// Format for non-TLS passthrough
+			processedBackend = zos.Backend(fmt.Sprintf("http://%s", processedBackend))
+		}
+
+		processedBackends = append(processedBackends, processedBackend)
+
 	}
 
-	if !config.TLSPassthrough {
-		// if tls passthrough is disabled traefik expecting backend
-		// to be in the format http://<ip>:port
-		backend = zos.Backend(fmt.Sprintf("http://%s", backend))
-	}
-
-	config.Backends = []zos.Backend{backend}
+	config.Backends = processedBackends
 	return g.setupRoutingGeneric(wlID, fqdn, tlsConfig, config)
 }
 
 func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig TlsConfig, config zos.GatewayBase) error {
-	backend := config.Backends[0]
 	var rule string
 	if config.TLSPassthrough {
 		rule = fmt.Sprintf("HostSNI(`%s`)", fqdn)
@@ -688,11 +689,15 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 		rule = fmt.Sprintf("Host(`%s`)", fqdn)
 	}
 
-	var server Server
-	if config.TLSPassthrough {
-		server = Server{Address: string(backend)}
-	} else {
-		server = Server{Url: string(backend)}
+	servers := []Server{}
+	for _, backend := range config.Backends {
+		var server Server
+		if config.TLSPassthrough {
+			server = Server{Address: string(backend)}
+		} else {
+			server = Server{Url: string(backend)}
+		}
+		servers = append(servers, server)
 	}
 
 	route := fmt.Sprintf("%s-route", wlID)
@@ -709,7 +714,7 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 		Services: map[string]Service{
 			wlID: {
 				LoadBalancer: LoadBalancer{
-					Servers: []Server{server},
+					Servers: servers,
 				},
 			},
 		},
