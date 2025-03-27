@@ -226,13 +226,12 @@ func TestValidateBackends(t *testing.T) {
 		}
 		err := ValidateBackends(backends, false)
 		require.Error(err)
-		// Check that we have the expected number of errors
 		merr, ok := err.(*multierror.Error)
 		require.True(ok)
 		require.Equal(5, len(merr.Errors))
 	})
 
-	t.Run("scheme mismatch using https when not permitted", func(t *testing.T) {
+	t.Run("scheme mismatch using https", func(t *testing.T) {
 		backends := []Backend{
 			"https://1.1.1.1",
 		}
@@ -240,7 +239,7 @@ func TestValidateBackends(t *testing.T) {
 		require.Error(err)
 	})
 
-	t.Run("scheme mismatch using http when tlsPassthrough=true", func(t *testing.T) {
+	t.Run("scheme mismatch using http with tlsPassthrough=true", func(t *testing.T) {
 		backends := []Backend{
 			"http://1.1.1.1:80",
 		}
@@ -248,7 +247,7 @@ func TestValidateBackends(t *testing.T) {
 		require.Error(err)
 	})
 
-	t.Run("all invalid backends", func(t *testing.T) {
+	t.Run("invalid backends", func(t *testing.T) {
 		backends := []Backend{
 			"invalid",
 			"1.1.1.1:port",
