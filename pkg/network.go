@@ -289,4 +289,3 @@ type OptionPublicConfig struct {
 	PublicConfig
 	HasPublicConfig bool
 }
-
