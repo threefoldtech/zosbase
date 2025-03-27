@@ -569,6 +569,9 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
+	if len(config.Backends) <= 0 {
+		return "", fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
+	}
 	twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
 	if err != nil {
 		return "", errors.Wrap(err, "invalid workload id")
@@ -607,6 +610,9 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
+	if len(config.Backends) <= 0 {
+		return fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
+	}
 	domain, err := g.ensureGateway(ctx, false)
 	if err != nil {
 		return err
@@ -691,7 +697,7 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 		rule = fmt.Sprintf("Host(`%s`)", fqdn)
 	}
 
-	var servers []Server
+	servers := []Server{}
 	for _, backend := range config.Backends {
 		var server Server
 		if config.TLSPassthrough {

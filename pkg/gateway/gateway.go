@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zbus"
@@ -558,6 +559,9 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
+	if len(config.Backends) <= 0 {
+		return "", fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
+	}
 	twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
 	if err != nil {
 		return "", errors.Wrap(err, "invalid workload id")
@@ -596,6 +600,9 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
+	if len(config.Backends) <= 0 {
+		return fmt.Errorf("at least one backend is needed got '%d'", len(config.Backends))
+	}
 	cfg, err := g.ensureGateway(ctx, false)
 	if err != nil {
 		return err
@@ -623,10 +630,15 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 	g.domainLock.Lock()
 	defer g.domainLock.Unlock()
 
+	var errs error
 	for _, backend := range config.Backends {
 		if err := backend.Valid(config.TLSPassthrough); err != nil {
-			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to validate backend '%s'", backend))
 		}
+	}
+
+	if errs != nil {
+		return errs
 	}
 
 	if _, ok := g.getReservedDomain(fqdn); ok {
@@ -654,7 +666,7 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 	}
 	ns := net.Namespace(ctx, netID)
 
-	processedBackends := make([]zos.Backend, 0, len(config.Backends))
+	processedBackends := []zos.Backend{}
 	for _, backend := range config.Backends {
 		processedBackend, err := g.nncEnsure(wlID, ns, backend)
 		if err != nil {
@@ -685,7 +697,7 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 		rule = fmt.Sprintf("Host(`%s`)", fqdn)
 	}
 
-	servers := make([]Server, 0, len(config.Backends))
+	servers := []Server{}
 	for _, backend := range config.Backends {
 		var server Server
 		if config.TLSPassthrough {
