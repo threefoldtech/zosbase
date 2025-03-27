@@ -640,10 +640,8 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 	g.domainLock.Lock()
 	defer g.domainLock.Unlock()
 
-	for _, backend := range config.Backends {
-		if err := backend.Valid(config.TLSPassthrough); err != nil {
-			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
-		}
+	if err := zos.ValidateBackends(config.Backends, config.TLSPassthrough); err != nil {
+		return err
 	}
 
 	if _, ok := g.getReservedDomain(fqdn); ok {

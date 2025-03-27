@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
@@ -42,6 +43,16 @@ func (b Backend) Valid(tlsPassthrough bool) error {
 	}
 
 	return nil
+}
+
+func ValidateBackends(backends []Backend, tlsPassthrough bool) error {
+	var errs error
+	for _, backend := range backends {
+		if err := backend.Valid(tlsPassthrough); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to validate backend '%s'", backend))
+		}
+	}
+	return errs
 }
 
 func asIpPort(a string) (ip net.IP, port uint16, err error) {

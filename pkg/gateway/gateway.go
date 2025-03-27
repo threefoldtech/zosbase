@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zbus"
@@ -630,15 +629,8 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 	g.domainLock.Lock()
 	defer g.domainLock.Unlock()
 
-	var errs error
-	for _, backend := range config.Backends {
-		if err := backend.Valid(config.TLSPassthrough); err != nil {
-			errs = multierror.Append(errs, errors.Wrapf(err, "failed to validate backend '%s'", backend))
-		}
-	}
-
-	if errs != nil {
-		return errs
+	if err := zos.ValidateBackends(config.Backends, config.TLSPassthrough); err != nil {
+		return err
 	}
 
 	if _, ok := g.getReservedDomain(fqdn); ok {
