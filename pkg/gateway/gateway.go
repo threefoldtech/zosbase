@@ -625,12 +625,12 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 
 	for _, backend := range config.Backends {
 		if err := backend.Valid(config.TLSPassthrough); err != nil {
-			return errors.New("domain already registered")
+			return errors.Wrapf(err, "failed to validate backend '%s'", backend)
 		}
 	}
 
 	if _, ok := g.getReservedDomain(fqdn); ok {
-		return errors.New("domain already registered")
+		return errors.Errorf("domain already registered: %s", fqdn)
 	}
 
 	if config.Network == nil {
