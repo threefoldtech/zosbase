@@ -24,7 +24,7 @@ const (
 	Done       RegistrationState = "Done"
 
 	monitorAccountEvery    = 30 * time.Minute
-	updateNodeInfoInterval = 24 * time.Second
+	updateNodeInfoInterval = 24 * time.Hour
 )
 
 var (
