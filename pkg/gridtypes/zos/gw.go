@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
@@ -42,6 +43,16 @@ func (b Backend) Valid(tlsPassthrough bool) error {
 	}
 
 	return nil
+}
+
+func ValidateBackends(backends []Backend, tlsPassthrough bool) error {
+	var errs error
+	for _, backend := range backends {
+		if err := backend.Valid(tlsPassthrough); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "failed to validate backend '%s'", backend))
+		}
+	}
+	return errs
 }
 
 func asIpPort(a string) (ip net.IP, port uint16, err error) {
@@ -103,10 +114,6 @@ type GatewayBase struct {
 func (g GatewayBase) Valid(getter gridtypes.WorkloadGetter) error {
 	if len(g.Backends) == 0 {
 		return fmt.Errorf("backends list can not be empty")
-	}
-
-	if len(g.Backends) != 1 {
-		return fmt.Errorf("only one backend is supported")
 	}
 
 	for _, backend := range g.Backends {
