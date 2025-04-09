@@ -1,12 +1,15 @@
 package zosapi
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/patrickmn/go-cache"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg/capacity"
 	"github.com/threefoldtech/zosbase/pkg/diagnostics"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
@@ -29,7 +32,43 @@ type ZosAPI struct {
 	inMemCache             *cache.Cache
 }
 
-func NewZosAPI(client zbus.Client, farmerID uint32, msgBrokerCon string) (ZosAPI, error) {
+func NewZosAPI(manager substrate.Manager, client zbus.Client, msgBrokerCon string) (ZosAPI, error) {
+	sub, err := manager.Substrate()
+	if err != nil {
+		return ZosAPI{}, err
+	}
+	defer sub.Close()
+	diagnosticsManager, err := diagnostics.NewDiagnosticsManager(msgBrokerCon, client)
+	if err != nil {
+		return ZosAPI{}, err
+	}
+	storageModuleStub := stubs.NewStorageModuleStub(client)
+	api := ZosAPI{
+		oracle:                 capacity.NewResourceOracle(storageModuleStub),
+		versionMonitorStub:     stubs.NewVersionMonitorStub(client),
+		systemMonitorStub:      stubs.NewSystemMonitorStub(client),
+		provisionStub:          stubs.NewProvisionStub(client),
+		networkerLightStub:     stubs.NewNetworkerLightStub(client),
+		statisticsStub:         stubs.NewStatisticsStub(client),
+		storageStub:            storageModuleStub,
+		performanceMonitorStub: stubs.NewPerformanceMonitorStub(client),
+		diagnosticsManager:     diagnosticsManager,
+	}
+	farm, err := sub.GetFarm(uint32(environment.MustGet().FarmID))
+	if err != nil {
+		return ZosAPI{}, fmt.Errorf("failed to get farm: %w", err)
+	}
+
+	farmer, err := sub.GetTwin(uint32(farm.TwinID))
+	if err != nil {
+		return ZosAPI{}, err
+	}
+	api.farmerID = uint32(farmer.ID)
+	api.inMemCache = cache.New(cacheDefaultExpiration, cacheDefaultCleanup)
+	return api, nil
+}
+
+func NewZosAPIWithFarmerID(client zbus.Client, farmerID uint32, msgBrokerCon string) (ZosAPI, error) {
 	diagnosticsManager, err := diagnostics.NewDiagnosticsManager(msgBrokerCon, client)
 	if err != nil {
 		return ZosAPI{}, err
