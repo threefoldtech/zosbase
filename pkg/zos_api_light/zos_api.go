@@ -67,3 +67,25 @@ func NewZosAPI(manager substrate.Manager, client zbus.Client, msgBrokerCon strin
 	api.inMemCache = cache.New(cacheDefaultExpiration, cacheDefaultCleanup)
 	return api, nil
 }
+
+func NewZosAPIWithFarmerID(client zbus.Client, farmerID uint32, msgBrokerCon string) (ZosAPI, error) {
+	diagnosticsManager, err := diagnostics.NewDiagnosticsManager(msgBrokerCon, client)
+	if err != nil {
+		return ZosAPI{}, err
+	}
+	storageModuleStub := stubs.NewStorageModuleStub(client)
+	api := ZosAPI{
+		oracle:                 capacity.NewResourceOracle(storageModuleStub),
+		versionMonitorStub:     stubs.NewVersionMonitorStub(client),
+		systemMonitorStub:      stubs.NewSystemMonitorStub(client),
+		provisionStub:          stubs.NewProvisionStub(client),
+		networkerLightStub:     stubs.NewNetworkerLightStub(client),
+		statisticsStub:         stubs.NewStatisticsStub(client),
+		storageStub:            storageModuleStub,
+		performanceMonitorStub: stubs.NewPerformanceMonitorStub(client),
+		diagnosticsManager:     diagnosticsManager,
+	}
+	api.farmerID = farmerID
+	api.inMemCache = cache.New(cacheDefaultExpiration, cacheDefaultCleanup)
+	return api, nil
+}

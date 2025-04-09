@@ -13,7 +13,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
-  "github.com/threefoldtech/zosbase/pkg/stubs"
+	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 var _ pkg.SystemMonitor = (*systemMonitor)(nil)
@@ -22,7 +22,7 @@ var _ pkg.SystemMonitor = (*systemMonitor)(nil)
 type systemMonitor struct {
 	duration time.Duration
 	node     uint32
-  cl zbus.Client
+	cl       zbus.Client
 }
 
 // NewSystemMonitor creates new system of system monitor
@@ -31,7 +31,7 @@ func NewSystemMonitor(node uint32, duration time.Duration, cl zbus.Client) (pkg.
 		duration = 2 * time.Second
 	}
 
-  return &systemMonitor{duration: duration, node: node, cl: cl}, nil
+	return &systemMonitor{duration: duration, node: node, cl: cl}, nil
 }
 
 func (m *systemMonitor) NodeID() uint32 {
@@ -219,11 +219,11 @@ func (n *systemMonitor) GetNodeFeatures() []pkg.NodeFeature {
 		}
 		feat = append(feat, zosLightFeat...)
 
-    netStub := stubs.NewNetworkerLightStub(n.cl)
-	  config, err := netStub.LoadPublicConfig(context.Background())
-	  if err == nil && config.Domain != "" {
-      feat = append(feat, "gateway-name-proxy")
-		  feat = append(feat, "gateway-fqdn-proxy")
+		netStub := stubs.NewNetworkerLightStub(n.cl)
+		config, err := netStub.LoadPublicConfig(context.Background())
+		if err == nil && config.Domain != "" {
+			feat = append(feat, "gateway-name-proxy")
+			feat = append(feat, "gateway-fqdn-proxy")
 		}
 		return feat
 	}
