@@ -33,10 +33,3 @@ jobs:
           make testrace
         env:
           GO111MODULE: on
-
-      - name: Build binaries
-        run: |
-          cd cmds
-          make
-        env:
-          GO111MODULE: on
