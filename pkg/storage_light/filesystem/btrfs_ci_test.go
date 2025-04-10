@@ -269,6 +269,11 @@ func TestCLeanUpQgroupsCI(t *testing.T) {
 
 	err = pool.RemoveVolume("vol1")
 	require.NoError(t, err)
+	u := btrfsVol.utils
+	_, err = u.run(context.TODO(), "btrfs", "quota", "disable", pool.Path())
+	require.NoError(t, err)
+	_, err = u.run(context.TODO(), "btrfs", "quota", "enable", pool.Path())
+	require.NoError(t, err)
 
 	qgroups, err = btrfsVol.utils.QGroupList(context.TODO(), pool.Path())
 	require.NoError(t, err)
