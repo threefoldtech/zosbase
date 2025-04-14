@@ -1,7 +1,7 @@
 package zosapi
 
 import (
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/tfgridv4-sdk-go/rmb-sdk-go/peer"
 )
 
 func (g *ZosAPI) SetupRoutes(router *peer.Router) {

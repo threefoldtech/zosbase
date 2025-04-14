@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+	"github.com/threefoldtech/tfgridv4-sdk-go/rmb-sdk-go/peer"
 	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
