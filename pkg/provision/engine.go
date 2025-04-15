@@ -12,7 +12,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/joncrlsn/dque"
 	"github.com/pkg/errors"
@@ -1027,18 +1026,18 @@ func (n *NativeEngine) CreateOrUpdate(twin uint32, deployment gridtypes.Deployme
 	}
 
 	// make sure the account used is verified
-	check := func() error {
-		if ok, err := isTwinVerified(twin); err != nil {
-			return err
-		} else if !ok {
-			return fmt.Errorf("user with twin id %d is not verified", twin)
-		}
-		return nil
-	}
+	// check := func() error {
+	// 	if ok, err := isTwinVerified(twin); err != nil {
+	// 		return err
+	// 	} else if !ok {
+	// 		return fmt.Errorf("user with twin id %d is not verified", twin)
+	// 	}
+	// 	return nil
+	// }
 
-	if err := backoff.Retry(check, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)); err != nil {
-		return err
-	}
+	// if err := backoff.Retry(check, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5)); err != nil {
+	// 	return err
+	// }
 
 	if err := deployment.Verify(n.twins); err != nil {
 		return err
