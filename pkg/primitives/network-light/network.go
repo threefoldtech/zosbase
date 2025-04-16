@@ -39,7 +39,7 @@ func (p *Manager) networkProvisionImpl(ctx context.Context, wl *gridtypes.Worklo
 	mgr := stubs.NewNetworkerLightStub(p.zbus)
 	log.Debug().Str("network", fmt.Sprintf("%+v", network)).Msg("provision network")
 
-	err := mgr.Create(ctx, string(zos.NetworkID(twin, wl.Name)), network, network.Mycelium.Key)
+	err := mgr.Create(ctx, string(zos.NetworkID(twin, wl.Name)), wl.ID, network)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create network resource for network %s", wl.ID)
 	}
@@ -56,10 +56,9 @@ func (p *Manager) Update(ctx context.Context, wl *gridtypes.WorkloadWithID) (int
 }
 
 func (p *Manager) Deprovision(ctx context.Context, wl *gridtypes.WorkloadWithID) error {
-	twin, _ := provision.GetDeploymentID(ctx)
 	mgr := stubs.NewNetworkerLightStub(p.zbus)
 
-	if err := mgr.Delete(ctx, string(zos.NetworkID(twin, wl.Name))); err != nil {
+	if err := mgr.Delete(ctx, *wl); err != nil {
 		return fmt.Errorf("failed to delete network resource: %w", err)
 	}
 
