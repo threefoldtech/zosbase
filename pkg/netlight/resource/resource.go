@@ -489,7 +489,7 @@ func (r *Resource) HasWireguard() (bool, error) {
 
 // Namespace returns the name of the network namespace to create for the network resource
 func (r *Resource) Namespace() (string, error) {
-	name := fmt.Sprintf("n-%s", r.name)
+	name := fmt.Sprintf("n%s", r.name)
 	if len(name) > 15 {
 		return "", errors.Errorf("network namespace too long %s", name)
 	}
