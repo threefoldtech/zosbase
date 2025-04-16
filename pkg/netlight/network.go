@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -20,6 +21,7 @@ import (
 	localPkg "github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/cache"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/netbase/wireguard"
 	"github.com/threefoldtech/zosbase/pkg/netlight/bridge"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ipam"
@@ -27,6 +29,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/netlight/options"
 	"github.com/threefoldtech/zosbase/pkg/netlight/public"
 	"github.com/threefoldtech/zosbase/pkg/netlight/resource"
+	"github.com/threefoldtech/zosbase/pkg/set"
 	"github.com/threefoldtech/zosbase/pkg/versioned"
 	"github.com/vishvananda/netlink"
 )
@@ -50,6 +53,7 @@ var NetworkSchemaLatestVersion = semver.MustParse("0.1.0")
 type networker struct {
 	ipamLease  string
 	networkDir string
+	portSet    *set.UIntSet
 }
 
 var _ localPkg.NetworkerLight = (*networker)(nil)
@@ -63,13 +67,19 @@ func NewNetworker() (localPkg.NetworkerLight, error) {
 	ipamLease := filepath.Join(vd, ipamLeaseDir)
 	runtimeDir := filepath.Join(vd, networkDir)
 
-	return &networker{
+	n := networker{
 		ipamLease:  ipamLease,
 		networkDir: runtimeDir,
-	}, nil
+		portSet:    set.NewInt(),
+	}
+
+	if err := n.syncWGPorts(); err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
 
-func (n *networker) Create(name string, privateNet net.IPNet, seed []byte) error {
+func (n *networker) Create(name string, net zos.NetworkLight, seed []byte) error {
 	b, err := bridge.Get(NDMZBridge)
 	if err != nil {
 		return err
@@ -79,7 +89,68 @@ func (n *networker) Create(name string, privateNet net.IPNet, seed []byte) error
 		return err
 	}
 
-	_, err = resource.Create(name, b, ip, NDMZGwIP, &privateNet, seed)
+	storedNR, err := n.networkOf(zos.NetID(name))
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "failed to load previous network setup")
+	}
+
+	if err == nil {
+		if err := n.releasePort(storedNR.WGListenPort); err != nil {
+			return err
+		}
+	}
+
+	if err := n.reservePort(net.WGListenPort); err != nil {
+		return err
+	}
+
+	// _, err = resource.Create(name, b, ip, NDMZGwIP, &privateNet, seed)
+	netr, err := resource.Create(name, b, ip, NDMZGwIP, &net.Subnet.IPNet, seed, net)
+	// netr, err := resource.Create(name, b, ip, NDMZGwIP, &net.Subnet.IPNet, net.Mycelium.Key, net.NetworkIPRange.IPNet, net)
+	if err != nil {
+		return err
+	}
+
+	cleanup := func() {
+		log.Error().Msg("clean up network resource")
+		if err := resource.Delete(name); err != nil {
+			log.Error().Err(err).Msg("error during deletion of network resource after failed deployment")
+		}
+		if err := n.releasePort(net.WGListenPort); err != nil {
+			log.Error().Err(err).Msg("release wireguard port failed")
+		}
+	}
+
+	defer func() {
+		if err != nil {
+			cleanup()
+		}
+	}()
+
+	wgName, err := netr.WGName()
+	if err != nil {
+		return errors.Wrap(err, "failed to get wg interface name for network resource")
+	}
+
+	exists, err := netr.HasWireguard()
+	if err != nil {
+		return errors.Wrap(err, "failed to check if network resource has wireguard setup")
+	}
+
+	if !exists {
+		var wg *wireguard.Wireguard
+		wg, err = wireguard.New(wgName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create wg interface for network resource '%s'", name)
+		}
+		if err = netr.SetWireguard(wg); err != nil {
+			return errors.Wrap(err, "failed to setup wireguard interface for network resource")
+		}
+	}
+
+	if err = netr.ConfigureWG(net.WGPrivateKey); err != nil {
+		return errors.Wrap(err, "failed to configure network resource")
+	}
 	return err
 }
 
@@ -461,4 +532,73 @@ func createNDMZBridge(name string, gw string) (*netlink.Bridge, error) {
 	}
 
 	return link.(*netlink.Bridge), nil
+}
+
+func (n *networker) WireguardPorts() ([]uint, error) {
+	return n.portSet.List()
+}
+
+func (n *networker) syncWGPorts() error {
+	names, err := namespace.List("n-")
+	if err != nil {
+		return err
+	}
+
+	readPort := func(name string) (int, error) {
+		netNS, err := namespace.GetByName(name)
+		if err != nil {
+			return 0, err
+		}
+		defer netNS.Close()
+
+		ifaceName := strings.Replace(name, "n-", "w-", 1)
+
+		var port int
+		err = netNS.Do(func(_ ns.NetNS) error {
+			link, err := wireguard.GetByName(ifaceName)
+			if err != nil {
+				return err
+			}
+			d, err := link.Device()
+			if err != nil {
+				return err
+			}
+
+			port = d.ListenPort
+			return nil
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		return port, nil
+	}
+
+	for _, name := range names {
+		port, err := readPort(name)
+		if err != nil {
+			log.Error().Err(err).Str("namespace", name).Msgf("failed to read port for network namespace")
+			continue
+		}
+		// skip error cause we don't care if there are some duplicate at this point
+		_ = n.portSet.Add(uint(port))
+	}
+
+	return nil
+}
+
+func (n *networker) reservePort(port uint16) error {
+	log.Debug().Uint16("port", port).Msg("reserve wireguard port")
+	err := n.portSet.Add(uint(port))
+	if err != nil {
+		return errors.Wrap(err, "wireguard listen port already in use, pick another one")
+	}
+
+	return nil
+}
+
+func (n *networker) releasePort(port uint16) error {
+	log.Debug().Uint16("port", port).Msg("release wireguard port")
+	n.portSet.Remove(uint(port))
+	return nil
 }

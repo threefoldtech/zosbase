@@ -80,7 +80,7 @@ func (s *NetworkerLightStub) AttachZDB(ctx context.Context, arg0 string) (ret0 s
 	return
 }
 
-func (s *NetworkerLightStub) Create(ctx context.Context, arg0 string, arg1 net.IPNet, arg2 []uint8) (ret0 error) {
+func (s *NetworkerLightStub) Create(ctx context.Context, arg0 string, arg1 zos.NetworkLight, arg2 []uint8) (ret0 error) {
 	args := []interface{}{arg0, arg1, arg2}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "Create", args...)
 	if err != nil {
@@ -231,6 +231,23 @@ func (s *NetworkerLightStub) UnSetPublicConfig(ctx context.Context) (ret0 error)
 	result.PanicOnError()
 	ret0 = result.CallError()
 	loader := zbus.Loader{}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
+func (s *NetworkerLightStub) WireguardPorts(ctx context.Context) (ret0 []uint, ret1 error) {
+	args := []interface{}{}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "WireguardPorts", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret1 = result.CallError()
+	loader := zbus.Loader{
+		&ret0,
+	}
 	if err := result.Unmarshal(&loader); err != nil {
 		panic(err)
 	}
