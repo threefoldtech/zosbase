@@ -18,29 +18,41 @@ const defaultRequestTimeout = 5 * time.Second
 func networkCheck(ctx context.Context) []error {
 	env := environment.MustGet()
 	servicesUrl := []string{env.FlistURL}
+	servicesUrl = append(servicesUrl, env.SubstrateURL...)
+	servicesUrl = append(servicesUrl, env.GraphQL...)
+	servicesUrl = append(servicesUrl, env.ActivationURL...)
 
-	servicesUrl = append(append(servicesUrl, env.SubstrateURL...), env.RelayURL...)
-	servicesUrl = append(append(servicesUrl, env.ActivationURL...), env.GraphQL...)
-
-	var errors []error
-
+	errCh := make(chan error, len(servicesUrl)+1) // +1 for relay URL
 	var wg sync.WaitGroup
-	var mut sync.Mutex
+
+	// check all services
 	for _, serviceUrl := range servicesUrl {
 		wg.Add(1)
 		go func(serviceUrl string) {
 			defer wg.Done()
-
-			err := checkService(ctx, serviceUrl)
-			if err != nil {
-				mut.Lock()
-				defer mut.Unlock()
-
-				errors = append(errors, err)
+			if err := checkService(ctx, serviceUrl); err != nil {
+				errCh <- err
 			}
 		}(serviceUrl)
 	}
-	wg.Wait()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := verifyAtLeastOne(ctx, env.RelayURL); err != nil {
+			errCh <- err
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	var errors []error
+	for err := range errCh {
+		errors = append(errors, err)
+	}
 
 	if len(errors) == 0 {
 		if err := app.DeleteFlag(app.NotReachable); err != nil {
@@ -51,11 +63,34 @@ func networkCheck(ctx context.Context) []error {
 	return errors
 }
 
+func verifyAtLeastOne(ctx context.Context, services []string) error {
+	ctx, cancel := context.WithTimeout(ctx, defaultRequestTimeout)
+	defer cancel()
+
+	var atLeastOne bool
+	for _, serviceUrl := range services {
+		if err := checkService(ctx, serviceUrl); err == nil {
+			atLeastOne = true
+			break
+		}
+	}
+
+	if !atLeastOne {
+		return fmt.Errorf("no realy URL is reachable")
+	}
+
+	return nil
+}
+
 func checkService(ctx context.Context, serviceUrl string) error {
 	ctx, cancel := context.WithTimeout(ctx, defaultRequestTimeout)
 	defer cancel()
 
 	address := parseUrl(serviceUrl)
+	if address == "" {
+		return fmt.Errorf("invalid URL format: %s", serviceUrl)
+	}
+
 	err := isReachable(ctx, address)
 	if err != nil {
 		if err := app.SetFlag(app.NotReachable); err != nil {
@@ -86,7 +121,7 @@ func parseUrl(serviceUrl string) string {
 }
 
 func isReachable(ctx context.Context, address string) error {
-	d := net.Dialer{Timeout: defaultRequestTimeout}
+	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
