@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
@@ -12,8 +13,10 @@ import (
 
 // NetworkerLight is the interface for the network light module
 type NetworkerLight interface {
-	Create(name string, net zos.NetworkLight, seed []byte) error
-	Delete(name string) error
+	// Create(name string, net zos.NetworkLight, seed []byte) error
+	Create(name string, wl gridtypes.WorkloadID, net zos.NetworkLight) error
+	// Delete(name string) error
+	Delete(wl gridtypes.WorkloadWithID) error
 	AttachPrivate(name, id string, vmIp net.IP) (device TapDevice, err error)
 	AttachMycelium(name, id string, seed []byte) (device TapDevice, err error)
 	Detach(id string) error
