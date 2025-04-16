@@ -37,3 +37,7 @@ func (g *ZosAPI) networkListPrivateIPsHandler(ctx context.Context, payload []byt
 	twin := peer.GetTwinID(ctx)
 	return g.provisionStub.ListPrivateIPs(ctx, twin, args.NetworkName)
 }
+
+func (g *ZosAPI) networkListWGPortsHandler(ctx context.Context, payload []byte) (interface{}, error) {
+	return g.networkerLightStub.WireguardPorts(ctx)
+}
