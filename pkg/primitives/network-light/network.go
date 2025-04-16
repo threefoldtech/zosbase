@@ -39,7 +39,7 @@ func (p *Manager) networkProvisionImpl(ctx context.Context, wl *gridtypes.Worklo
 	mgr := stubs.NewNetworkerLightStub(p.zbus)
 	log.Debug().Str("network", fmt.Sprintf("%+v", network)).Msg("provision network")
 
-	err := mgr.Create(ctx, string(zos.NetworkID(twin, wl.Name)), network.Subnet.IPNet, network.Mycelium.Key)
+	err := mgr.Create(ctx, string(zos.NetworkID(twin, wl.Name)), network, network.Mycelium.Key)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create network resource for network %s", wl.ID)
 	}
