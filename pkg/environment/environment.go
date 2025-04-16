@@ -189,7 +189,6 @@ var (
 		},
 		RelayURL: []string{
 			"wss://relay.grid.tf",
-			"wss://relay.02.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.grid.tf/activation/activate",
