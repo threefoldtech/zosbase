@@ -14,27 +14,33 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
-const defaultRequestTimeout = 5 * time.Second
+const defaultRequestTimeout = 10 * time.Second
 
 // function: at least one instance of each service should be reachable
 // returns errors as a report for perf healthcheck
 // a side effect:  set/delete the not-reachable flag
 func networkCheck(ctx context.Context) []error {
+	var (
+		wg     sync.WaitGroup
+		errMu  sync.Mutex
+		errors []error
+	)
+
 	env := environment.MustGet()
 	services := map[string][]string{
 		"substrate":  env.SubstrateURL,
-		"relay":      env.RelayURL,
 		"activation": env.ActivationURL,
 		"graphql":    env.GraphQL,
 		"hub":        {env.FlistURL},
 		"kyc":        {env.KycURL},
 	}
 
-	var (
-		wg     sync.WaitGroup
-		errMu  sync.Mutex
-		errors []error
-	)
+	relays, err := environment.GetRelaysURLs()
+	if err != nil {
+		errors = append(errors, fmt.Errorf("failed to get relays urls %w", err))
+	} else {
+		services["relays"] = relays
+	}
 
 	for service, instances := range services {
 		wg.Add(1)

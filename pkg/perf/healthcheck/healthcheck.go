@@ -86,7 +86,7 @@ func (h *healthcheckTask) Run(ctx context.Context) (interface{}, error) {
 				}
 
 				if len(errors) != 0 {
-					return fmt.Errorf("failed health check")
+					return fmt.Errorf("failed health check %s", errorsToStrings(errors))
 				}
 
 				return nil

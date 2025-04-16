@@ -31,6 +31,7 @@ type Config struct {
 	RolloutUpgrade struct {
 		TestFarms []uint32 `json:"test_farms"`
 	} `json:"rollout_upgrade"`
+	RelaysURLs []string `json:"relays_urls"`
 }
 
 // Merge, updates current config with cfg merging and override config
