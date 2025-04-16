@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zosbase/pkg"
 
@@ -47,7 +48,7 @@ type Environment struct {
 	// IMPORTANT NOTICE:
 	//   SINCE RELAYS FOR A NODE IS STORED ON THE CHAIN IN A LIMITED SPACE
 	//   PLEASE MAKE SURE THAT ANY ENV HAS NO MORE THAN FOUR RELAYS CONFIGURED
-	RelayURL      []string
+	relaysURLs    []string
 	ActivationURL []string
 	GraphQL       []string
 	KycURL        string
@@ -112,7 +113,7 @@ var (
 			"wss://tfchain.dev.grid.tf/",
 			"wss://tfchain.02.dev.grid.tf",
 		},
-		RelayURL: []string{
+		relaysURLs: []string{
 			"wss://relay.dev.grid.tf",
 			"wss://relay.02.dev.grid.tf",
 		},
@@ -136,7 +137,7 @@ var (
 			"wss://tfchain.test.grid.tf/",
 			"wss://tfchain.02.test.grid.tf",
 		},
-		RelayURL: []string{
+		relaysURLs: []string{
 			"wss://relay.test.grid.tf",
 			"wss://relay.02.test.grid.tf",
 		},
@@ -160,7 +161,7 @@ var (
 			"wss://tfchain.qa.grid.tf/",
 			"wss://tfchain.02.qa.grid.tf/",
 		},
-		RelayURL: []string{
+		relaysURLs: []string{
 			"wss://relay.qa.grid.tf",
 			"wss://relay.02.qa.grid.tf",
 		},
@@ -187,7 +188,7 @@ var (
 			"wss://03.tfchain.grid.tf/",
 			"wss://04.tfchain.grid.tf/",
 		},
-		RelayURL: []string{
+		relaysURLs: []string{
 			"wss://relay.grid.tf",
 			"wss://relay.02.grid.tf",
 		},
@@ -224,11 +225,24 @@ func Get() (Environment, error) {
 	if err != nil {
 		return Environment{}, err
 	}
-	if params.IsV4() {
-		env.FlistURL = "redis://v4.hub.grid.tf:9940"
-	}
 
 	return env, nil
+}
+
+func GetRelaysURLs() (relaysUrls []string, err error) {
+	relaysUrls = MustGet().relaysURLs
+
+	config, err := GetConfig()
+	// if error happened when getting config from github just ignore and use the one in the env
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get relays urls from zos-config")
+		return
+	}
+	if len(config.RelaysURLs) > 0 {
+		log.Debug().Msg("found relays urls in zos-config")
+		return config.RelaysURLs, nil
+	}
+	return
 }
 
 // GetSubstrate gets a client to subsrate blockchain
@@ -281,7 +295,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 
 	if relay, ok := params.Get("relay"); ok {
 		if len(relay) > 0 {
-			env.RelayURL = relay
+			env.relaysURLs = relay
 		}
 	}
 
@@ -366,6 +380,11 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 
 	if e := os.Getenv("ZOS_BIN_REPO"); e != "" {
 		env.BinRepo = e
+	}
+
+	// if the node running v4 chage flisturl to use v4.hub.grid.tf
+	if params.IsV4() {
+		env.FlistURL = "redis://v4.hub.grid.tf:9940"
 	}
 
 	return env, nil

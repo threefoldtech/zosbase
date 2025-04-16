@@ -13,16 +13,24 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
-const defaultRequestTimeout = 5 * time.Second
+const defaultRequestTimeout = 10 * time.Second
 
 func networkCheck(ctx context.Context) []error {
 	env := environment.MustGet()
 	servicesUrl := []string{env.FlistURL}
 
-	servicesUrl = append(append(servicesUrl, env.SubstrateURL...), env.RelayURL...)
+	servicesUrl = append(servicesUrl, env.SubstrateURL...)
 	servicesUrl = append(append(servicesUrl, env.ActivationURL...), env.GraphQL...)
 
 	var errors []error
+
+	relays, err := environment.GetRelaysURLs()
+	if err != nil {
+		errr := fmt.Errorf("failed to get relays urls %w", err)
+		errors = append(errors, errr)
+	} else {
+		servicesUrl = append(servicesUrl, relays...)
+	}
 
 	var wg sync.WaitGroup
 	var mut sync.Mutex
