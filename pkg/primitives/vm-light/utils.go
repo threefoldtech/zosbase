@@ -179,7 +179,6 @@ func (p *Manager) newMyceliumNetworkInterface(ctx context.Context, dl gridtypes.
 
 	tapName := wl.ID.Unique(string(config.Network))
 	iface, err := network.AttachMycelium(ctx, string(netID), tapName, config.Seed)
-
 	if err != nil {
 		return pkg.VMIface{}, errors.Wrap(err, "could not set up tap device")
 	}
@@ -202,20 +201,60 @@ func (p *Manager) newPrivNetworkInterface(ctx context.Context, dl gridtypes.Depl
 	network := localStubs.NewNetworkerLightStub(p.zbus)
 	netID := zos.NetworkID(dl.TwinID, inf.Network)
 
+	name := netID.String()
+
+	subnet, err := network.GetSubnet(ctx, name)
+	if err != nil {
+		return pkg.VMIface{}, errors.Wrapf(err, "could not get network resource subnet")
+	}
+
+	inf.IP = inf.IP.To4()
+	if inf.IP == nil {
+		return pkg.VMIface{}, fmt.Errorf("invalid IPv4 supplied to wg interface")
+	}
+
+	if !subnet.Contains(inf.IP) {
+		return pkg.VMIface{}, fmt.Errorf("IP %s is not part of local nr subnet %s", inf.IP.String(), subnet.String())
+	}
+
+	// always the .1/24 ip is reserved
+	if inf.IP[3] == 1 {
+		return pkg.VMIface{}, fmt.Errorf("ip %s is reserved", inf.IP.String())
+	}
+
+	privNet, err := network.GetNet(ctx, name)
+	if err != nil {
+		return pkg.VMIface{}, errors.Wrapf(err, "could not get network range")
+	}
+
+	addrCIDR := net.IPNet{
+		IP:   inf.IP,
+		Mask: subnet.Mask,
+	}
+
+	gw4, err := network.GetDefaultGwIP(ctx, name)
+	if err != nil {
+		return pkg.VMIface{}, errors.Wrap(err, "could not get network resource default gateway")
+	}
+
 	tapName := wl.ID.Unique(string(inf.Network))
 	iface, err := network.AttachPrivate(ctx, string(netID), tapName, inf.IP)
 	if err != nil {
 		return pkg.VMIface{}, errors.Wrap(err, "could not set up tap device for private interface")
 	}
 
+	routes := append(iface.Routes, pkg.Route{Net: privNet, Gateway: gw4})
+	log.Info().Any("routes", routes).Send()
 	out := pkg.VMIface{
 		Tap: iface.Name,
 		MAC: iface.Mac.String(),
 		IPs: []net.IPNet{
 			*iface.IP,
+			addrCIDR,
 			// privIP6,
 		},
-		Routes:            iface.Routes,
+		Routes: routes,
+
 		IP4DefaultGateway: iface.Routes[0].Gateway,
 		// IP6DefaultGateway: gw6,
 		PublicIPv4: false,
