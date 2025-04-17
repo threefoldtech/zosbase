@@ -57,8 +57,9 @@ func (p *Manager) Update(ctx context.Context, wl *gridtypes.WorkloadWithID) (int
 
 func (p *Manager) Deprovision(ctx context.Context, wl *gridtypes.WorkloadWithID) error {
 	mgr := stubs.NewNetworkerLightStub(p.zbus)
+	twin, _ := provision.GetDeploymentID(ctx)
 
-	if err := mgr.Delete(ctx, *wl); err != nil {
+	if err := mgr.Delete(ctx, string(zos.NetworkID(twin, wl.Name))); err != nil {
 		return fmt.Errorf("failed to delete network resource: %w", err)
 	}
 
