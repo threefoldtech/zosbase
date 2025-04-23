@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/network/macvlan"
+	"github.com/threefoldtech/zosbase/pkg/network/ndmz"
 	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/threefoldtech/zosbase/pkg/network/tuntap"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
@@ -33,6 +33,8 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
 	"github.com/threefoldtech/zosbase/pkg/network/wireguard"
 	"github.com/vishvananda/netlink"
+
+	baseifaceutil "github.com/threefoldtech/zosbase/pkg/netbase/ifaceutil"
 )
 
 const (
@@ -258,11 +260,6 @@ func (nr *NetResource) SetMycelium() (err error) {
 		return nil
 	}
 
-	peers, err := environment.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "failed to get public mycelium peer list")
-	}
-
 	config := nr.resource.Mycelium
 	// create the bridge.
 	if err := nr.ensureMyceliumBridge(); err != nil {
@@ -311,17 +308,14 @@ func (nr *NetResource) SetMycelium() (err error) {
 		"--peers",
 	}
 
-	// first append peers from user input.
-	// right now this is shadowed by Mycelium config validation
-	// which does not allow custom peer list.
-	args = AppendFunc(args, config.Peers, func(mp zos.MyceliumPeer) string {
-		return string(mp)
-	})
+	// set mycelium public addresses are the private peers
+	ips, err := baseifaceutil.GetIPsForIFace(ndmz.DmzPub4, ndmz.DmzNamespace)
+	if err != nil {
+		return errors.Wrap(err, "failed to get IPs for npub4")
+	}
 
-	// global peers list
-	args = append(args, peers.Mycelium.Peers...)
-
-	// todo: add custom peers requested by the user
+	hostPeers := baseifaceutil.BuildMyceliumPeerURLs(ips)
+	args = append(args, hostPeers...)
 
 	err = zinit.AddService(name, zinit.InitService{
 		Exec: strings.Join(args, " "),

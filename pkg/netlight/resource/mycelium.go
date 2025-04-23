@@ -13,13 +13,15 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
+	"github.com/threefoldtech/zosbase/pkg/netbase/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/netlight/resource/peers"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
 )
 
 const (
-	myceliumBin     = "mycelium"
-	MyceliumSeedDir = "/tmp/network/mycelium"
+	myceliumBin             = "mycelium"
+	MyceliumSeedDir         = "/tmp/network/mycelium"
+	myceliumPublicInterface = "zos"
 
 	myceliumSeedLen = 6
 	HostMyceliumBr  = "br-hmy"
@@ -190,7 +192,14 @@ func SetupMycelium(netNS ns.NetNS, mycelium string, seed []byte) error {
 			return fmt.Errorf("failed to create seed file '%s': %w", name, err)
 		}
 
-		return ensureMyceliumService(zinit.Default(), &name, list)
+		ips, err := ifaceutil.GetIPsForIFace(myceliumPublicInterface, "")
+		if err != nil || len(ips) == 0 {
+			return fmt.Errorf("failed to get ip for interface 'zos': %w", err)
+		}
+
+		hostPeers := ifaceutil.BuildMyceliumPeerURLs(ips)
+
+		return ensureMyceliumService(zinit.Default(), &name, hostPeers)
 	}
 
 	if err := os.WriteFile(filepath.Join(MyceliumSeedDir, HostMyceliumBr), seed, 0444); err != nil {
