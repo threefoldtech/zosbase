@@ -37,14 +37,14 @@ const (
 	//NdmzBridge is the name of the ipv4 routing bridge in the host namespace
 	NdmzBridge = "br-ndmz"
 
-	//dmzNamespace name of the dmz namespace
-	dmzNamespace = "ndmz"
+	//DmzNamespace name of the dmz namespace
+	DmzNamespace = "ndmz"
 
 	ndmzNsMACDerivationSuffix6 = "-ndmz6"
 	ndmzNsMACDerivationSuffix4 = "-ndmz4"
 
-	// dmzPub4 ipv4 public interface
-	dmzPub4 = "npub4"
+	// DmzPub4 ipv4 public interface
+	DmzPub4 = "npub4"
 	// dmzPub6 ipv6 public interface
 	dmzPub6 = "npub6"
 
@@ -69,7 +69,7 @@ func New(nodeID string, public *netlink.Bridge) DMZ {
 }
 
 func (d *dmzImpl) Namespace() string {
-	return dmzNamespace
+	return DmzNamespace
 }
 
 // Create create the NDMZ network namespace and configure its default routes and addresses
@@ -85,9 +85,9 @@ func (d *dmzImpl) Create(ctx context.Context) error {
 	// master will actually be `zos`. In that case, we can't plug the physical
 	// iface, but need to create a veth pair between br-pub and zos.
 
-	netNS, err := namespace.GetByName(dmzNamespace)
+	netNS, err := namespace.GetByName(DmzNamespace)
 	if err != nil {
-		netNS, err = namespace.Create(dmzNamespace)
+		netNS, err = namespace.Create(DmzNamespace)
 		if err != nil {
 			return errors.Wrap(err, "failed to create ndmz namespace")
 		}
@@ -103,7 +103,7 @@ func (d *dmzImpl) Create(ctx context.Context) error {
 		return errors.Wrapf(err, "ndmz: could not node create pub iface 6")
 	}
 
-	if err := createPubIface4(dmzPub4, d.nodeID, netNS); err != nil {
+	if err := createPubIface4(DmzPub4, d.nodeID, netNS); err != nil {
 		return errors.Wrapf(err, "ndmz: could not create pub iface 4")
 	}
 
@@ -134,7 +134,7 @@ func (d *dmzImpl) Create(ctx context.Context) error {
 	}
 
 	z := zinit.Default()
-	dhcpMon := NewDHCPMon(dmzPub4, dmzNamespace, z)
+	dhcpMon := NewDHCPMon(DmzPub4, DmzNamespace, z)
 	go func() {
 		_ = dhcpMon.Start(ctx)
 	}()
@@ -144,7 +144,7 @@ func (d *dmzImpl) Create(ctx context.Context) error {
 
 // Delete deletes the NDMZ network namespace
 func (d *dmzImpl) Delete() error {
-	netNS, err := namespace.GetByName(dmzNamespace)
+	netNS, err := namespace.GetByName(DmzNamespace)
 	if err == nil {
 		if err := namespace.Delete(netNS); err != nil {
 			return errors.Wrap(err, "failed to delete ndmz network namespace")
@@ -230,7 +230,7 @@ func (d *dmzImpl) AttachNR(networkID, nrNSName string, ipamLeaseDir string) erro
 
 func (d *dmzImpl) GetIPFor(inf string) ([]net.IPNet, error) {
 
-	netns, err := namespace.GetByName(dmzNamespace)
+	netns, err := namespace.GetByName(DmzNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (d *dmzImpl) GetIPFor(inf string) ([]net.IPNet, error) {
 func (d *dmzImpl) GetIP(family int) ([]net.IPNet, error) {
 	var links []string
 	if family == netlink.FAMILY_V4 || family == netlink.FAMILY_ALL {
-		links = append(links, dmzPub4)
+		links = append(links, DmzPub4)
 	}
 	if family == netlink.FAMILY_V6 || family == netlink.FAMILY_ALL {
 		links = append(links, dmzPub6)
@@ -272,7 +272,7 @@ func (d *dmzImpl) GetIP(family int) ([]net.IPNet, error) {
 		return nil, nil
 	}
 
-	netns, err := namespace.GetByName(dmzNamespace)
+	netns, err := namespace.GetByName(DmzNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (d *dmzImpl) GetIP(family int) ([]net.IPNet, error) {
 
 // Get gateway to given destination ip
 func (d *dmzImpl) GetDefaultGateway(destination net.IP) (net.IP, error) {
-	netns, err := namespace.GetByName(dmzNamespace)
+	netns, err := namespace.GetByName(DmzNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (d *dmzImpl) Interfaces() ([]types.IfaceInfo, error) {
 	}
 
 	// get the ndmz network namespace
-	ndmz, err := namespace.GetByName(dmzNamespace)
+	ndmz, err := namespace.GetByName(DmzNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -398,10 +398,10 @@ func waitIP4() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	probe, err := dhcp.Probe(ctx, dmzPub4)
+	probe, err := dhcp.Probe(ctx, DmzPub4)
 
 	if err != nil {
-		return errors.Wrapf(err, "error while proping interface '%s'", dmzPub4)
+		return errors.Wrapf(err, "error while proping interface '%s'", DmzPub4)
 	}
 	if len(probe.IP) != 0 && len(probe.Router) != 0 {
 		return nil
@@ -554,7 +554,7 @@ func applyFirewall() error {
 		return errors.Wrap(err, "failed to build nft rule set")
 	}
 
-	if err := nft.Apply(&buf, dmzNamespace); err != nil {
+	if err := nft.Apply(&buf, DmzNamespace); err != nil {
 		return errors.Wrap(err, "failed to apply nft rule set")
 	}
 
