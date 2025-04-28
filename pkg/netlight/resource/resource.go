@@ -55,7 +55,7 @@ type Resource struct {
 func Create(name string, master *netlink.Bridge, ndmzIP *net.IPNet, ndmzGwIP *net.IPNet, privateNet *net.IPNet, nr zos.NetworkLight) (*Resource, error) {
 	privateNetBr := fmt.Sprintf("r%s", name)
 	myBr := fmt.Sprintf("m%s", name)
-	nsName := fmt.Sprintf("n-%s", name)
+	nsName := fmt.Sprintf("n%s", name)
 	peerPrefix := name
 	if len(name) > 4 {
 		peerPrefix = name[0:4]
@@ -174,7 +174,7 @@ func Create(name string, master *netlink.Bridge, ndmzIP *net.IPNet, ndmzGwIP *ne
 }
 
 func Delete(name string) error {
-	nsName := fmt.Sprintf("n-%s", name)
+	nsName := fmt.Sprintf("n%s", name)
 	netNS, err := namespace.GetByName(nsName)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -225,7 +225,7 @@ func setLinkAddr(name string, ip *net.IPNet) error {
 
 // Get return resource handler
 func Get(name string) (*Resource, error) {
-	nsName := fmt.Sprintf("n-%s", name)
+	nsName := fmt.Sprintf("n%s", name)
 
 	if namespace.Exists(nsName) {
 		return &Resource{name: name}, nil
@@ -240,7 +240,11 @@ var defaultNet = net.IPNet{
 }
 
 func (r *Resource) AttachPrivate(id string, vmIp net.IP) (device localPkg.TapDevice, err error) {
-	nsName := fmt.Sprintf("n-%s", r.name)
+	nsName, err := r.Namespace()
+	if err != nil {
+		return
+	}
+
 	netNs, err := namespace.GetByName(nsName)
 	if err != nil {
 		return
@@ -311,7 +315,11 @@ func (r *Resource) AttachPrivate(id string, vmIp net.IP) (device localPkg.TapDev
 }
 
 func (r *Resource) AttachMycelium(id string, seed []byte) (device localPkg.TapDevice, err error) {
-	nsName := fmt.Sprintf("n-%s", r.name)
+	nsName, err := r.Namespace()
+	if err != nil {
+		return
+	}
+
 	netNS, err := namespace.GetByName(nsName)
 	if err != nil {
 		return
@@ -359,7 +367,11 @@ func (r *Resource) AttachMycelium(id string, seed []byte) (device localPkg.TapDe
 }
 
 func (r *Resource) AttachMyceliumZDB(id string, zdbNS ns.NetNS) (err error) {
-	nsName := fmt.Sprintf("n-%s", r.name)
+	nsName, err := r.Namespace()
+	if err != nil {
+		return
+	}
+
 	netNS, err := namespace.GetByName(nsName)
 	if err != nil {
 		return
@@ -432,7 +444,11 @@ func (r *Resource) AttachMyceliumZDB(id string, zdbNS ns.NetNS) (err error) {
 }
 
 func (r *Resource) Seed() (seed []byte, err error) {
-	nsName := fmt.Sprintf("n-%s", r.name)
+	nsName, err := r.Namespace()
+	if err != nil {
+		return
+	}
+
 	netNS, err := namespace.GetByName(nsName)
 	if err != nil {
 		return
@@ -489,7 +505,7 @@ func (r *Resource) HasWireguard() (bool, error) {
 
 // Namespace returns the name of the network namespace to create for the network resource
 func (r *Resource) Namespace() (string, error) {
-	name := fmt.Sprintf("n-%s", r.name)
+	name := fmt.Sprintf("n%s", r.name)
 	if len(name) > 15 {
 		return "", errors.Errorf("network namespace too long %s", name)
 	}

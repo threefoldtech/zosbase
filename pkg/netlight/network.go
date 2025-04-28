@@ -118,8 +118,6 @@ func (n *networker) Create(name string, wl gridtypes.WorkloadID, net zos.Network
 		}
 	}()
 
-	// _, err = resource.Create(name, b, ip, NDMZGwIP, &privateNet, seed)
-	// netr, err := resource.Create(name, b, ip, NDMZGwIP, &net.Subnet.IPNet, net.Mycelium.Key, net.NetworkIPRange.IPNet, net)
 	netr, err := resource.Create(name, b, ip, NDMZGwIP, &net.Subnet.IPNet, net)
 	if err != nil {
 		return err
@@ -183,7 +181,7 @@ func (n *networker) Detach(id string) error {
 
 func (n *networker) AttachZDB(id string) (string, error) {
 	name := ifaceutil.DeviceNameFromInputBytes([]byte(id))
-	nsName := fmt.Sprintf("n-%s", name)
+	nsName := n.Namespace(name)
 
 	ns, err := namespace.GetByName(nsName)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -288,7 +286,7 @@ func (n *networker) Ready() error {
 }
 
 func (n *networker) Namespace(id string) string {
-	return fmt.Sprintf("n-%s", id)
+	return fmt.Sprintf("n%s", id)
 }
 
 func (n *networker) ZOSAddresses(ctx context.Context) <-chan pkg.NetlinkAddresses {
@@ -558,7 +556,7 @@ func (n *networker) GetDefaultGwIP(name string) (net.IP, error) {
 }
 
 func (n *networker) syncWGPorts() error {
-	names, err := namespace.List("n-")
+	names, err := namespace.List("n")
 	if err != nil {
 		return err
 	}
@@ -570,7 +568,7 @@ func (n *networker) syncWGPorts() error {
 		}
 		defer netNS.Close()
 
-		ifaceName := strings.Replace(name, "n-", "w-", 1)
+		ifaceName := strings.Replace(name, "n", "w-", 1)
 
 		var port int
 		err = netNS.Do(func(_ ns.NetNS) error {
