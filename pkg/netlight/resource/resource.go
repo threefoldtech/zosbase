@@ -11,12 +11,12 @@ import (
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
 	localPkg "github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/netlight/bridge"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/netlight/namespace"
 	"github.com/threefoldtech/zosbase/pkg/netlight/options"
 	"github.com/threefoldtech/zosbase/pkg/netlight/tuntap"
-	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/zinit"
 	"github.com/vishvananda/netlink"
 )
