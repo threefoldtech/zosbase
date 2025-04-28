@@ -39,6 +39,8 @@ import (
 
 const (
 	myceliumInterfaceName = "br-my"
+	publicNamespaceName   = "public"
+	publicInterfaceName   = "public"
 )
 
 var (
@@ -308,8 +310,14 @@ func (nr *NetResource) SetMycelium() (err error) {
 		"--peers",
 	}
 
-	// set mycelium public addresses are the private peers
-	ips, err := baseifaceutil.GetIPsForIFace(ndmz.DmzPub4, ndmz.DmzNamespace)
+	// set mycelium public addresses as the private peers
+	mycNamespace, mycInterface := ndmz.DmzNamespace, ndmz.DmzPub4
+	if namespace.Exists(publicNamespaceName) {
+		mycNamespace = publicNamespaceName
+		mycInterface = publicInterfaceName
+	}
+
+	ips, err := baseifaceutil.GetIPsForIFace(mycInterface, mycNamespace)
 	if err != nil {
 		return errors.Wrap(err, "failed to get IPs for npub4")
 	}
