@@ -517,6 +517,19 @@ func (f *flistModule) valid(path string) error {
 	}
 
 	if err := f.isMountpoint(path); err == nil {
+		// Check if the mountpoint is empty
+		contents, err := os.ReadDir(path)
+		if err != nil {
+			log.Warn().Err(err).Str("path", path).Msg("failed to check mountpoint contents")
+		} else if len(contents) == 0 {
+			log.Warn().Str("path", path).Msg("found empty mountpoint, attempting to unmount")
+			if err := f.system.Unmount(path, 0); err != nil {
+				log.Error().Err(err).Str("path", path).Msg("failed to unmount empty mountpoint")
+				return ErrAlreadyMounted
+			}
+			return nil
+		}
+		
 		return ErrAlreadyMounted
 	}
 
