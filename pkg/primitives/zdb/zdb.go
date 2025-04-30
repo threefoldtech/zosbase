@@ -116,15 +116,21 @@ func (p *Manager) Provision(ctx context.Context, wl *gridtypes.WorkloadWithID) (
 
 func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZDBContainer, error) {
 	var (
+		flist      = stubs.NewFlisterStub(p.zbus)
 		contmod = stubs.NewContainerModuleStub(p.zbus)
+		network    = stubs.NewNetworkerStub(p.zbus)
 	)
 
 	containerIDs, err := contmod.List(ctx, zdbContainerNS)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list running containers")
 	}
+	rootFS, err := p.zdbRootFS(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get zdb root fs")
+	}
 
-	cleanup := func(z tZDBContainer) {
+	cleanup := func(z tZDBContainer, containerID pkg.ContainerID) {
 		for _, mnt := range z.Mounts {
 			if mnt.Target == zdbContainerDataMnt {
 				source := mnt.Source
@@ -133,6 +139,10 @@ func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZ
 				}
 			}
 		}
+		if err := flist.Unmount(ctx, string(containerID)); err != nil {
+			log.Error().Err(err).Str("path", rootFS).Msgf("failed to unmount")
+		}
+		network.ZDBDestroy(ctx, string(containerID))
 	}
 	// for each container we try to find a free space to jam in this new zdb namespace
 	// request
@@ -148,7 +158,7 @@ func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZ
 
 		if _, err = cont.DataMount(); err != nil {
 			log.Error().Err(err).Msg("failed to get data directory of zdb container")
-			cleanup(cont)
+			cleanup(cont, containerID)
 		}
 		m[containerID] = cont
 	}
