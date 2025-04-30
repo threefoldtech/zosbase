@@ -126,8 +126,6 @@ func TestMain(m *testing.M) {
 }
 
 func basePoolTest(t *testing.T, pool Pool) {
-	t.Skip("skipping test, to be solved in https://github.com/threefoldtech/zosbase/issues/19")
-
 	t.Run("test mounted", func(t *testing.T) {
 		_, err := pool.Mounted()
 		assert.ErrorIs(t, err, ErrDeviceNotMounted)
@@ -204,7 +202,6 @@ func TestBtrfsSingleCI(t *testing.T) {
 	if SkipCITests {
 		t.Skip("test requires ability to create loop devices")
 	}
-	t.Skip("skipping test, to be solved in https://github.com/threefoldtech/zosbase/issues/19")
 
 	devices, err := SetupDevices(1)
 	require.NoError(t, err, "failed to initialize devices")
@@ -226,7 +223,6 @@ func TestCLeanUpQgroupsCI(t *testing.T) {
 	if SkipCITests {
 		t.Skip("test requires ability to create loop devices")
 	}
-	t.Skip("skipping test, to be solved in https://github.com/threefoldtech/zosbase/issues/19")
 
 	devices, err := SetupDevices(1)
 	require.NoError(t, err, "failed to initialize devices")
