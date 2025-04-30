@@ -659,10 +659,13 @@ func (n networker) setupWireguard(name string, net zos.NetworkLight, netr *resou
 		}
 	}
 
+	if len(net.WGPrivateKey) == 0 {
+		return n.releasePort(net.WGListenPort)
+	}
+
 	if err = netr.ConfigureWG(net.WGPrivateKey); err != nil {
 		return errors.Wrap(err, "failed to configure network resource")
 	}
-
 	return nil
 }
 
