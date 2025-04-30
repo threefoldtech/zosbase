@@ -529,7 +529,7 @@ func (f *flistModule) valid(path string) error {
 			}
 			return nil
 		}
-		
+
 		return ErrAlreadyMounted
 	}
 
