@@ -30,16 +30,10 @@ func networkCheck(ctx context.Context) []error {
 	services := map[string][]string{
 		"substrate":  env.SubstrateURL,
 		"activation": env.ActivationURL,
+		"relay":      environment.GetRelaysURLs(),
 		"graphql":    env.GraphQL,
 		"hub":        {env.FlistURL},
 		"kyc":        {env.KycURL},
-	}
-
-	relays, err := environment.GetRelaysURLs()
-	if err != nil {
-		errors = append(errors, fmt.Errorf("failed to get relays urls %w", err))
-	} else {
-		services["relays"] = relays
 	}
 
 	for service, instances := range services {

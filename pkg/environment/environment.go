@@ -190,7 +190,7 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.grid.tf",
-			"wss://relay.02.grid.tf",
+			// "wss://relay.02.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.grid.tf/activation/activate",
@@ -229,20 +229,16 @@ func Get() (Environment, error) {
 	return env, nil
 }
 
-func GetRelaysURLs() (relaysUrls []string, err error) {
-	relaysUrls = MustGet().relaysURLs
-
+func GetRelaysURLs() []string {
 	config, err := GetConfig()
-	// if error happened when getting config from github just ignore and use the one in the env
-	if err != nil {
-		log.Error().Err(err).Msg("failed to get relays urls from zos-config")
-		return
+	if err == nil && len(config.RelaysURLs) > 0 {
+		log.Debug().Msg("using relays urls from zos-config")
+		return config.RelaysURLs
 	}
-	if len(config.RelaysURLs) > 0 {
-		log.Debug().Msg("found relays urls in zos-config")
-		return config.RelaysURLs, nil
-	}
-	return
+
+	log.Debug().Msg("using relays urls from environment")
+	env := MustGet()
+	return env.relaysURLs
 }
 
 // GetSubstrate gets a client to subsrate blockchain
