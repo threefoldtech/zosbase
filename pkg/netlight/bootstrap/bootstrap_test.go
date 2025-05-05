@@ -56,7 +56,7 @@ func TestAddrSet(t *testing.T) {
 		mustParseAddr("192.168.0.10/24"),
 	})
 	assert.Equal(t, 3, s.Len())
-	assert.Equal(t, []netlink.Addr{
+	assert.ElementsMatch(t, []netlink.Addr{
 		mustParseAddr("192.168.0.1/24"),
 		mustParseAddr("192.168.1.1/24"),
 		mustParseAddr("192.168.0.10/24"),
