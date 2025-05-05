@@ -430,11 +430,9 @@ func (f *flistModule) mountInNamespace(name, url string, opt pkg.MountOptions, n
 	sublog := log.With().Str("name", name).Str("url", url).Str("storage", opt.Storage).Logger()
 	sublog.Info().Msgf("request to mount flist: %+v", opt)
 
-	defer func() {
-		if err := f.cleanUnusedMounts(); err != nil {
-			log.Error().Err(err).Msg("failed to run clean up")
-		}
-	}()
+	if err := f.cleanUnusedMounts(); err != nil {
+		log.Error().Err(err).Msg("failed to run clean up")
+	}
 	// mount overlay
 	mountpoint, err := f.mountpath(name)
 	if err != nil {
