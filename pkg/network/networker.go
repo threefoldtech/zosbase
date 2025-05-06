@@ -355,12 +355,11 @@ func (n *networker) EnsureZDBPrepare(id string) (string, error) {
 // ZDBDestroy is the opposite of ZDPrepare, it makes sure network setup done
 // for zdb is rewind. ns param is the namespace return by the ZDBPrepare
 func (n *networker) ZDBDestroy(ns string) error {
-	panic("not implemented")
-	// if !strings.HasPrefix(ns, zdbNamespacePrefix) {
-	// 	return fmt.Errorf("invalid zdb namespace name '%s'", ns)
-	// }
+	if !strings.HasPrefix(ns, zdbNamespacePrefix) {
+		return fmt.Errorf("invalid zdb namespace name '%s'", ns)
+	}
 
-	// return n.destroy(ns)
+	return n.destroy(ns)
 }
 
 // func (n *networker) createMacVlan(iface string, master string, hw net.HardwareAddr, ips []*net.IPNet, routes []*netlink.Route, netNs ns.NetNS) error {
