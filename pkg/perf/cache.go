@@ -1,41 +1,97 @@
 package perf
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/zosbase/pkg"
 )
 
-const (
-	moduleName = "perf"
-)
-
-var (
-	ErrResultNotFound = errors.New("result not found")
-)
-
-// generateKey is helper method to add moduleName as prefix for the taskName
-func generateKey(taskName string) string {
-	return fmt.Sprintf("%s.%s", moduleName, taskName)
-}
-
-// setCache set result in redis
-func (pm *PerformanceMonitor) setCache(ctx context.Context, result pkg.TaskResult) error {
-	data, err := json.Marshal(result)
+func (pm *PerformanceMonitor) GetIperfTaskResult() (pkg.IperfTaskResult, error) {
+	report, err := pm.get(iperfTaskName)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal data to JSON")
+		return pkg.IperfTaskResult{}, errors.Wrap(err, "failed to get iperf task result")
 	}
 
-	conn := pm.pool.Get()
-	defer conn.Close()
+	var result pkg.IperfTaskResult
+	if err := json.Unmarshal(report, &result); err != nil {
+		return pkg.IperfTaskResult{}, errors.Wrap(err, "failed to unmarshal iperf task result")
+	}
 
-	_, err = conn.Do("SET", generateKey(result.Name), data)
-	return err
+	return result, nil
 }
+
+func (pm *PerformanceMonitor) GetHealthTaskResult() (pkg.HealthTaskResult, error) {
+	report, err := pm.get(healthCheckTaskName)
+	if err != nil {
+		return pkg.HealthTaskResult{}, errors.Wrap(err, "failed to get health check task result")
+	}
+
+	var result pkg.HealthTaskResult
+	if err := json.Unmarshal(report, &result); err != nil {
+		return pkg.HealthTaskResult{}, errors.Wrap(err, "failed to unmarshal health check task result")
+	}
+	return result, nil
+}
+
+func (pm *PerformanceMonitor) GetPublicIpTaskResult() (pkg.PublicIpTaskResult, error) {
+	report, err := pm.get(publicIpTaskName)
+	if err != nil {
+		return pkg.PublicIpTaskResult{}, errors.Wrap(err, "failed to get public IP task result")
+	}
+
+	var result pkg.PublicIpTaskResult
+	if err := json.Unmarshal(report, &result); err != nil {
+		return pkg.PublicIpTaskResult{}, errors.Wrap(err, "failed to unmarshal public IP task result")
+	}
+	return result, nil
+}
+
+func (pm *PerformanceMonitor) GetCpuBenchTaskResult() (pkg.CpuBenchTaskResult, error) {
+	var result pkg.CpuBenchTaskResult
+	report, err := pm.get(cpuBenchmarkTaskName)
+	if err != nil {
+		return pkg.CpuBenchTaskResult{}, errors.Wrap(err, "failed to get CPU benchmark task result")
+	}
+
+	if err := json.Unmarshal(report, &result); err != nil {
+		return pkg.CpuBenchTaskResult{}, errors.Wrap(err, "failed to unmarshal CPU benchmark task result")
+	}
+	return result, nil
+}
+
+func (pm *PerformanceMonitor) GetAllTaskResult() (pkg.AllTaskResult, error) {
+	var results pkg.AllTaskResult
+
+	cpuResult, err := pm.GetCpuBenchTaskResult()
+	if err != nil {
+		return pkg.AllTaskResult{}, errors.Wrap(err, "failed to get CPU benchmark result")
+	}
+	results.CpuBenchmark = cpuResult
+
+	healthResult, err := pm.GetHealthTaskResult()
+	if err != nil {
+		return pkg.AllTaskResult{}, errors.Wrap(err, "failed to get health check result")
+	}
+	results.HealthCheck = healthResult
+
+	iperfResult, err := pm.GetIperfTaskResult()
+	if err != nil {
+		return pkg.AllTaskResult{}, errors.Wrap(err, "failed to get iperf result")
+	}
+	results.Iperf = iperfResult
+
+	publicIpResult, err := pm.GetPublicIpTaskResult()
+	if err != nil {
+		return pkg.AllTaskResult{}, errors.Wrap(err, "failed to get public IP result")
+	}
+	results.PublicIp = publicIpResult
+
+	return results, nil
+}
+
+// DEPRECATED
 
 // get directly gets result for some key
 func get(conn redis.Conn, key string) (pkg.TaskResult, error) {
@@ -62,7 +118,7 @@ func get(conn redis.Conn, key string) (pkg.TaskResult, error) {
 func (pm *PerformanceMonitor) Get(taskName string) (pkg.TaskResult, error) {
 	conn := pm.pool.Get()
 	defer conn.Close()
-	return get(conn, generateKey(taskName))
+	return get(conn, generatePerfKey(taskName))
 }
 
 // GetAll gets the results for all the tests with moduleName as prefix
@@ -76,7 +132,7 @@ func (pm *PerformanceMonitor) GetAll() ([]pkg.TaskResult, error) {
 
 	cursor := 0
 	for {
-		values, err := redis.Values(conn.Do("SCAN", cursor, "MATCH", generateKey("*")))
+		values, err := redis.Values(conn.Do("SCAN", cursor, "MATCH", generatePerfKey("*")))
 		if err != nil {
 			return nil, err
 		}
@@ -100,16 +156,4 @@ func (pm *PerformanceMonitor) GetAll() ([]pkg.TaskResult, error) {
 
 	}
 	return res, nil
-}
-
-// exists check if a key exists
-func (pm *PerformanceMonitor) exists(key string) (bool, error) {
-	conn := pm.pool.Get()
-	defer conn.Close()
-
-	ok, err := redis.Bool(conn.Do("EXISTS", generateKey(key)))
-	if err != nil {
-		return false, errors.Wrapf(err, "error checking if key %s exists", generateKey(key))
-	}
-	return ok, nil
 }

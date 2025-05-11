@@ -1,0 +1,1093 @@
+{
+  "openrpc": "1.2.3",
+  "info": {
+    "title": "ZOS Mycelium API",
+    "description": "This is an API for interacting with the ZOS nodes over Mycelium.",
+    "version": "1.0.0"
+  },
+  "methods": [
+    {
+      "name": "system.version",
+      "params": [],
+      "result": {
+        "name": "Version",
+        "schema": {
+          "$ref": "#/components/schemas/Version"
+        }
+      }
+    },
+    {
+      "name": "system.hypervisor",
+      "params": [],
+      "result": {
+        "name": "Hypervisor",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "system.diagnostics",
+      "params": [],
+      "result": {
+        "name": "Diagnostics",
+        "schema": {
+          "$ref": "#/components/schemas/Diagnostics"
+        }
+      }
+    },
+    {
+      "name": "system.dmi",
+      "params": [],
+      "result": {
+        "name": "DMI",
+        "schema": {
+          "$ref": "#/components/schemas/DMI"
+        }
+      }
+    },
+    {
+      "name": "system.features",
+      "params": [],
+      "result": {
+        "name": "NodeFeatures",
+        "schema": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "name": "monitor.speed",
+      "params": [],
+      "result": {
+        "name": "SpeedResult",
+        "schema": {
+          "$ref": "#/components/schemas/IperfTaskResult"
+        }
+      }
+    },
+    {
+      "name": "monitor.health",
+      "params": [],
+      "result": {
+        "name": "HealthResult",
+        "schema": {
+          "$ref": "#/components/schemas/HealthTaskResult"
+        }
+      }
+    },
+    {
+      "name": "monitor.publicip",
+      "params": [],
+      "result": {
+        "name": "PublicIpResult",
+        "schema": {
+          "$ref": "#/components/schemas/PublicIpTaskResult"
+        }
+      }
+    },
+    {
+      "name": "monitor.benchmark",
+      "params": [],
+      "result": {
+        "name": "BenchmarkResult",
+        "schema": {
+          "$ref": "#/components/schemas/CpuBenchTaskResult"
+        }
+      }
+    },
+    {
+      "name": "monitor.all",
+      "params": [],
+      "result": {
+        "name": "AllTaskResults",
+        "schema": {
+          "$ref": "#/components/schemas/AllTaskResult"
+        }
+      }
+    },
+    {
+      "name": "network.wg_ports",
+      "params": [],
+      "result": {
+        "name": "WGPorts",
+        "schema": {
+          "$ref": "#/components/schemas/WGPorts"
+        }
+      }
+    },
+    {
+      "name": "network.public_config",
+      "params": [],
+      "result": {
+        "name": "PublicConfig",
+        "schema": {
+          "$ref": "#/components/schemas/PublicConfig"
+        }
+      }
+    },
+    {
+      "name": "network.has_ipv6",
+      "params": [],
+      "result": {
+        "name": "HasIpv6",
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "name": "network.public_ips",
+      "params": [],
+      "result": {
+        "name": "PublicIps",
+        "schema": {
+          "$ref": "#/components/schemas/Ips"
+        }
+      }
+    },
+    {
+      "name": "network.private_ips",
+      "params": [
+        {
+          "name": "network_name",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "PrivateIps",
+        "schema": {
+          "$ref": "#/components/schemas/Ips"
+        }
+      }
+    },
+    {
+      "name": "network.interfaces",
+      "params": [],
+      "result": {
+        "name": "Interface",
+        "schema": {
+          "$ref": "#/components/schemas/Interfaces"
+        }
+      }
+    },
+    {
+      "name": "network.set_public_nic",
+      "params": [
+        {
+          "name": "device",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "SetResult",
+        "schema": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "name": "network.get_public_nic",
+      "params": [],
+      "result": {
+        "name": "PublicNIC",
+        "schema": {
+          "$ref": "#/components/schemas/ExitDevice"
+        }
+      }
+    },
+    {
+      "name": "network.admin.interfaces",
+      "params": [],
+      "result": {
+        "name": "Interfaces",
+        "schema": {
+          "$ref": "#/components/schemas/Interfaces"
+        }
+      }
+    },
+    {
+      "name": "deployment.deploy",
+      "params": [
+        {
+          "name": "deployment",
+          "schema": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      ],
+      "result": {
+        "name": "createResult",
+        "schema": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "name": "deployment.update",
+      "params": [
+        {
+          "name": "deployment",
+          "schema": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      ],
+      "result": {
+        "name": "updateResult",
+        "schema": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "name": "deployment.get",
+      "params": [
+        {
+          "name": "contract_id",
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "Deployment",
+        "schema": {
+          "$ref": "#/components/schemas/Deployment"
+        }
+      }
+    },
+    {
+      "name": "deployment.list",
+      "params": [],
+      "result": {
+        "name": "Deployments",
+        "schema": {
+          "$ref": "#/components/schemas/Deployments"
+        }
+      }
+    },
+    {
+      "name": "deployment.changes",
+      "params": [
+        {
+          "name": "contract_id",
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "Workloads",
+        "schema": {
+          "$ref": "#/components/schemas/Workloads"
+        }
+      }
+    },
+    {
+      "name": "deployment.delete",
+      "params": [
+        {
+          "name": "contract_id",
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "deleteResult",
+        "schema": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "name": "gpu.list",
+      "params": [],
+      "result": {
+        "name": "Gpus",
+        "schema": {
+          "$ref": "#/components/schemas/GPUs"
+        }
+      }
+    },
+    {
+      "name": "storage.pools",
+      "params": [],
+      "result": {
+        "name": "PoolMetrics",
+        "schema": {
+          "$ref": "#/components/schemas/PoolMetricsResult"
+        }
+      }
+    },
+    {
+      "name": "statistics",
+      "params": [],
+      "result": {
+        "name": "Counters",
+        "schema": {
+          "$ref": "#/components/schemas/Counters"
+        }
+      }
+    },
+    {
+      "name": "vm.logs",
+      "params": [
+        {
+          "name": "file_name",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "LogContent",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "location.get",
+      "params": [],
+      "result": {
+        "name": "Location",
+        "schema": {
+          "$ref": "#/components/schemas/Location"
+        }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Version": {
+        "type": "object",
+        "properties": {
+          "zos": {
+            "type": "string"
+          },
+          "zinit": {
+            "type": "string"
+          }
+        }
+      },
+      "DMI": {
+        "type": "object",
+        "properties": {
+          "tooling": {
+            "$ref": "#/components/schemas/Tooling"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            }
+          }
+        }
+      },
+      "Tooling": {
+        "type": "object",
+        "properties": {
+          "aggregator": {
+            "type": "string"
+          },
+          "decoder": {
+            "type": "string"
+          }
+        }
+      },
+      "Section": {
+        "type": "object",
+        "properties": {
+          "handleline": {
+            "type": "string"
+          },
+          "typestr": {
+            "type": "string"
+          },
+          "typenum": {
+            "type": "integer"
+          },
+          "subsections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubSection"
+            }
+          }
+        }
+      },
+      "SubSection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyData"
+            }
+          }
+        }
+      },
+      "PropertyData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Diagnostics": {
+        "type": "object",
+        "properties": {
+          "cpu": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CPUInfo"
+            }
+          },
+          "memory": {
+            "$ref": "#/components/schemas/MemoryInfo"
+          },
+          "disks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiskInfo"
+            }
+          },
+          "processes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessesInfo"
+            }
+          }
+        }
+      },
+      "CPUInfo": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "number"
+          },
+          "system": {
+            "type": "number"
+          },
+          "idle": {
+            "type": "number"
+          }
+        }
+      },
+      "MemoryInfo": {
+        "type": "object",
+        "properties": {
+          "used": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "cached": {
+            "type": "integer"
+          },
+          "buffers": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "usedswap": {
+            "type": "integer"
+          },
+          "totalswap": {
+            "type": "integer"
+          }
+        }
+      },
+      "DiskInfo": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "used": {
+            "type": "integer"
+          },
+          "filesystem": {
+            "type": "string"
+          },
+          "mounted": {
+            "type": "string"
+          }
+        }
+      },
+      "ProcessesInfo": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "cpu": {
+            "type": "number"
+          },
+          "memory": {
+            "type": "number"
+          },
+          "rss": {
+            "type": "integer"
+          },
+          "vms": {
+            "type": "integer"
+          },
+          "swap": {
+            "type": "integer"
+          },
+          "time": {
+            "type": "integer"
+          }
+        }
+      },
+      "GPUs": {
+        "type": "object",
+        "properties": {
+          "gpus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GPU"
+            }
+          }
+        }
+      },
+      "GPU": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
+          "contract": {
+            "type": "integer"
+          }
+        }
+      },
+      "PoolMetricsResult": {
+        "type": "object",
+        "properties": {
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoolMetrics"
+            }
+          }
+        }
+      },
+      "PoolMetrics": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "used": {
+            "type": "integer"
+          },
+          "available": {
+            "type": "integer"
+          }
+        }
+      },
+      "Counters": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/UsersCounters"
+            }
+          }
+        }
+      },
+      "UsersCounters": {
+        "type": "object",
+        "properties": {
+          "deployments": {
+            "type": "integer"
+          },
+          "workloads": {
+            "type": "integer"
+          },
+          "last_deployment_timestamp": {
+            "type": "integer"
+          }
+        }
+      },
+      "CpuBenchTaskResult": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CPUBenchmarkResult"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CPUBenchmarkResult": {
+        "type": "object",
+        "properties": {
+          "single": {
+            "type": "number"
+          },
+          "multi": {
+            "type": "number"
+          },
+          "threads": {
+            "type": "integer"
+          },
+          "workloads": {
+            "type": "integer"
+          }
+        }
+      },
+      "HealthTaskResult": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HealthReport"
+            }
+          }
+        }
+      },
+      "HealthReport": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "test_name": {
+            "type": "string"
+          }
+        }
+      },
+      "IperfTaskResult": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IperfResult"
+            }
+          }
+        }
+      },
+      "IperfResult": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "integer"
+          },
+          "node_ip": {
+            "type": "string"
+          },
+          "test_type": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "cpu_report": {
+            "$ref": "#/components/schemas/CPUUtilizationPercent"
+          },
+          "upload_speed": {
+            "type": "number"
+          },
+          "download_speed": {
+            "type": "number"
+          }
+        }
+      },
+      "CPUUtilizationPercent": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "number"
+          },
+          "system": {
+            "type": "number"
+          },
+          "idle": {
+            "type": "number"
+          }
+        }
+      },
+      "PublicIpTaskResult": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IPReport"
+            }
+          }
+        }
+      },
+      "IPReport": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "AllTaskResult": {
+        "type": "object",
+        "properties": {
+          "health_check": {
+            "$ref": "#/components/schemas/HealthTaskResult"
+          },
+          "iperf": {
+            "$ref": "#/components/schemas/IperfTaskResult"
+          },
+          "public_ip": {
+            "$ref": "#/components/schemas/PublicIpTaskResult"
+          },
+          "cpu_benchmark": {
+            "$ref": "#/components/schemas/CpuBenchTaskResult"
+          }
+        }
+      },
+      "Interfaces": {
+        "type": "object",
+        "properties": {
+          "interfaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Interface"
+            }
+          }
+        }
+      },
+      "Interface": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mac": {
+            "type": "string"
+          }
+        }
+      },
+      "Ips": {
+        "type": "object",
+        "properties": {
+          "ips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WGPorts": {
+        "type": "object",
+        "properties": {
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "PublicConfig": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "ipv4": {
+            "type": "string"
+          },
+          "ipv6": {
+            "type": "string"
+          },
+          "gw4": {
+            "type": "string"
+          },
+          "gw6": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          }
+        }
+      },
+      "ExitDevice": {
+        "type": "object",
+        "properties": {
+          "is_single": {
+            "type": "boolean",
+            "description": "Set to true if br-pub is connected to zos bridge"
+          },
+          "is_dual": {
+            "type": "boolean",
+            "description": "Set to true if br-pub is connected to a physical nic"
+          },
+          "dual_interface": {
+            "type": "string",
+            "description": "Set to the physical interface name if is_dual is true"
+          }
+        }
+      },
+      "Deployments": {
+        "type": "object",
+        "properties": {
+          "deployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Deployment"
+            }
+          }
+        }
+      },
+      "Workloads": {
+        "type": "object",
+        "properties": {
+          "workloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workload"
+            }
+          }
+        }
+      },
+      "Workload": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/WorkloadResult"
+          }
+        }
+      },
+      "WorkloadResult": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "Deployment": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "twin_id": {
+            "type": "integer"
+          },
+          "contract_id": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "integer"
+          },
+          "workloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workload"
+            }
+          },
+          "signature_requirement": {
+            "$ref": "#/components/schemas/SignatureRequirement"
+          }
+        }
+      },
+      "SignatureRequirement": {
+        "type": "object",
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignatureRequest"
+            }
+          },
+          "weight_required": {
+            "type": "integer"
+          },
+          "signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Signature"
+            }
+          },
+          "signature_style": {
+            "type": "string"
+          }
+        }
+      },
+      "SignatureRequest": {
+        "type": "object",
+        "properties": {
+          "weight": {
+            "type": "integer"
+          },
+          "twin_id": {
+            "type": "integer"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Signature": {
+        "type": "object",
+        "properties": {
+          "twin_id": {
+            "type": "integer"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "signature_type": {
+            "type": "string"
+          }
+        }
+      },
+      "Location": {
+        "type": "object",
+        "properties": {
+          "country": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "continent": {
+            "type": "string"
+          },
+          "region_name": {
+            "type": "string"
+          },
+          "region_code": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
