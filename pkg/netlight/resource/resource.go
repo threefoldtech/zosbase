@@ -10,6 +10,7 @@ import (
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	mapset "github.com/deckarep/golang-set"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	localPkg "github.com/threefoldtech/zosbase/pkg"
@@ -174,6 +175,7 @@ func Create(name string, master *netlink.Bridge, ndmzIP *net.IPNet, ndmzGwIP *ne
 }
 
 func Delete(name string) error {
+	var errs error
 	nsName := fmt.Sprintf("n%s", name)
 	netNS, err := namespace.GetByName(nsName)
 	if errors.Is(err, os.ErrNotExist) {
@@ -185,21 +187,26 @@ func Delete(name string) error {
 	}
 
 	if err := destroyMycelium(netNS, zinit.Default()); err != nil {
-		return err
+		errs = multierror.Append(errs, fmt.Errorf("failed to destroy mycelium: %w", err))
 	}
 
 	if err := namespace.Delete(netNS); err != nil {
-		return err
+		errs = multierror.Append(errs, fmt.Errorf("failed to delete namespace: %w", err))
 	}
 
 	privateNetBr := fmt.Sprintf("r%s", name)
 	myBr := fmt.Sprintf("m%s", name)
 
 	if err := bridge.Delete(privateNetBr); err != nil {
-		return err
+		errs = multierror.Append(errs, fmt.Errorf("failed to delete private bridge: %w", err))
 	}
 
-	return bridge.Delete(myBr)
+	if err := bridge.Delete(myBr); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("failed to delete mycelium bridge: %w", err))
+	}
+
+	return errs
+
 }
 
 func setLinkAddr(name string, ip *net.IPNet) error {
