@@ -53,10 +53,10 @@ var NDMZGwIP = &net.IPNet{
 var NetworkSchemaLatestVersion = semver.MustParse("0.1.0")
 
 type networker struct {
-	ipamLease  string
-	networkDir string
-	portSet    *set.UIntSet
-	linkDir    string
+	ipamLease   string
+	networkDir  string
+	portSet     *set.UIntSet
+	linkDirPath string
 }
 
 var _ localPkg.NetworkerLight = (*networker)(nil)
@@ -69,17 +69,17 @@ func NewNetworker() (localPkg.NetworkerLight, error) {
 
 	ipamLease := filepath.Join(vd, ipamLeaseDir)
 	runtimeDir := filepath.Join(vd, networkDir)
-	linkDir := filepath.Join(runtimeDir, linkDir)
+	linkDirPath := filepath.Join(runtimeDir, linkDir)
 
-	if err := os.MkdirAll(linkDir, 0755); err != nil {
-		return nil, errors.Wrapf(err, "failed to create directory: '%s'", linkDir)
+	if err := os.MkdirAll(linkDirPath, 0755); err != nil {
+		return nil, errors.Wrapf(err, "failed to create directory: '%s'", linkDirPath)
 	}
 
 	n := networker{
-		ipamLease:  ipamLease,
-		networkDir: runtimeDir,
-		portSet:    set.NewInt(),
-		linkDir:    linkDir,
+		ipamLease:   ipamLease,
+		networkDir:  runtimeDir,
+		portSet:     set.NewInt(),
+		linkDirPath: linkDirPath,
 	}
 
 	if err := n.syncWGPorts(); err != nil {
@@ -620,6 +620,14 @@ func (n *networker) releasePort(port uint16) error {
 	return nil
 }
 
+// setupWireguard configures a Wireguard interface for the network resource
+// by checking for existing network configuration and releasing any previously reserved port.
+// reserves the specified Wireguard listen port.
+// checks if wireguard interface already exists in the namespace, if not it creates the interface in the host namespace.
+// If not, it creates a new Wireguard interface in the host namespace and moves it to the network resource
+// and configures the Wireguard interface with the private key, listen port, and peers using
+// This function handles both initial setup and reconfiguration of existing
+// Wireguard interfaces, ensuring proper port management and interface configuration.
 func (n networker) setupWireguard(name string, net zos.NetworkLight, netr *resource.Resource) error {
 	log.Debug().Msg("setting up wireguard")
 
@@ -687,7 +695,7 @@ func (n *networker) storeNetwork(name string, wl gridtypes.WorkloadID, network z
 	if err := enc.Encode(&network); err != nil {
 		return err
 	}
-	link := filepath.Join(n.linkDir, wl.String())
+	link := filepath.Join(n.linkDirPath, wl.String())
 	if err := os.Symlink(filepath.Join("../", name), link); err != nil && !os.IsExist(err) {
 		return errors.Wrap(err, "failed to create network symlink")
 	}
