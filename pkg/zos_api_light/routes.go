@@ -25,7 +25,7 @@ func (g *ZosAPI) SetupRoutes(router *peer.Router) {
 	storage.WithHandler("pools", g.storagePoolsHandler)
 
 	network := root.SubRoute("network")
-	// network.WithHandler("list_wg_ports", g.networkListWGPortsHandler)
+	network.WithHandler("list_wg_ports", g.networkListWGPortsHandler)
 	// network.WithHandler("public_config_get", g.networkPublicConfigGetHandler)
 	network.WithHandler("interfaces", g.networkInterfacesHandler)
 	network.WithHandler("has_ipv6", g.networkHasIPv6Handler)

@@ -29,6 +29,28 @@ type NetworkLight struct {
 	// if no mycelium configuration is provided, vms can't
 	// get mycelium IPs.
 	Mycelium Mycelium `json:"mycelium,omitempty"`
+
+	// wg config
+	// IP range of the network, must be an IPv4 /16
+	// for example a 10.1.0.0/16
+	NetworkIPRange gridtypes.IPNet `json:"ip_range"`
+
+	// The private wg key of this node (this peer) which is installing this
+	// network workload right now.
+	// This has to be filled in by the user (and not generated for example)
+	// because other peers need to be installed as well (with this peer public key)
+	// hence it's easier to configure everything one time at the user side and then
+	// apply everything on all nodes at once
+	WGPrivateKey string `json:"wireguard_private_key"`
+
+	// WGListenPort is the wireguard listen port on this node. this has
+	// to be filled in by the user for same reason as private key (other nodes need to know about it)
+	// To find a free port you have to ask the node first by a call over RMB about which ports are possible
+	// to use.
+	WGListenPort uint16 `json:"wireguard_listen_port"`
+
+	// Peers is a list of other peers in this network
+	Peers []Peer `json:"peers"`
 }
 
 // Valid checks if the network resource is valid.

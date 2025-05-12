@@ -3,6 +3,9 @@ package pkg
 import (
 	"context"
 	"net"
+
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 //go:generate mkdir -p stubs
@@ -10,7 +13,8 @@ import (
 
 // NetworkerLight is the interface for the network light module
 type NetworkerLight interface {
-	Create(name string, privateNet net.IPNet, seed []byte) error
+	// Create(name string, net zos.NetworkLight, seed []byte) error
+	Create(name string, wl gridtypes.WorkloadID, net zos.NetworkLight) error
 	Delete(name string) error
 	AttachPrivate(name, id string, vmIp net.IP) (device TapDevice, err error)
 	AttachMycelium(name, id string, seed []byte) (device TapDevice, err error)
@@ -21,10 +25,14 @@ type NetworkerLight interface {
 	Namespace(id string) string
 	Ready() error
 	ZOSAddresses(ctx context.Context) <-chan NetlinkAddresses
-	GetSubnet(networkID NetID) (net.IPNet, error)
 	SetPublicConfig(cfg PublicConfig) error
 	UnSetPublicConfig() error
 	LoadPublicConfig() (PublicConfig, error)
+
+	WireguardPorts() ([]uint, error)
+	GetDefaultGwIP(id NetID) (net.IP, error)
+	GetNet(id NetID) (net.IPNet, error)
+	GetSubnet(id NetID) (net.IPNet, error)
 }
 
 type TapDevice struct {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -19,7 +20,9 @@ import (
 	"github.com/threefoldtech/zosbase/pkg"
 	localPkg "github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/cache"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	"github.com/threefoldtech/zosbase/pkg/netbase/wireguard"
 	"github.com/threefoldtech/zosbase/pkg/netlight/bridge"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ipam"
@@ -27,6 +30,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/netlight/options"
 	"github.com/threefoldtech/zosbase/pkg/netlight/public"
 	"github.com/threefoldtech/zosbase/pkg/netlight/resource"
+	"github.com/threefoldtech/zosbase/pkg/set"
 	"github.com/threefoldtech/zosbase/pkg/versioned"
 	"github.com/vishvananda/netlink"
 )
@@ -38,6 +42,7 @@ const (
 	ipamLeaseDir  = "ndmz-lease"
 	DefaultBridge = "zos"
 	networkDir    = "networks"
+	linkDir       = "link"
 )
 
 var NDMZGwIP = &net.IPNet{
@@ -48,8 +53,10 @@ var NDMZGwIP = &net.IPNet{
 var NetworkSchemaLatestVersion = semver.MustParse("0.1.0")
 
 type networker struct {
-	ipamLease  string
-	networkDir string
+	ipamLease   string
+	networkDir  string
+	portSet     *set.UIntSet
+	linkDirPath string
 }
 
 var _ localPkg.NetworkerLight = (*networker)(nil)
@@ -62,14 +69,30 @@ func NewNetworker() (localPkg.NetworkerLight, error) {
 
 	ipamLease := filepath.Join(vd, ipamLeaseDir)
 	runtimeDir := filepath.Join(vd, networkDir)
+	linkDirPath := filepath.Join(runtimeDir, linkDir)
 
-	return &networker{
-		ipamLease:  ipamLease,
-		networkDir: runtimeDir,
-	}, nil
+	if err := os.MkdirAll(linkDirPath, 0755); err != nil {
+		return nil, errors.Wrapf(err, "failed to create directory: '%s'", linkDirPath)
+	}
+
+	n := networker{
+		ipamLease:   ipamLease,
+		networkDir:  runtimeDir,
+		portSet:     set.NewInt(),
+		linkDirPath: linkDirPath,
+	}
+
+	if err := n.syncWGPorts(); err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
 
-func (n *networker) Create(name string, privateNet net.IPNet, seed []byte) error {
+func (n *networker) Create(name string, wl gridtypes.WorkloadID, net zos.NetworkLight) error {
+	if err := n.storeNetwork(name, wl, net); err != nil {
+		return errors.Wrap(err, "failed to store network object")
+	}
+
 	b, err := bridge.Get(NDMZBridge)
 	if err != nil {
 		return err
@@ -79,8 +102,28 @@ func (n *networker) Create(name string, privateNet net.IPNet, seed []byte) error
 		return err
 	}
 
-	_, err = resource.Create(name, b, ip, NDMZGwIP, &privateNet, seed)
-	return err
+	cleanup := func() {
+		log.Error().Msg("clean up network resource")
+		if err := resource.Delete(name); err != nil {
+			log.Error().Err(err).Msg("error during deletion of network resource after failed deployment")
+		}
+		if err := n.releasePort(net.WGListenPort); err != nil {
+			log.Error().Err(err).Msg("release wireguard port failed")
+		}
+	}
+
+	defer func() {
+		if err != nil {
+			cleanup()
+		}
+	}()
+
+	netr, err := resource.Create(name, b, ip, NDMZGwIP, &net.Subnet.IPNet, net)
+	if err != nil {
+		return err
+	}
+
+	return n.setupWireguard(name, net, netr)
 }
 
 func (n *networker) Delete(name string) error {
@@ -88,7 +131,21 @@ func (n *networker) Delete(name string) error {
 		return err
 	}
 
-	return resource.Delete(name)
+	netNR, err := n.networkOf(pkg.NetID(name))
+	if err != nil {
+		return err
+	}
+
+	if err := n.releasePort(netNR.WGListenPort); err != nil {
+		log.Error().Err(err).Msg("release wireguard port failed")
+	}
+
+	if err := resource.Delete(name); err != nil {
+		return err
+	}
+
+	path := filepath.Join(n.networkDir, name)
+	return os.Remove(path)
 }
 
 func (n *networker) AttachPrivate(name, id string, vmIp net.IP) (device localPkg.TapDevice, err error) {
@@ -124,7 +181,7 @@ func (n *networker) Detach(id string) error {
 
 func (n *networker) AttachZDB(id string) (string, error) {
 	name := ifaceutil.DeviceNameFromInputBytes([]byte(id))
-	nsName := fmt.Sprintf("n%s", name)
+	nsName := n.Namespace(name)
 
 	ns, err := namespace.GetByName(nsName)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -150,14 +207,14 @@ func (n *networker) AttachZDB(id string) (string, error) {
 func (n *networker) GetSubnet(networkID pkg.NetID) (net.IPNet, error) {
 	localNR, err := n.networkOf(networkID)
 	if err != nil {
-		return net.IPNet{}, errors.Wrapf(err, "couldn't load network with id (%s)", networkID)
+		return net.IPNet{}, errors.Wrapf(err, "couldn't load network with name (%s)", networkID.String())
 	}
 
 	return localNR.Subnet.IPNet, nil
 }
 
-func (n *networker) networkOf(id zos.NetID) (nr pkg.Network, err error) {
-	path := filepath.Join(n.networkDir, string(id))
+func (n *networker) networkOf(id pkg.NetID) (nr pkg.Network, err error) {
+	path := filepath.Join(n.networkDir, id.String())
 	file, err := os.OpenFile(path, os.O_RDWR, 0660)
 	if err != nil {
 		return nr, err
@@ -461,4 +518,186 @@ func createNDMZBridge(name string, gw string) (*netlink.Bridge, error) {
 	}
 
 	return link.(*netlink.Bridge), nil
+}
+
+func (n *networker) WireguardPorts() ([]uint, error) {
+	return n.portSet.List()
+}
+
+// GetNet of a network identified by the network ID
+func (n *networker) GetNet(id pkg.NetID) (net.IPNet, error) {
+	localNR, err := n.networkOf(id)
+	if err != nil {
+		return net.IPNet{}, errors.Wrapf(err, "couldn't load network (%s)", id.String())
+	}
+
+	return localNR.NetworkIPRange.IPNet, nil
+}
+
+// GetDefaultGwIP returns the IPs of the default gateways inside the network
+// resource identified by the network ID on the local node, for IPv4
+func (n *networker) GetDefaultGwIP(id pkg.NetID) (net.IP, error) {
+	localNR, err := n.networkOf(id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't load network (%s)", id.String())
+	}
+
+	// only IP4 atm
+	ip := localNR.Subnet.IP.To4()
+	if ip == nil {
+		return nil, errors.New("nr subnet is not valid IPv4")
+	}
+
+	// defaut gw is currently implied to be at `x.x.x.1`
+	// also a subnet in a NR is assumed to be a /24
+	ip[len(ip)-1] = 1
+
+	return ip, nil
+}
+
+func (n *networker) syncWGPorts() error {
+	names, err := namespace.List("n")
+	if err != nil {
+		return err
+	}
+
+	readPort := func(name string) (int, error) {
+		netNS, err := namespace.GetByName(name)
+		if err != nil {
+			return 0, err
+		}
+		defer netNS.Close()
+
+		ifaceName := strings.Replace(name, "n", "w-", 1)
+
+		var port int
+		err = netNS.Do(func(_ ns.NetNS) error {
+			link, err := wireguard.GetByName(ifaceName)
+			if err != nil {
+				return err
+			}
+			d, err := link.Device()
+			if err != nil {
+				return err
+			}
+
+			port = d.ListenPort
+			return nil
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		return port, nil
+	}
+
+	for _, name := range names {
+		port, err := readPort(name)
+		if err != nil {
+			log.Error().Err(err).Str("namespace", name).Msgf("failed to read port for network namespace")
+			continue
+		}
+		// skip error cause we don't care if there are some duplicate at this point
+		_ = n.portSet.Add(uint(port))
+	}
+
+	return nil
+}
+
+func (n *networker) reservePort(port uint16) error {
+	log.Debug().Uint16("port", port).Msg("reserve wireguard port")
+	err := n.portSet.Add(uint(port))
+	if err != nil {
+		return errors.Wrap(err, "wireguard listen port already in use, pick another one")
+	}
+
+	return nil
+}
+
+func (n *networker) releasePort(port uint16) error {
+	log.Debug().Uint16("port", port).Msg("release wireguard port")
+	n.portSet.Remove(uint(port))
+	return nil
+}
+
+// setupWireguard configures a Wireguard interface for the network resource
+// by checking for existing network configuration and releasing any previously reserved port.
+// reserves the specified Wireguard listen port.
+// checks if wireguard interface already exists in the namespace, if not it creates the interface in the host namespace.
+// If not, it creates a new Wireguard interface in the host namespace and moves it to the network resource
+// and configures the Wireguard interface with the private key, listen port, and peers using
+// This function handles both initial setup and reconfiguration of existing
+// Wireguard interfaces, ensuring proper port management and interface configuration.
+func (n networker) setupWireguard(name string, net zos.NetworkLight, netr *resource.Resource) error {
+	log.Debug().Msg("setting up wireguard")
+
+	storedNR, err := n.networkOf(pkg.NetID(name))
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "failed to load previous network setup")
+	}
+
+	if err == nil {
+		if err := n.releasePort(storedNR.WGListenPort); err != nil {
+			return err
+		}
+	}
+
+	if err := n.reservePort(net.WGListenPort); err != nil {
+		return err
+	}
+
+	wgName, err := netr.WGName()
+	if err != nil {
+		return errors.Wrap(err, "failed to get wg interface name for network resource")
+	}
+
+	exists, err := netr.HasWireguard()
+	if err != nil {
+		return errors.Wrap(err, "failed to check if network resource has wireguard setup")
+	}
+
+	if !exists {
+		var wg *wireguard.Wireguard
+		wg, err = wireguard.New(wgName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create wg interface for network resource '%s'", name)
+		}
+		if err = netr.SetWireguard(wg); err != nil {
+			return errors.Wrap(err, "failed to setup wireguard interface for network resource")
+		}
+	}
+
+	if len(net.WGPrivateKey) == 0 {
+		return n.releasePort(net.WGListenPort)
+	}
+
+	if err = netr.ConfigureWG(net.WGPrivateKey); err != nil {
+		return errors.Wrap(err, "failed to configure network resource")
+	}
+	return nil
+}
+
+func (n *networker) storeNetwork(name string, wl gridtypes.WorkloadID, network zos.NetworkLight) error {
+	// map the network ID to the network namespace
+	path := filepath.Join(n.networkDir, name)
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer, err := versioned.NewWriter(file, NetworkSchemaLatestVersion)
+	if err != nil {
+		return err
+	}
+
+	enc := json.NewEncoder(writer)
+	if err := enc.Encode(&network); err != nil {
+		return err
+	}
+	link := filepath.Join(n.linkDirPath, wl.String())
+	if err := os.Symlink(filepath.Join("../", name), link); err != nil && !os.IsExist(err) {
+		return errors.Wrap(err, "failed to create network symlink")
+	}
+	return nil
 }
