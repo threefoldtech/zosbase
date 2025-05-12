@@ -30,9 +30,9 @@ type NetworkerLight interface {
 	LoadPublicConfig() (PublicConfig, error)
 
 	WireguardPorts() ([]uint, error)
-	GetDefaultGwIP(name string) (net.IP, error)
-	GetNet(name string) (net.IPNet, error)
-	GetSubnet(name string) (net.IPNet, error)
+	GetDefaultGwIP(id NetID) (net.IP, error)
+	GetNet(id NetID) (net.IPNet, error)
+	GetSubnet(id NetID) (net.IPNet, error)
 }
 
 type TapDevice struct {

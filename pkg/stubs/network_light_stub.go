@@ -126,7 +126,7 @@ func (s *NetworkerLightStub) Detach(ctx context.Context, arg0 string) (ret0 erro
 	return
 }
 
-func (s *NetworkerLightStub) GetDefaultGwIP(ctx context.Context, arg0 string) (ret0 []uint8, ret1 error) {
+func (s *NetworkerLightStub) GetDefaultGwIP(ctx context.Context, arg0 zos.NetID) (ret0 []uint8, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetDefaultGwIP", args...)
 	if err != nil {
@@ -143,7 +143,7 @@ func (s *NetworkerLightStub) GetDefaultGwIP(ctx context.Context, arg0 string) (r
 	return
 }
 
-func (s *NetworkerLightStub) GetNet(ctx context.Context, arg0 string) (ret0 net.IPNet, ret1 error) {
+func (s *NetworkerLightStub) GetNet(ctx context.Context, arg0 zos.NetID) (ret0 net.IPNet, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNet", args...)
 	if err != nil {
@@ -160,7 +160,7 @@ func (s *NetworkerLightStub) GetNet(ctx context.Context, arg0 string) (ret0 net.
 	return
 }
 
-func (s *NetworkerLightStub) GetSubnet(ctx context.Context, arg0 string) (ret0 net.IPNet, ret1 error) {
+func (s *NetworkerLightStub) GetSubnet(ctx context.Context, arg0 zos.NetID) (ret0 net.IPNet, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetSubnet", args...)
 	if err != nil {

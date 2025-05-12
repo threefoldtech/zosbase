@@ -131,7 +131,7 @@ func (n *networker) Delete(name string) error {
 		return err
 	}
 
-	netNR, err := n.networkOf(name)
+	netNR, err := n.networkOf(pkg.NetID(name))
 	if err != nil {
 		return err
 	}
@@ -204,17 +204,17 @@ func (n *networker) AttachZDB(id string) (string, error) {
 
 // GetSubnet of a local network resource identified by the network ID, ipv4 and ipv6
 // subnet respectively
-func (n *networker) GetSubnet(name string) (net.IPNet, error) {
-	localNR, err := n.networkOf(name)
+func (n *networker) GetSubnet(networkID pkg.NetID) (net.IPNet, error) {
+	localNR, err := n.networkOf(networkID)
 	if err != nil {
-		return net.IPNet{}, errors.Wrapf(err, "couldn't load network with name (%s)", name)
+		return net.IPNet{}, errors.Wrapf(err, "couldn't load network with name (%s)", networkID.String())
 	}
 
 	return localNR.Subnet.IPNet, nil
 }
 
-func (n *networker) networkOf(name string) (nr pkg.Network, err error) {
-	path := filepath.Join(n.networkDir, name)
+func (n *networker) networkOf(id pkg.NetID) (nr pkg.Network, err error) {
+	path := filepath.Join(n.networkDir, id.String())
 	file, err := os.OpenFile(path, os.O_RDWR, 0660)
 	if err != nil {
 		return nr, err
@@ -525,10 +525,10 @@ func (n *networker) WireguardPorts() ([]uint, error) {
 }
 
 // GetNet of a network identified by the network ID
-func (n *networker) GetNet(name string) (net.IPNet, error) {
-	localNR, err := n.networkOf(name)
+func (n *networker) GetNet(id pkg.NetID) (net.IPNet, error) {
+	localNR, err := n.networkOf(id)
 	if err != nil {
-		return net.IPNet{}, errors.Wrapf(err, "couldn't load network (%s)", name)
+		return net.IPNet{}, errors.Wrapf(err, "couldn't load network (%s)", id.String())
 	}
 
 	return localNR.NetworkIPRange.IPNet, nil
@@ -536,10 +536,10 @@ func (n *networker) GetNet(name string) (net.IPNet, error) {
 
 // GetDefaultGwIP returns the IPs of the default gateways inside the network
 // resource identified by the network ID on the local node, for IPv4
-func (n *networker) GetDefaultGwIP(name string) (net.IP, error) {
-	localNR, err := n.networkOf(name)
+func (n *networker) GetDefaultGwIP(id pkg.NetID) (net.IP, error) {
+	localNR, err := n.networkOf(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't load network (%s)", name)
+		return nil, errors.Wrapf(err, "couldn't load network (%s)", id.String())
 	}
 
 	// only IP4 atm
@@ -623,7 +623,7 @@ func (n *networker) releasePort(port uint16) error {
 func (n networker) setupWireguard(name string, net zos.NetworkLight, netr *resource.Resource) error {
 	log.Debug().Msg("setting up wireguard")
 
-	storedNR, err := n.networkOf(name)
+	storedNR, err := n.networkOf(pkg.NetID(name))
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "failed to load previous network setup")
 	}

@@ -201,9 +201,7 @@ func (p *Manager) newPrivNetworkInterface(ctx context.Context, dl gridtypes.Depl
 	network := localStubs.NewNetworkerLightStub(p.zbus)
 	netID := zos.NetworkID(dl.TwinID, inf.Network)
 
-	name := netID.String()
-
-	subnet, err := network.GetSubnet(ctx, name)
+	subnet, err := network.GetSubnet(ctx, netID)
 	if err != nil {
 		return pkg.VMIface{}, errors.Wrapf(err, "could not get network resource subnet")
 	}
@@ -222,7 +220,7 @@ func (p *Manager) newPrivNetworkInterface(ctx context.Context, dl gridtypes.Depl
 		return pkg.VMIface{}, fmt.Errorf("ip %s is reserved", inf.IP.String())
 	}
 
-	privNet, err := network.GetNet(ctx, name)
+	privNet, err := network.GetNet(ctx, netID)
 	if err != nil {
 		return pkg.VMIface{}, errors.Wrapf(err, "could not get network range")
 	}
@@ -232,7 +230,7 @@ func (p *Manager) newPrivNetworkInterface(ctx context.Context, dl gridtypes.Depl
 		Mask: subnet.Mask,
 	}
 
-	gw4, err := network.GetDefaultGwIP(ctx, name)
+	gw4, err := network.GetDefaultGwIP(ctx, netID)
 	if err != nil {
 		return pkg.VMIface{}, errors.Wrap(err, "could not get network resource default gateway")
 	}
