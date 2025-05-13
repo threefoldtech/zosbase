@@ -210,7 +210,7 @@ Shows information about all open connections in the node
 Where
 
 ```json
-Args {
+args {
     "twin_id": "uint32",
     "workload_id": "uint64",
 }
@@ -227,7 +227,7 @@ Stops a workload
 Where
 
 ```json
-Args {
+args {
     "twin_id": "uint32",
     "workload_id": "uint64",
 }
