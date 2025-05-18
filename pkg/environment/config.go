@@ -3,7 +3,6 @@ package environment
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -84,7 +83,9 @@ func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, er
 	}
 
 	defer func() {
-		_, _ = io.ReadAll(response.Body)
+		if response != nil && response.Body != nil {
+			response.Body.Close()
+		}
 	}()
 
 	if response.StatusCode != http.StatusOK {
