@@ -59,4 +59,5 @@ type GPUInfo struct {
 	Vendor   string `json:"vendor"`
 	Device   string `json:"device"`
 	Contract uint64 `json:"contract"`
+	Vram     uint64 `json:"vram"`
 }

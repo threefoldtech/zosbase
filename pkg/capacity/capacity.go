@@ -1,14 +1,18 @@
 package capacity
 
 import (
+	"encoding/xml"
+	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/shirou/gopsutil/host"
+	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/capacity/dmi"
 	"github.com/threefoldtech/zosbase/pkg/capacity/smartctl"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
@@ -181,4 +185,102 @@ func (r *ResourceOracle) GPUs() ([]PCI, error) {
 		return []PCI{}, nil
 	}
 	return ListPCI(GPU)
+}
+
+// normalizeBusID converts a bus ID from format "00000000:01:00.0" to "0000:01:00.0"
+func normalizeBusID(busID string) string {
+	parts := strings.Split(busID, ":")
+	if len(parts) != 3 {
+		return busID
+	}
+	domain := strings.TrimLeft(parts[0], "0")
+	if domain == "" {
+		domain = "0000"
+	}
+	domain = fmt.Sprintf("%0*s", 4, domain)
+	return fmt.Sprintf("%s:%s:%s", domain, parts[1], parts[2])
+}
+
+// DisplayNode represents a display device from lshw XML output
+type DisplayNode struct {
+	Class     string `xml:"class,attr"`
+	BusInfo   string `xml:"businfo"`
+	Product   string `xml:"product"`
+	Vendor    string `xml:"vendor"`
+	Resources struct {
+		Memory []struct {
+			Value string `xml:"value,attr"`
+		} `xml:"resource"`
+	} `xml:"resources"`
+}
+
+// DisplayList represents the root XML structure from lshw
+type DisplayList struct {
+	Nodes []DisplayNode `xml:"node"`
+}
+
+// GetGpuDevice gets the GPU information using lshw command
+func GetGpuDevice(p *PCI) (pkg.GPUInfo, error) {
+	cmd := exec.Command("lshw", "-C", "display", "-xml")
+	output, err := cmd.Output()
+	if err != nil {
+		return pkg.GPUInfo{}, fmt.Errorf("failed to run lshw command: %w", err)
+	}
+
+	var displayList DisplayList
+	err = xml.Unmarshal(output, &displayList)
+	if err != nil {
+		return pkg.GPUInfo{}, fmt.Errorf("failed to parse lshw XML output: %w", err)
+	}
+
+	for _, node := range displayList.Nodes {
+		if node.Class != "display" {
+			continue
+		}
+
+		busInfo := node.BusInfo
+		if !strings.HasPrefix(busInfo, "pci@") {
+			continue
+		}
+
+		busID := strings.TrimPrefix(busInfo, "pci@")
+		normalizedBusID := normalizeBusID(busID)
+
+		if normalizedBusID != p.Slot {
+			continue
+		}
+
+		var vram uint64 = 0
+		for _, resource := range node.Resources.Memory {
+			if strings.Contains(resource.Value, "-") {
+				parts := strings.Split(resource.Value, "-")
+				if len(parts) == 2 {
+					start := strings.TrimSpace(parts[0])
+					end := strings.TrimSpace(parts[1])
+					if startVal, err1 := strconv.ParseUint(start, 16, 64); err1 == nil {
+						if endVal, err2 := strconv.ParseUint(end, 16, 64); err2 == nil {
+							size := (endVal - startVal + 1) / (1024 * 1024)
+							if size > vram {
+								vram = size
+							}
+						}
+					}
+				}
+			}
+		}
+
+		vendor, device, ok := p.GetDevice()
+		if !ok {
+			return pkg.GPUInfo{}, fmt.Errorf("failed to get vendor and device info")
+		}
+
+		return pkg.GPUInfo{
+			ID:     p.ShortID(),
+			Vendor: vendor.Name,
+			Device: device.Name,
+			Vram:   vram,
+		}, nil
+	}
+
+	return pkg.GPUInfo{}, fmt.Errorf("gpu not found in lshw output")
 }
