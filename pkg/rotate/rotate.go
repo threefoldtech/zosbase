@@ -26,13 +26,11 @@ const (
 	suffix = ".0"
 )
 
-var (
-	defaultRotator = Rotator{
-		maxsize:  20 * Megabytes,
-		tailsize: 10 * Megabytes,
-		suffix:   suffix,
-	}
-)
+var defaultRotator = Rotator{
+	maxsize:  20 * Megabytes,
+	tailsize: 10 * Megabytes,
+	suffix:   suffix,
+}
 
 type Size int64
 
@@ -111,8 +109,8 @@ func (r *Rotator) Rotate(file string) error {
 	} else if err != nil {
 		return fmt.Errorf("failed to open file '%s': %w", file, err)
 	}
-
 	defer fd.Close()
+
 	stat, err := fd.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to get file stat: %w", err)
@@ -122,7 +120,7 @@ func (r *Rotator) Rotate(file string) error {
 		return nil
 	}
 
-	//otherwise we move seek to the end of the file
+	// otherwise we move seek to the end of the file
 	if _, err := fd.Seek(-int64(r.tailsize), 2); err != nil {
 		return fmt.Errorf("failed to seek to truncate position: %w", err)
 	}
@@ -132,6 +130,7 @@ func (r *Rotator) Rotate(file string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create tail file '%s': %w", tail, err)
 	}
+	defer tailFd.Close()
 
 	if _, err := io.Copy(tailFd, fd); err != nil {
 		return fmt.Errorf("failed to copy log tail: %w", err)

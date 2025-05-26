@@ -292,6 +292,8 @@ func (c *Client) Get(service string) (InitService, error) {
 	if err != nil {
 		return result, errors.Wrap(err, "couldn't open service file")
 	}
+	defer f.Close()
+
 	err = yaml.NewDecoder(f).Decode(&result)
 	if err != nil {
 		return result, errors.Wrap(err, "couldn't decode service file")
