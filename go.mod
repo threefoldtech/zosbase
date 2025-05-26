@@ -46,6 +46,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/threefoldtech/0-fs v1.3.1-0.20240424140157-b488dfedcc56
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2
+	github.com/threefoldtech/tfgrid-sdk-go/messenger v0.0.0-00010101000000-000000000000
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67
 	github.com/threefoldtech/zbus v1.0.1
 	github.com/tyler-smith/go-bip39 v1.1.0
@@ -180,3 +181,7 @@ require (
 )
 
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
+
+replace github.com/threefoldtech/tfchain/clients/tfchain-client-go => /home/omar/github.com/threefoldtech/tfchain/clients/tfchain-client-go
+
+replace github.com/threefoldtech/tfgrid-sdk-go/messenger => /home/omar/github.com/threefoldtech/tfgrid-sdk-go/messenger
