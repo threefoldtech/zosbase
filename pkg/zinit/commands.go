@@ -641,5 +641,5 @@ func (c *Client) Log(n int) (out []byte, err error) {
 
 // Restart restarts a service.
 func (c *Client) Restart(service string) error {
-	return c.cmd(fmt.Sprintf("restart %s", service), nil)
+	return exec.Command("zinit", "restart", service).Run()
 }
