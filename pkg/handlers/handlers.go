@@ -10,6 +10,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
+// TODO: review the api again, rename the pkg rpcapi
 type RpcHandler struct {
 	api *api.API
 }
