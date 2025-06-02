@@ -1,4 +1,4 @@
-package handlers
+package jsonrpc
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
-// TODO: review the api again, rename the pkg rpcapi
 type RpcHandler struct {
 	api *api.API
 }
@@ -43,20 +42,20 @@ func RegisterHandlers(s *messenger.JSONRPCServer, r *RpcHandler) {
 	s.RegisterHandler("network.interfaces", r.handleNetworkInterfaces)
 	s.RegisterHandler("network.set_public_nic", r.handleAdminSetPublicNIC)
 	s.RegisterHandler("network.get_public_nic", r.handleAdminGetPublicNIC)
-	// s.RegisterHandler("network.admin.interfaces", r.handleAdminInterfaces)
+	s.RegisterHandler("network.admin.interfaces", r.handleAdminInterfaces)
 
 	s.RegisterHandler("deployment.deploy", r.handleDeploymentDeploy)
 	s.RegisterHandler("deployment.update", r.handleDeploymentUpdate)
 	s.RegisterHandler("deployment.get", r.handleDeploymentGet)
 	s.RegisterHandler("deployment.list", r.handleDeploymentList)
 	s.RegisterHandler("deployment.changes", r.handleDeploymentChanges)
-	// s.RegisterHandler("deployment.delete", r.handleDeploymentDelete)
+	s.RegisterHandler("deployment.delete", r.handleDeploymentDelete)
 
 	s.RegisterHandler("gpu.list", r.handleGpuList)
 	s.RegisterHandler("storage.pools", r.handleStoragePools)
 	s.RegisterHandler("statistics", r.handleStatistics)
 	s.RegisterHandler("location.get", r.handleLocationGet)
-	// s.RegisterHandler("vm.logs", r.handleVmLogs)
+	s.RegisterHandler("vm.logs", r.handleVmLogs)
 
 }
 
