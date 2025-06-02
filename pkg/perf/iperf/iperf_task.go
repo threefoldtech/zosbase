@@ -29,7 +29,11 @@ const (
 )
 
 // IperfTest for iperf tcp/udp tests
-type IperfTest struct{}
+type IperfTest struct {
+	// Optional dependencies for testing
+	graphqlClient GraphQLClient
+	execWrapper   ExecWrapper
+}
 
 // IperfResult for iperf test results
 type IperfResult struct {
@@ -75,10 +79,18 @@ func (t *IperfTest) Jitter() uint32 {
 
 // Run runs the tcp test and returns the result
 func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
-	env := environment.MustGet()
-	g, err := graphql.NewGraphQl(env.GraphQL...)
-	if err != nil {
-		return nil, err
+	var g GraphQLClient
+	var err error
+
+	if t.graphqlClient != nil {
+		g = t.graphqlClient
+	} else {
+		env := environment.MustGet()
+		graphqlClient, err := graphql.NewGraphQl(env.GraphQL...)
+		if err != nil {
+			return nil, err
+		}
+		g = &graphqlClient
 	}
 
 	// get public up nodes
@@ -94,9 +106,17 @@ func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
 
 	nodes = append(nodes, freeFarmNodes...)
 
-	_, err = exec.LookPath("iperf")
-	if err != nil {
-		return nil, err
+	if t.execWrapper != nil {
+		execWrap := t.execWrapper
+		_, err = execWrap.LookPath("iperf")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err = exec.LookPath("iperf")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var results []IperfResult
@@ -150,9 +170,14 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 		opts = append(opts, "--length", "16B", "--udp")
 	}
 
+	execWrap := execWrapper
+	if t.execWrapper != nil {
+		execWrap = t.execWrapper
+	}
+
 	var report iperfCommandOutput
 	operation := func() error {
-		res := runIperfCommand(ctx, opts)
+		res := runIperfCommand(ctx, opts, execWrap)
 		if res.Error == errServerBusy {
 			return errors.New(errServerBusy)
 		}
@@ -196,8 +221,8 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 	return iperfResult
 }
 
-func runIperfCommand(ctx context.Context, opts []string) iperfCommandOutput {
-	output, err := exec.CommandContext(ctx, "iperf", opts...).CombinedOutput()
+func runIperfCommand(ctx context.Context, opts []string, execWrap ExecWrapper) iperfCommandOutput {
+	output, err := execWrap.CommandContext(ctx, "iperf", opts...).CombinedOutput()
 	exitErr := &exec.ExitError{}
 	if err != nil && !errors.As(err, &exitErr) {
 		log.Err(err).Msg("failed to run iperf")
