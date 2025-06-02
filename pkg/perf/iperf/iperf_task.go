@@ -82,7 +82,6 @@ func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
 	var g GraphQLClient
 	var err error
 
-	// Use injected GraphQL client if available, otherwise create a new one
 	if t.graphqlClient != nil {
 		g = t.graphqlClient
 	} else {
@@ -91,7 +90,7 @@ func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		g = NewGraphQLClientWrapper(graphqlClient)
+		g = &graphqlClient
 	}
 
 	// get public up nodes
@@ -107,15 +106,17 @@ func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
 
 	nodes = append(nodes, freeFarmNodes...)
 
-	// Use injected exec wrapper if available
-	execWrap := execWrapper
 	if t.execWrapper != nil {
-		execWrap = t.execWrapper
-	}
-
-	_, err = execWrap.LookPath("iperf")
-	if err != nil {
-		return nil, err
+		execWrap := t.execWrapper
+		_, err = execWrap.LookPath("iperf")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, err = exec.LookPath("iperf")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var results []IperfResult
@@ -169,7 +170,6 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 		opts = append(opts, "--length", "16B", "--udp")
 	}
 
-	// Use injected exec wrapper if available
 	execWrap := execWrapper
 	if t.execWrapper != nil {
 		execWrap = t.execWrapper
