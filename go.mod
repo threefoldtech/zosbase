@@ -181,7 +181,3 @@ require (
 )
 
 replace github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
-
-replace github.com/threefoldtech/tfchain/clients/tfchain-client-go => /home/omar/github.com/threefoldtech/tfchain/clients/tfchain-client-go
-
-replace github.com/threefoldtech/tfgrid-sdk-go/messenger => /home/omar/github.com/threefoldtech/tfgrid-sdk-go/messenger

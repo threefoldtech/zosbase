@@ -17,7 +17,6 @@ type NodeClient struct {
 	destination string
 }
 
-// TODO: paramter types in cleint/apirpc
 func NewNodeClient(msgr *messenger.Messenger, destination string) *NodeClient {
 	return &NodeClient{
 		rpcClient:   messenger.NewJSONRPCClient(msgr),
