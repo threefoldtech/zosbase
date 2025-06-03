@@ -153,10 +153,10 @@ func (c *NodeClient) GetNetworkPrivateIPs(ctx context.Context, networkName strin
 	return ips, nil
 }
 
-func (c *NodeClient) GetNetworkInterfaces(ctx context.Context) (pkg.Interfaces, error) {
-	var interfaces pkg.Interfaces
+func (c *NodeClient) GetNetworkInterfaces(ctx context.Context) ([]pkg.Interface, error) {
+	var interfaces []pkg.Interface
 	if err := c.rpcClient.Call(ctx, c.destination, "network.interfaces", nil, &interfaces); err != nil {
-		return pkg.Interfaces{}, err
+		return nil, err
 	}
 	return interfaces, nil
 }
