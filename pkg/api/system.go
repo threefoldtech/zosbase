@@ -27,6 +27,8 @@ func (a *API) SystemVersion(ctx context.Context) (Version, error) {
 	return version, nil
 }
 
+// TODO: we should provide a better parsing for this to sent over api
+// not all the fields are needed, and some of them are not even used
 func (a *API) SystemDMI(ctx context.Context) (dmi.DMI, error) {
 	dmi, err := a.oracle.DMI()
 	return *dmi, err

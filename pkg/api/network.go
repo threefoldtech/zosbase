@@ -53,23 +53,38 @@ func (a *API) NetworkListPrivateIPs(ctx context.Context, networkName string) ([]
 	return a.provisionStub.ListPrivateIPs(ctx, twinID, name)
 }
 
-func (a *API) NetworkInterfaces(ctx context.Context) (pkg.Interfaces, error) {
+// TODO: inner method should return an array directly (after dropping rmb)
+func (a *API) NetworkInterfaces(ctx context.Context) ([]pkg.Interface, error) {
 	if a.isLightMode() {
-		return a.networkerLightStub.Interfaces(ctx, "zos", "")
+		interfaces, err := a.networkerLightStub.Interfaces(ctx, "zos", "")
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert map to slice
+		result := make([]pkg.Interface, 0, len(interfaces.Interfaces))
+		for name, iface := range interfaces.Interfaces {
+			// Ensure the name is set correctly
+			iface.Name = name
+			result = append(result, iface)
+		}
+		return result, nil
 	}
 
-	type q struct {
+	ifaces := []struct {
 		inf    string
 		ns     string
 		rename string
+	}{
+		{"zos", "", "zos"},
+		{"nygg6", "ndmz", "ygg"},
 	}
-	result := pkg.Interfaces{
-		Interfaces: make(map[string]pkg.Interface),
-	}
-	for _, i := range []q{{"zos", "", "zos"}, {"nygg6", "ndmz", "ygg"}} {
+
+	result := []pkg.Interface{}
+	for _, i := range ifaces {
 		ips, mac, err := a.networkerStub.Addrs(ctx, i.inf, i.ns)
 		if err != nil {
-			return pkg.Interfaces{Interfaces: make(map[string]pkg.Interface)}, fmt.Errorf("failed to get ips for '%s' interface: %w", i.inf, err)
+			return nil, fmt.Errorf("failed to get ips for '%s' interface: %w", i.inf, err)
 		}
 
 		iface := pkg.Interface{
@@ -86,19 +101,43 @@ func (a *API) NetworkInterfaces(ctx context.Context) (pkg.Interfaces, error) {
 			iface.IPs = append(iface.IPs, ipNet)
 		}
 
-		result.Interfaces[i.rename] = iface
+		result = append(result, iface)
 	}
 
 	return result, nil
 }
 
-// all interfaces on the node
-func (a *API) AdminInterfaces(ctx context.Context) (pkg.Interfaces, error) {
+// TODO: combine NetworkInterfaces and AdminInterfaces into a single method
+func (a *API) AdminInterfaces(ctx context.Context) ([]pkg.Interface, error) {
 	if a.isLightMode() {
-		return a.networkerLightStub.Interfaces(ctx, "", "")
+		interfaces, err := a.networkerLightStub.Interfaces(ctx, "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert map to slice
+		result := make([]pkg.Interface, 0, len(interfaces.Interfaces))
+		for name, iface := range interfaces.Interfaces {
+			// Ensure the name is set correctly
+			iface.Name = name
+			result = append(result, iface)
+		}
+		return result, nil
 	}
 
-	return a.networkerStub.Interfaces(ctx, "", "")
+	interfaces, err := a.networkerStub.Interfaces(ctx, "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert map to slice
+	result := make([]pkg.Interface, 0, len(interfaces.Interfaces))
+	for name, iface := range interfaces.Interfaces {
+		// Ensure the name is set correctly
+		iface.Name = name
+		result = append(result, iface)
+	}
+	return result, nil
 }
 
 func (a *API) AdminSetPublicNIC(ctx context.Context, device string) error {

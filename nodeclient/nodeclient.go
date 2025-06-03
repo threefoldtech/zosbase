@@ -58,7 +58,7 @@ func (c *NodeClient) GetSystemDiagnostics(ctx context.Context) (diagnostics.Diag
 	return diag, nil
 }
 
-func (c *NodeClient) GetSystemNodeFeatures(ctx context.Context) ([]pkg.NodeFeature, error) {
+func (c *NodeClient) GetSystemFeatures(ctx context.Context) ([]pkg.NodeFeature, error) {
 	var features []pkg.NodeFeature
 	if err := c.rpcClient.Call(ctx, c.destination, "system.features", nil, &features); err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (c *NodeClient) GetSystemNodeFeatures(ctx context.Context) ([]pkg.NodeFeatu
 
 // Monitor/Performance Methods
 
-func (c *NodeClient) GetPerfSpeed(ctx context.Context) (pkg.IperfTaskResult, error) {
+func (c *NodeClient) GetMonitorSpeed(ctx context.Context) (pkg.IperfTaskResult, error) {
 	var result pkg.IperfTaskResult
 	if err := c.rpcClient.Call(ctx, c.destination, "monitor.speed", nil, &result); err != nil {
 		return pkg.IperfTaskResult{}, err
@@ -76,7 +76,7 @@ func (c *NodeClient) GetPerfSpeed(ctx context.Context) (pkg.IperfTaskResult, err
 	return result, nil
 }
 
-func (c *NodeClient) GetPerfHealth(ctx context.Context) (pkg.HealthTaskResult, error) {
+func (c *NodeClient) GetMonitorHealth(ctx context.Context) (pkg.HealthTaskResult, error) {
 	var result pkg.HealthTaskResult
 	if err := c.rpcClient.Call(ctx, c.destination, "monitor.health", nil, &result); err != nil {
 		return pkg.HealthTaskResult{}, err
@@ -84,7 +84,7 @@ func (c *NodeClient) GetPerfHealth(ctx context.Context) (pkg.HealthTaskResult, e
 	return result, nil
 }
 
-func (c *NodeClient) GetPerfPublicIp(ctx context.Context) (pkg.PublicIpTaskResult, error) {
+func (c *NodeClient) GetMonitorPublicIp(ctx context.Context) (pkg.PublicIpTaskResult, error) {
 	var result pkg.PublicIpTaskResult
 	if err := c.rpcClient.Call(ctx, c.destination, "monitor.publicip", nil, &result); err != nil {
 		return pkg.PublicIpTaskResult{}, err
@@ -92,7 +92,7 @@ func (c *NodeClient) GetPerfPublicIp(ctx context.Context) (pkg.PublicIpTaskResul
 	return result, nil
 }
 
-func (c *NodeClient) GetPerfBenchmark(ctx context.Context) (pkg.CpuBenchTaskResult, error) {
+func (c *NodeClient) GetMonitorBenchmark(ctx context.Context) (pkg.CpuBenchTaskResult, error) {
 	var result pkg.CpuBenchTaskResult
 	if err := c.rpcClient.Call(ctx, c.destination, "monitor.benchmark", nil, &result); err != nil {
 		return pkg.CpuBenchTaskResult{}, err
@@ -100,7 +100,7 @@ func (c *NodeClient) GetPerfBenchmark(ctx context.Context) (pkg.CpuBenchTaskResu
 	return result, nil
 }
 
-func (c *NodeClient) GetPerfAll(ctx context.Context) (pkg.AllTaskResult, error) {
+func (c *NodeClient) GetMonitorAll(ctx context.Context) (pkg.AllTaskResult, error) {
 	var result pkg.AllTaskResult
 	if err := c.rpcClient.Call(ctx, c.destination, "monitor.all", nil, &result); err != nil {
 		return pkg.AllTaskResult{}, err

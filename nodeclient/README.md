@@ -47,3 +47,7 @@ func main() {
     fmt.Printf("Found %d deployments\n", len(deployments))
 }
 ```
+
+## Generate client
+
+a node client can be generated in any language with proper tool or LLMs from the [openrpc.json](../openrpc.json) file

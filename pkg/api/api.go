@@ -56,7 +56,7 @@ func NewAPI(client zbus.Client, msgBrokerCon string, mode string) (*API, error) 
 		performanceMonitorStub: stubs.NewPerformanceMonitorStub(client),
 	}
 
-	if mode == lightMode {
+	if api.isLightMode() {
 		api.networkerLightStub = stubs.NewNetworkerLightStub(client)
 	} else {
 		api.networkerStub = stubs.NewNetworkerStub(client)
