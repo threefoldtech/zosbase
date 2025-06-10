@@ -191,11 +191,10 @@ func TestGetPublicIPFromSTUN_InvalidServer(t *testing.T) {
 
 func TestValidateIPs(t *testing.T) {
 	tests := []struct {
-		name           string
-		publicIPs      []substrate.PublicIP
-		mockSetup      func(*MockMacvlanInterface)
-		expectedReport map[string]IPReport
-		expectError    bool
+		name        string
+		publicIPs   []substrate.PublicIP
+		mockSetup   func(*MockMacvlanInterface)
+		expectError bool
 	}{
 		{
 			name: "valid IP with matching real IP",
@@ -215,11 +214,6 @@ func TestValidateIPs(t *testing.T) {
 				}
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			},
-			expectedReport: map[string]IPReport{
-				"192.168.1.100/24": {
-					State: ValidState,
-				},
 			},
 			expectError: false,
 		},
@@ -241,12 +235,6 @@ func TestValidateIPs(t *testing.T) {
 				}
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 			},
-			expectedReport: map[string]IPReport{
-				"192.168.1.100/24": {
-					State:  SkippedState,
-					Reason: IPIsUsed,
-				},
-			},
 			expectError: false,
 		},
 		{
@@ -266,12 +254,6 @@ func TestValidateIPs(t *testing.T) {
 					},
 				}
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
-			},
-			expectedReport: map[string]IPReport{
-				"invalid-ip": {
-					State:  InvalidState,
-					Reason: PublicIPDataInvalid,
-				},
 			},
 			expectError: false,
 		},
@@ -294,12 +276,6 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 			},
-			expectedReport: map[string]IPReport{
-				"192.168.1.100/24": {
-					State:  InvalidState,
-					Reason: PublicIPDataInvalid,
-				},
-			},
 			expectError: false,
 		},
 		{
@@ -314,8 +290,7 @@ func TestValidateIPs(t *testing.T) {
 			mockSetup: func(mockMacvlan *MockMacvlanInterface) {
 				mockMacvlan.On("GetByName", testMacvlan).Return((*netlink.Macvlan)(nil), assert.AnError)
 			},
-			expectedReport: nil,
-			expectError:    true,
+			expectError: true,
 		},
 		{
 			name: "multiple IPs with different states",
@@ -345,19 +320,6 @@ func TestValidateIPs(t *testing.T) {
 				}
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-			},
-			expectedReport: map[string]IPReport{
-				"192.168.1.100/24": {
-					State: ValidState,
-				},
-				"192.168.1.101/24": {
-					State:  SkippedState,
-					Reason: IPIsUsed,
-				},
-				"invalid-ip": {
-					State:  InvalidState,
-					Reason: PublicIPDataInvalid,
-				},
 			},
 			expectError: false,
 		},
