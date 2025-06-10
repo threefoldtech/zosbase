@@ -269,6 +269,10 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	if len(runmode) == 0 {
 		runmode = string(RunningMain)
 	}
+	config, err := GetConfig()
+	if err != nil {
+		return env, err
+	}
 
 	switch RunMode(runmode) {
 	case RunningDev:
@@ -287,18 +291,44 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		if len(substrate) > 0 {
 			env.SubstrateURL = substrate
 		}
+	} else if substrate := config.SubstrateURL; len(substrate) > 0 {
+		env.SubstrateURL = substrate
 	}
 
 	if relay, ok := params.Get("relay"); ok {
 		if len(relay) > 0 {
 			env.relaysURLs = relay
 		}
+	} else if relay := config.RelaysURLs; len(relay) > 0 {
+		env.relaysURLs = relay
 	}
 
 	if activation, ok := params.Get("activation"); ok {
 		if len(activation) > 0 {
 			env.ActivationURL = activation
 		}
+	} else if activation := config.ActivationURL; len(activation) > 0 {
+		env.ActivationURL = activation
+	}
+
+	if graphql := config.GraphQL; len(graphql) > 0 {
+		env.GraphQL = graphql
+	}
+
+	if flist := config.FlistURL; len(flist) > 0 {
+		env.FlistURL = flist
+	}
+
+	if bin := config.FlistURL; len(bin) > 0 {
+		env.FlistURL = bin
+	}
+
+	if kyc := config.FlistURL; len(kyc) > 0 {
+		env.FlistURL = kyc
+	}
+
+	if registrar := config.FlistURL; len(registrar) > 0 {
+		env.FlistURL = registrar
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {
