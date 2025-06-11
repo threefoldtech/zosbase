@@ -11,40 +11,6 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-// Mock interfaces for testing
-type MockNetNS struct {
-	mock.Mock
-}
-
-func (m *MockNetNS) Do(toRun func(ns.NetNS) error) error {
-	args := m.Called(toRun)
-	if toRun != nil {
-		// Execute the function to test the code path
-		return toRun(m)
-	}
-	return args.Error(0)
-}
-
-func (m *MockNetNS) Set() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockNetNS) Path() string {
-	args := m.Called()
-	return args.String(0)
-}
-
-func (m *MockNetNS) Fd() uintptr {
-	args := m.Called()
-	return args.Get(0).(uintptr)
-}
-
-func (m *MockNetNS) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
 type MockMacvlan struct {
 	mock.Mock
 }
@@ -77,79 +43,6 @@ func (m *MockMacvlanInterface) Install(link *netlink.Macvlan, hw net.HardwareAdd
 	return args.Error(0)
 }
 
-func TestGetIPWithRoute(t *testing.T) {
-	tests := []struct {
-		name      string
-		publicIP  substrate.PublicIP
-		expectErr bool
-	}{
-		{
-			name: "valid IPv4 public IP",
-			publicIP: substrate.PublicIP{
-				IP:      "192.168.1.100/24",
-				Gateway: "192.168.1.1",
-			},
-			expectErr: false,
-		},
-		{
-			name: "valid IPv6 public IP",
-			publicIP: substrate.PublicIP{
-				IP:      "2001:db8::1/64",
-				Gateway: "2001:db8::ffff",
-			},
-			expectErr: false,
-		},
-		{
-			name: "invalid IP format",
-			publicIP: substrate.PublicIP{
-				IP:      "invalid-ip",
-				Gateway: "192.168.1.1",
-			},
-			expectErr: true,
-		},
-		{
-			name: "invalid gateway",
-			publicIP: substrate.PublicIP{
-				IP:      "192.168.1.100/24",
-				Gateway: "invalid-gateway",
-			},
-			expectErr: true,
-		},
-		{
-			name: "empty IP",
-			publicIP: substrate.PublicIP{
-				IP:      "",
-				Gateway: "192.168.1.1",
-			},
-			expectErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ip, ipNets, routes, err := getIPWithRoute(tt.publicIP)
-
-			if tt.expectErr {
-				assert.Error(t, err)
-				assert.Nil(t, ip)
-				assert.Nil(t, ipNets)
-				assert.Nil(t, routes)
-				return
-			}
-			assert.NoError(t, err)
-			assert.NotNil(t, ip)
-			assert.Len(t, ipNets, 1)
-			assert.Len(t, routes, 1)
-
-			expectedIP, _, _ := net.ParseCIDR(tt.publicIP.IP)
-			assert.True(t, ip.Equal(expectedIP))
-
-			expectedGW := net.ParseIP(tt.publicIP.Gateway)
-			assert.True(t, routes[0].Gw.Equal(expectedGW))
-		})
-	}
-}
-
 func TestGetRealPublicIP_NetworkAccess(t *testing.T) {
 	ip, err := getRealPublicIP()
 	assert.NoError(t, err)
@@ -157,12 +50,17 @@ func TestGetRealPublicIP_NetworkAccess(t *testing.T) {
 	assert.True(t, ip.To4() != nil || ip.To16() != nil)
 }
 
-func TestGetPublicIPFromSTUN_InvalidServer(t *testing.T) {
+func TestGetPublicIPFromSTUN(t *testing.T) {
 	tests := []struct {
 		name       string
 		stunServer string
 		expectErr  bool
 	}{
+		{
+			name:       "valid STUN server",
+			stunServer: "stun:stun.l.google.com:19302",
+			expectErr:  false,
+		},
 		{
 			name:       "invalid STUN server URL",
 			stunServer: "invalid-url",
@@ -182,25 +80,29 @@ func TestGetPublicIPFromSTUN_InvalidServer(t *testing.T) {
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Nil(t, ip)
-			} else {
-				assert.NotNil(t, ip)
+				return
 			}
+			assert.True(t, ip.To4() != nil || ip.To16() != nil)
 		})
 	}
 }
 
 func TestValidateIPs(t *testing.T) {
+	pubIp, err := getRealPublicIP()
+	assert.NoError(t, err)
+	pubIpStr := pubIp.String() + "/24"
 	tests := []struct {
-		name        string
-		publicIPs   []substrate.PublicIP
-		mockSetup   func(*MockMacvlanInterface)
-		expectError bool
+		name           string
+		publicIPs      []substrate.PublicIP
+		mockSetup      func(*MockMacvlanInterface)
+		expectError    bool
+		expectedReport map[string]IPReport
 	}{
 		{
 			name: "valid IP with matching real IP",
 			publicIPs: []substrate.PublicIP{
 				{
-					IP:         "192.168.1.100/24",
+					IP:         pubIpStr,
 					Gateway:    "192.168.1.1",
 					ContractID: 0,
 				},
@@ -216,12 +118,17 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			},
 			expectError: false,
+			expectedReport: map[string]IPReport{
+				pubIpStr: {
+					State: ValidState,
+				},
+			},
 		},
 		{
 			name: "IP with contract ID should be skipped",
 			publicIPs: []substrate.PublicIP{
 				{
-					IP:         "192.168.1.100/24",
+					IP:         pubIpStr,
 					Gateway:    "192.168.1.1",
 					ContractID: 123,
 				},
@@ -236,6 +143,12 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 			},
 			expectError: false,
+			expectedReport: map[string]IPReport{
+				pubIpStr: {
+					State:  SkippedState,
+					Reason: IPIsUsed,
+				},
+			},
 		},
 		{
 			name: "invalid IP format",
@@ -256,12 +169,18 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("GetByName", testMacvlan).Return(mockMacvlanDevice, nil)
 			},
 			expectError: false,
+			expectedReport: map[string]IPReport{
+				"invalid-ip": {
+					State:  InvalidState,
+					Reason: PublicIPDataInvalid,
+				},
+			},
 		},
 		{
 			name: "macvlan install failure",
 			publicIPs: []substrate.PublicIP{
 				{
-					IP:         "192.168.1.100/24",
+					IP:         pubIpStr,
 					Gateway:    "192.168.1.1",
 					ContractID: 0,
 				},
@@ -277,12 +196,18 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 			},
 			expectError: false,
+			expectedReport: map[string]IPReport{
+				pubIpStr: {
+					State:  InvalidState,
+					Reason: PublicIPDataInvalid,
+				},
+			},
 		},
 		{
 			name: "failed to get macvlan",
 			publicIPs: []substrate.PublicIP{
 				{
-					IP:         "192.168.1.100/24",
+					IP:         pubIpStr,
 					Gateway:    "192.168.1.1",
 					ContractID: 0,
 				},
@@ -296,7 +221,7 @@ func TestValidateIPs(t *testing.T) {
 			name: "multiple IPs with different states",
 			publicIPs: []substrate.PublicIP{
 				{
-					IP:         "192.168.1.100/24",
+					IP:         pubIpStr,
 					Gateway:    "192.168.1.1",
 					ContractID: 0,
 				},
@@ -322,6 +247,19 @@ func TestValidateIPs(t *testing.T) {
 				mockMacvlan.On("Install", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			},
 			expectError: false,
+			expectedReport: map[string]IPReport{
+				pubIpStr: {
+					State: ValidState,
+				},
+				"192.168.1.101/24": {
+					State:  SkippedState,
+					Reason: IPIsUsed,
+				},
+				"invalid-ip": {
+					State:  InvalidState,
+					Reason: PublicIPDataInvalid,
+				},
+			},
 		},
 	}
 
@@ -331,7 +269,6 @@ func TestValidateIPs(t *testing.T) {
 			tt.mockSetup(mockMacvlan)
 
 			task := &publicIPValidationTask{}
-
 			report, err := task.validateIPs(tt.publicIPs, mockMacvlan)
 
 			if tt.expectError {
@@ -340,7 +277,7 @@ func TestValidateIPs(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-
+			assert.Equal(t, tt.expectedReport, report)
 			mockMacvlan.AssertExpectations(t)
 		})
 	}

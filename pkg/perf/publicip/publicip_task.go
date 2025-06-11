@@ -115,7 +115,6 @@ type MacvlanInterface interface {
 func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, macVlanMock MacvlanInterface) (map[string]IPReport, error) {
 	report := make(map[string]IPReport)
 
-	// Use the mock if provided, otherwise use the real macvlan package
 	var mv *netlink.Macvlan
 	var err error
 	if macVlanMock != nil {
@@ -127,9 +126,7 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, mac
 		return nil, fmt.Errorf("failed to get macvlan %s in namespace %s: %w", testMacvlan, testNamespace, err)
 	}
 
-	// Only call deleteAllIPsAndRoutes if not using a mock (to avoid network operations in tests)
 	if macVlanMock == nil {
-		// to delete any leftover IPs or routes
 		err = deleteAllIPsAndRoutes(mv)
 		if err != nil {
 			log.Err(err).Send()
@@ -158,7 +155,6 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, mac
 			continue
 		}
 
-		// Use the mock if provided, otherwise use the real macvlan package
 		if macVlanMock != nil {
 			err = macVlanMock.Install(mv, nil, ipNet, routes, nil)
 		} else {
@@ -191,7 +187,6 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, mac
 			}
 		}
 
-		// Only call deleteAllIPsAndRoutes if not using a mock (to avoid network operations in tests)
 		if macVlanMock == nil {
 			err = deleteAllIPsAndRoutes(mv)
 			if err != nil {
@@ -200,7 +195,6 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, mac
 		}
 	}
 
-	// Only call LinkSetDown if not using a mock (to avoid network operations in tests)
 	if macVlanMock == nil {
 		err = netlink.LinkSetDown(mv)
 		if err != nil {
