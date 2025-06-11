@@ -27,6 +27,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/kernel"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -430,11 +431,9 @@ func (f *flistModule) mountInNamespace(name, url string, opt pkg.MountOptions, n
 	sublog := log.With().Str("name", name).Str("url", url).Str("storage", opt.Storage).Logger()
 	sublog.Info().Msgf("request to mount flist: %+v", opt)
 
-	defer func() {
-		if err := f.cleanUnusedMounts(); err != nil {
-			log.Error().Err(err).Msg("failed to run clean up")
-		}
-	}()
+	if err := f.cleanUnusedMounts(); err != nil {
+		log.Error().Err(err).Msg("failed to run clean up")
+	}
 	// mount overlay
 	mountpoint, err := f.mountpath(name)
 	if err != nil {
@@ -599,7 +598,7 @@ func (f *flistModule) Unmount(name string) error {
 	}
 
 	if f.valid(mountpoint) == ErrAlreadyMounted {
-		if err := f.system.Unmount(mountpoint, 0); err != nil {
+		if err := f.system.Unmount(mountpoint, unix.MNT_DETACH|unix.MNT_FORCE); err != nil {
 			log.Error().Err(err).Str("path", mountpoint).Msg("fail to umount flist")
 		}
 	}
