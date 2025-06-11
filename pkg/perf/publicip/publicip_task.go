@@ -97,7 +97,7 @@ func (p *publicIPValidationTask) Run(ctx context.Context) (interface{}, error) {
 	}
 	var report map[string]IPReport
 	err = netNS.Do(func(_ ns.NetNS) error {
-		report, err = p.validateIPs(farm.PublicIPs)
+		report, err = p.validateIPs(farm.PublicIPs, nil)
 		return err
 	})
 	if err != nil {
@@ -106,16 +106,31 @@ func (p *publicIPValidationTask) Run(ctx context.Context) (interface{}, error) {
 	return report, nil
 }
 
-func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (map[string]IPReport, error) {
+// MacvlanInterface defines the interface for macvlan mocking in tests.
+type MacvlanInterface interface {
+	GetByName(name string) (*netlink.Macvlan, error)
+	Install(link *netlink.Macvlan, hw net.HardwareAddr, ips []*net.IPNet, routes []*netlink.Route, netns ns.NetNS) error
+}
+
+func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, macVlanMock MacvlanInterface) (map[string]IPReport, error) {
 	report := make(map[string]IPReport)
-	mv, err := macvlan.GetByName(testMacvlan)
+
+	var mv *netlink.Macvlan
+	var err error
+	if macVlanMock != nil {
+		mv, err = macVlanMock.GetByName(testMacvlan)
+	} else {
+		mv, err = macvlan.GetByName(testMacvlan)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get macvlan %s in namespace %s: %w", testMacvlan, testNamespace, err)
 	}
-	// to delete any leftover IPs or routes
-	err = deleteAllIPsAndRoutes(mv)
-	if err != nil {
-		log.Err(err).Send()
+
+	if macVlanMock == nil {
+		err = deleteAllIPsAndRoutes(mv)
+		if err != nil {
+			log.Err(err).Send()
+		}
 	}
 
 	for _, publicIP := range publicIPs {
@@ -139,7 +154,12 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (ma
 			log.Err(err).Send()
 			continue
 		}
-		err = macvlan.Install(mv, nil, ipNet, routes, nil)
+
+		if macVlanMock != nil {
+			err = macVlanMock.Install(mv, nil, ipNet, routes, nil)
+		} else {
+			err = macvlan.Install(mv, nil, ipNet, routes, nil)
+		}
 		if err != nil {
 			report[publicIP.IP] = IPReport{
 				State:  InvalidState,
@@ -167,14 +187,19 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (ma
 			}
 		}
 
-		err = deleteAllIPsAndRoutes(mv)
-		if err != nil {
-			log.Err(err).Send()
+		if macVlanMock == nil {
+			err = deleteAllIPsAndRoutes(mv)
+			if err != nil {
+				log.Err(err).Send()
+			}
 		}
 	}
-	err = netlink.LinkSetDown(mv)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set link down: %w", err)
+
+	if macVlanMock == nil {
+		err = netlink.LinkSetDown(mv)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set link down: %w", err)
+		}
 	}
 
 	return report, nil
