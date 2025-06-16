@@ -42,8 +42,8 @@ var (
 const (
 	service = "upgrader"
 
-	defaultHubStorage   = "zdb://hub.grid.tf:9900"
-	defaultHubv4Storage = "zdb://hub.grid.tf:9940"
+	defaultHubStorage   = "zdb://hub.threefold.me:9900"
+	defaultHubv4Storage = "zdb://v4.hub.threefold.me:9940"
 	defaultZinitSocket  = "/var/run/zinit.sock"
 
 	checkForUpdateEvery = 60 * time.Minute
