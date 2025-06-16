@@ -37,6 +37,7 @@ type Config struct {
 	KycURL        string   `json:"kyc_url"`
 	RegistrarURL  string   `json:"registrar_url"`
 	FlistURL      string   `json:"flist_url"`
+	HubURL        string   `json:"hub_url"`
 	BinRepo       string   `json:"bin_repo"`
 }
 

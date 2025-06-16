@@ -334,12 +334,16 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.FlistURL = flist
 	}
 
+	if hub := config.HubURL; len(hub) > 0 {
+		env.FlistURL = hub
+	}
+
 	if bin := config.BinRepo; len(bin) > 0 {
 		env.FlistURL = bin
 	}
 
 	if kyc := config.KycURL; len(kyc) > 0 {
-		env.FlistURL = kyc
+		env.KycURL = kyc
 	}
 
 	if registrar := config.RegistrarURL; len(registrar) > 0 {
