@@ -20,12 +20,12 @@ import (
 
 const (
 	// hubBaseURL base hub url
-	hubBaseURL   = "https://hub.grid.tf/"
-	hubv4BaseURL = "https://v4.hub.grid.tf/"
+	hubBaseURL   = "https://hub.threefold.me/"
+	hubv4BaseURL = "https://v4.hub.threefold.me"
 
 	// hubStorage default hub db
-	hubStorage   = "zdb://hub.grid.tf:9900"
-	hubv4Storage = "zdb://hub.grid.tf:9940"
+	hubStorage   = "zdb://hub.threefold.me:9900"
+	hubv4Storage = "zdb://hub.threefold.me:9940"
 
 	defaultHubCallTimeout = 20 * time.Second
 )

@@ -20,7 +20,7 @@ type Location struct {
 }
 
 var (
-	geoipURLs = []string{"https://geoip.grid.tf/", "https://02.geoip.grid.tf/", "https://03.geoip.grid.tf/"}
+	geoipURLs = []string{"https://geoip.threefold.me/", "https://geoip.grid.tf/", "https://02.geoip.grid.tf/", "https://03.geoip.grid.tf/"}
 
 	defaultHTTPClient = retryablehttp.NewClient()
 )

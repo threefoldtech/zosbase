@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"net/http"
 	"os"
 	"slices"
 	"strconv"
@@ -16,6 +17,10 @@ import (
 
 const (
 	baseExtendedURL = "https://raw.githubusercontent.com/threefoldtech/zos-config/main/"
+	hubURL          = "https://hub.threefold.me"
+	v4HubURL        = "https://v4.hub.threefold.me"
+	flistURL        = "redis://hub.threefold.me:9900"
+	v4FlistURL      = "redis://v4.hub.threefold.me:9940"
 )
 
 // PubMac specify how the mac address of the public nic
@@ -53,6 +58,7 @@ type Environment struct {
 	GraphQL       []string
 	KycURL        string
 	RegistrarURL  string
+	HubURL        string
 
 	// private vlan to join
 	// if set, zos will use this as its priv vlan
@@ -121,7 +127,8 @@ var (
 			"https://activation.dev.grid.tf/activation/activate",
 			"https://activation.02.dev.grid.tf/activation/activate",
 		},
-		FlistURL: "redis://hub.grid.tf:9900",
+		FlistURL: flistURL,
+		HubURL:   hubURL,
 		BinRepo:  "tf-zos-v3-bins.dev",
 		GraphQL: []string{
 			"https://graphql.dev.grid.tf/graphql",
@@ -145,7 +152,8 @@ var (
 			"https://activation.test.grid.tf/activation/activate",
 			"https://activation.02.test.grid.tf/activation/activate",
 		},
-		FlistURL: "redis://hub.grid.tf:9900",
+		FlistURL: flistURL,
+		HubURL:   hubURL,
 		BinRepo:  "tf-zos-v3-bins.test",
 		GraphQL: []string{
 			"https://graphql.test.grid.tf/graphql",
@@ -169,7 +177,8 @@ var (
 			"https://activation.qa.grid.tf/activation/activate",
 			"https://activation.02.qa.grid.tf/activation/activate",
 		},
-		FlistURL: "redis://hub.grid.tf:9900",
+		FlistURL: flistURL,
+		HubURL:   hubURL,
 		BinRepo:  "tf-zos-v3-bins.qanet",
 		GraphQL: []string{
 			"https://graphql.qa.grid.tf/graphql",
@@ -193,17 +202,20 @@ var (
 			// "wss://relay.02.grid.tf",
 		},
 		ActivationURL: []string{
+			"https://activation.grid.threefold.me/activation/activate",
 			"https://activation.grid.tf/activation/activate",
 			"https://activation.02.grid.tf/activation/activate",
 		},
-		FlistURL: "redis://hub.grid.tf:9900",
+		HubURL:   hubURL,
+		FlistURL: flistURL,
 		BinRepo:  "tf-zos-v3-bins",
 		GraphQL: []string{
+			"https://graphql.grid.threefold.me/graphql",
 			"https://graphql.grid.tf/graphql",
 			"https://graphql.02.grid.tf/graphql",
 		},
-		KycURL:       "https://kyc.grid.tf",
-		RegistrarURL: "https://registrar.prod4.grid.tf",
+		KycURL:       "https://kyc.threefold.me",
+		RegistrarURL: "https://registrar.prod4.threefold.me",
 	}
 )
 
@@ -269,10 +281,6 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	if len(runmode) == 0 {
 		runmode = string(RunningMain)
 	}
-	config, err := GetConfig()
-	if err != nil {
-		return env, err
-	}
 
 	switch RunMode(runmode) {
 	case RunningDev:
@@ -285,6 +293,13 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env = envProd
 	default:
 		env = envProd
+	}
+
+	config, err := getConfig(env.RunningMode, baseExtendedURL, http.DefaultClient)
+	if err != nil {
+		// maybe the node can't reach the internet right now
+		// this will enforce node to skip config
+		config = Config{}
 	}
 
 	if substrate, ok := params.Get("substrate"); ok {
@@ -408,9 +423,10 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.BinRepo = e
 	}
 
-	// if the node running v4 chage flisturl to use v4.hub.grid.tf
+	// if the node running v4 chage flisturl to use v4.hub.threefold.me
 	if params.IsV4() {
-		env.FlistURL = "redis://v4.hub.grid.tf:9940"
+		env.FlistURL = v4FlistURL
+		env.HubURL = v4HubURL
 	}
 
 	return env, nil

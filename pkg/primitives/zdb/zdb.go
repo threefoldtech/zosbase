@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/zbus"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
@@ -29,7 +31,8 @@ import (
 const (
 	// https://hub.grid.tf/api/flist/tf-autobuilder/threefoldtech-0-db-development.flist/light
 	// To get the latest symlink pointer
-	zdbFlistURL         = "https://hub.grid.tf/tf-autobuilder/threefoldtech-0-db-release-v2.0.8-55737c9202.flist"
+	flistRepo           = "tf-autobuilder"
+	flistName           = "threefoldtech-0-db-release-v2.0.8-55737c9202.flist"
 	zdbContainerNS      = "zdb"
 	zdbContainerDataMnt = "/zdb"
 	zdbPort             = 9900
@@ -160,7 +163,6 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 			if kernel.GetParams().IsLight() {
 				containerIPs, err = p.waitZDBIPsLight(ctx, container.Network.Namespace, container.CreatedAt)
 			} else {
-
 				containerIPs, err = p.waitZDBIPs(ctx, container.Network.Namespace, container.CreatedAt)
 			}
 			if err != nil {
@@ -202,7 +204,6 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 	if kernel.GetParams().IsLight() {
 		containerIPs, err = p.waitZDBIPsLight(ctx, cont.Network.Namespace, cont.CreatedAt)
 	} else {
-
 		containerIPs, err = p.waitZDBIPs(ctx, cont.Network.Namespace, cont.CreatedAt)
 	}
 	if err != nil {
@@ -255,6 +256,12 @@ func (p *Manager) zdbRootFS(ctx context.Context) (string, error) {
 	var err error
 	var rootFS string
 
+	env := environment.MustGet()
+	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to construct zdb flist url")
+	}
+
 	hash, err := flist.FlistHash(ctx, zdbFlistURL)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get flist hash")
@@ -282,6 +289,11 @@ func (p *Manager) createZdbContainer(ctx context.Context, device pkg.Device) err
 		slog = log.With().Str("containerID", string(name)).Logger()
 	)
 
+	env := environment.MustGet()
+	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	if err != nil {
+		return errors.Wrap(err, "failed to construct zdb flist url")
+	}
 	slog.Debug().Str("flist", zdbFlistURL).Msg("mounting flist")
 
 	rootFS, err := p.zdbRootFS(ctx)
@@ -369,6 +381,7 @@ func (p *Manager) dataMigration(ctx context.Context, volume string) {
 		}
 	}
 }
+
 func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device) error {
 	var (
 		name       = pkg.ContainerID(device.ID)
@@ -380,6 +393,11 @@ func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device
 		slog = log.With().Str("containerID", string(name)).Logger()
 	)
 
+	env := environment.MustGet()
+	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	if err != nil {
+		return errors.Wrap(err, "failed to construct zdb flist url")
+	}
 	slog.Debug().Str("flist", zdbFlistURL).Msg("mounting flist")
 
 	rootFS, err := p.zdbRootFS(ctx)
@@ -565,6 +583,7 @@ func (p *Manager) waitZDBIPs(ctx context.Context, namespace string, created time
 
 	return containerIPs, nil
 }
+
 func (p *Manager) waitZDBIPsLight(ctx context.Context, namespace string, created time.Time) ([]net.IP, error) {
 	// TODO: is there a need for retrying anymore??
 	var (
@@ -932,6 +951,12 @@ func (p *Manager) initialize(ctx context.Context) error {
 		flistmod = stubs.NewFlisterStub(p.zbus)
 	)
 	// fetching extected hash
+	env := environment.MustGet()
+	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	if err != nil {
+		return errors.Wrap(err, "failed to construct zdb flist url")
+	}
+
 	log.Debug().Msg("fetching flist hash")
 	expected, err := flistmod.FlistHash(ctx, zdbFlistURL)
 	if err != nil {
@@ -993,6 +1018,12 @@ func (p *Manager) initializeLight(ctx context.Context) error {
 		flistmod = stubs.NewFlisterStub(p.zbus)
 	)
 	// fetching extected hash
+	env := environment.MustGet()
+	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	if err != nil {
+		return errors.Wrap(err, "failed to construct zdb flist url")
+	}
+
 	log.Debug().Msg("fetching flist hash")
 	expected, err := flistmod.FlistHash(ctx, zdbFlistURL)
 	if err != nil {
@@ -1039,6 +1070,7 @@ func (p *Manager) initializeLight(ctx context.Context) error {
 	}
 	return nil
 }
+
 func (p *Manager) upgradeRuntime(ctx context.Context, expected string, container pkg.ContainerID) error {
 	var (
 		flistmod = stubs.NewFlisterStub(p.zbus)
