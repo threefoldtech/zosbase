@@ -339,7 +339,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	}
 
 	if bin := config.BinRepo; len(bin) > 0 {
-		env.FlistURL = bin
+		env.BinRepo = bin
 	}
 
 	if kyc := config.KycURL; len(kyc) > 0 {
@@ -347,7 +347,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	}
 
 	if registrar := config.RegistrarURL; len(registrar) > 0 {
-		env.FlistURL = registrar
+		env.RegistrarURL = registrar
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {
