@@ -248,6 +248,7 @@ GPU {
     "id": "string"
     "vendor": "string"
     "device": "string",
+    "vram":   "uint64",
     "contract": "uint64",
 }
 ```
