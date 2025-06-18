@@ -257,7 +257,7 @@ func (p *Manager) zdbRootFS(ctx context.Context) (string, error) {
 	var rootFS string
 
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to construct zdb flist url")
 	}

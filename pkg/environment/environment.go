@@ -335,7 +335,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	}
 
 	if hub := config.HubURL; len(hub) > 0 {
-		env.FlistURL = hub
+		env.HubURL = hub
 	}
 
 	if bin := config.BinRepo; len(bin) > 0 {

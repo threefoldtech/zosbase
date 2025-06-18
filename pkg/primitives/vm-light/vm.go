@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	cloudContainerName  = "cloud-container"
+	cloudContainerName = "cloud-container"
 )
 
 // ZMachine type
@@ -217,7 +217,7 @@ func (p *Manager) virtualMachineProvisionImpl(ctx context.Context, wl *gridtypes
 
 	// mount cloud-container flist (or reuse) which has kernel, initrd and also firmware
 	env := environment.MustGet()
-	cloudContainerFlist, err := url.JoinPath(env.FlistURL, "tf-autobuilder", "cloud-container-9dba60e.flist")
+	cloudContainerFlist, err := url.JoinPath(env.HubURL, "tf-autobuilder", "cloud-container-9dba60e.flist")
 	if err != nil {
 		return zos.ZMachineLightResult{}, errors.Wrap(err, "failed to construct cloud-container flist url")
 	}
