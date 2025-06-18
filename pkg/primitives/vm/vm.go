@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/primitives/vmgpu"
@@ -20,8 +22,7 @@ import (
 )
 
 const (
-	cloudContainerFlist = "https://hub.grid.tf/tf-autobuilder/cloud-container-9dba60e.flist"
-	cloudContainerName  = "cloud-container"
+	cloudContainerName = "cloud-container"
 )
 
 // ZMachine type
@@ -254,6 +255,12 @@ func (p *Manager) virtualMachineProvisionImpl(ctx context.Context, wl *gridtypes
 	log.Debug().Msgf("detected flist type: %+v", imageInfo)
 
 	// mount cloud-container flist (or reuse) which has kernel, initrd and also firmware
+	env := environment.MustGet()
+	cloudContainerFlist, err := url.JoinPath(env.HubURL, "tf-autobuilder", "cloud-container-9dba60e.flist")
+	if err != nil {
+		return zos.ZMachineResult{}, errors.Wrap(err, "failed to construct cloud-container flist url")
+	}
+
 	hash, err := flist.FlistHash(ctx, cloudContainerFlist)
 	if err != nil {
 		return zos.ZMachineResult{}, errors.Wrap(err, "failed to get cloud-container flist hash")
