@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/0-fs/meta"
 	"github.com/threefoldtech/zosbase/pkg/environment"
+	"github.com/threefoldtech/zosbase/pkg/kernel"
 )
 
 const (
@@ -97,11 +98,11 @@ func (h *HubClient) StorageURL() string {
 // StorageURL return hub storage url
 func (h *HubClient) HubBaseURL() string {
 	env := environment.MustGet()
-	return env.HubURL
-	// if kernel.GetParams().IsV4() {
-	// 	return hubv4BaseURL
-	// }
-	// return hubBaseURL
+	hubBaseURL := env.HubURL
+	if kernel.GetParams().IsV4() {
+		return env.V4HubURL
+	}
+	return hubBaseURL
 }
 
 // Info gets flist info from hub
@@ -302,9 +303,10 @@ func (b *Regular) Files(repo string) ([]FileInfo, error) {
 	}
 	env := environment.MustGet()
 	baseURL := env.HubURL
-	// if kernel.GetParams().IsV4() {
-	// 	baseURL = hubv4BaseURL
-	// }
+	if kernel.GetParams().IsV4() {
+		baseURL = env.V4HubURL
+	}
+
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		panic("invalid base url")

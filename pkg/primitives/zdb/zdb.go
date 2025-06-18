@@ -29,7 +29,6 @@ import (
 )
 
 const (
-	// https://hub.grid.tf/api/flist/tf-autobuilder/threefoldtech-0-db-development.flist/light
 	// To get the latest symlink pointer
 	flistRepo           = "tf-autobuilder"
 	flistName           = "threefoldtech-0-db-release-v2.0.8-55737c9202.flist"
@@ -290,7 +289,7 @@ func (p *Manager) createZdbContainer(ctx context.Context, device pkg.Device) err
 	)
 
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -394,7 +393,7 @@ func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device
 	)
 
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -952,7 +951,7 @@ func (p *Manager) initialize(ctx context.Context) error {
 	)
 	// fetching extected hash
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -1019,7 +1018,7 @@ func (p *Manager) initializeLight(ctx context.Context) error {
 	)
 	// fetching extected hash
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}

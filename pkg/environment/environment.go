@@ -56,6 +56,7 @@ type Environment struct {
 
 	FlistURL   string
 	HubURL     string
+	V4HubURL   string
 	HubStorage string
 	BinRepo    string
 
@@ -143,6 +144,7 @@ var (
 		},
 		FlistURL:   flistURL,
 		HubURL:     hubURL,
+		V4HubURL:   v4HubURL,
 		HubStorage: defaultHubStorage,
 		BinRepo:    "tf-zos-v3-bins.dev",
 		GraphQL: []string{
@@ -170,6 +172,7 @@ var (
 		},
 		FlistURL:   flistURL,
 		HubURL:     hubURL,
+		V4HubURL:   v4HubURL,
 		HubStorage: defaultHubStorage,
 		BinRepo:    "tf-zos-v3-bins.test",
 		GraphQL: []string{
@@ -197,6 +200,7 @@ var (
 		},
 		FlistURL:   flistURL,
 		HubURL:     hubURL,
+		V4HubURL:   v4HubURL,
 		HubStorage: defaultHubStorage,
 		BinRepo:    "tf-zos-v3-bins.qanet",
 		GraphQL: []string{
@@ -228,6 +232,7 @@ var (
 		},
 		FlistURL:   flistURL,
 		HubURL:     hubURL,
+		V4HubURL:   v4HubURL,
 		HubStorage: defaultHubStorage,
 		BinRepo:    "tf-zos-v3-bins",
 		GraphQL: []string{
@@ -368,6 +373,23 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.GeoipURLs = geoip
 	}
 
+	if flist := config.FlistURL; len(flist) > 0 {
+		env.FlistURL = flist
+	}
+
+	if storage := config.HubStorage; len(storage) > 0 {
+		env.HubStorage = storage
+	}
+
+	if hub := config.HubURL; len(hub) > 0 {
+		env.HubURL = hub
+	}
+
+	// some modules needs v3 hub url even if the node is of v4
+	if hub := config.V4HubURL; len(hub) > 0 {
+		env.V4HubURL = hub
+	}
+
 	// if the node running v4 chage urls to use v4 hub
 	if params.IsV4() {
 		env.FlistURL = v4FlistURL
@@ -375,15 +397,11 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 			env.FlistURL = flist
 		}
 
-		env.HubURL = v4HubURL
-		if hub := config.V4HubURL; len(hub) > 0 {
-			env.HubURL = hub
-		}
-
 		env.HubStorage = defaultV4HubStorage
 		if storage := config.V4HubStorage; len(storage) > 0 {
 			env.HubStorage = storage
 		}
+
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {
