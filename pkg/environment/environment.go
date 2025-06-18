@@ -17,11 +17,23 @@ import (
 
 const (
 	baseExtendedURL = "https://raw.githubusercontent.com/threefoldtech/zos-config/main/"
-	hubURL          = "https://hub.threefold.me"
-	v4HubURL        = "https://v4.hub.threefold.me"
-	flistURL        = "redis://hub.threefold.me:9900"
-	v4FlistURL      = "redis://v4.hub.threefold.me:9940"
+
+	hubURL   = "https://hub.threefold.me"
+	v4HubURL = "https://v4.hub.threefold.me"
+
+	flistURL   = "redis://hub.threefold.me:9900"
+	v4FlistURL = "redis://v4.hub.threefold.me:9940"
+
+	defaultHubStorage   = "zdb://hub.threefold.me:9900"
+	defaultV4HubStorage = "zdb://v4.hub.threefold.me:9940"
 )
+
+var defaultGeoipURLs = []string{
+	"https://geoip.threefold.me/",
+	"https://geoip.grid.tf/",
+	"https://02.geoip.grid.tf/",
+	"https://03.geoip.grid.tf/",
+}
 
 // PubMac specify how the mac address of the public nic
 // (in case of public-config) is calculated
@@ -42,8 +54,10 @@ const (
 type Environment struct {
 	RunningMode RunMode
 
-	FlistURL string
-	BinRepo  string
+	FlistURL   string
+	HubURL     string
+	HubStorage string
+	BinRepo    string
 
 	FarmID pkg.FarmID
 	Orphan bool
@@ -56,9 +70,9 @@ type Environment struct {
 	relaysURLs    []string
 	ActivationURL []string
 	GraphQL       []string
+	GeoipURLs     []string
 	KycURL        string
 	RegistrarURL  string
-	HubURL        string
 
 	// private vlan to join
 	// if set, zos will use this as its priv vlan
@@ -127,15 +141,17 @@ var (
 			"https://activation.dev.grid.tf/activation/activate",
 			"https://activation.02.dev.grid.tf/activation/activate",
 		},
-		FlistURL: flistURL,
-		HubURL:   hubURL,
-		BinRepo:  "tf-zos-v3-bins.dev",
+		FlistURL:   flistURL,
+		HubURL:     hubURL,
+		HubStorage: defaultHubStorage,
+		BinRepo:    "tf-zos-v3-bins.dev",
 		GraphQL: []string{
 			"https://graphql.dev.grid.tf/graphql",
 			"https://graphql.02.dev.grid.tf/graphql",
 		},
 		KycURL:       "https://kyc.dev.grid.tf",
 		RegistrarURL: "http://registrar.dev4.grid.tf",
+		GeoipURLs:    defaultGeoipURLs,
 	}
 
 	envTest = Environment{
@@ -152,15 +168,17 @@ var (
 			"https://activation.test.grid.tf/activation/activate",
 			"https://activation.02.test.grid.tf/activation/activate",
 		},
-		FlistURL: flistURL,
-		HubURL:   hubURL,
-		BinRepo:  "tf-zos-v3-bins.test",
+		FlistURL:   flistURL,
+		HubURL:     hubURL,
+		HubStorage: defaultHubStorage,
+		BinRepo:    "tf-zos-v3-bins.test",
 		GraphQL: []string{
 			"https://graphql.test.grid.tf/graphql",
 			"https://graphql.02.test.grid.tf/graphql",
 		},
 		KycURL:       "https://kyc.test.grid.tf",
 		RegistrarURL: "http://registrar.test4.grid.tf",
+		GeoipURLs:    defaultGeoipURLs,
 	}
 
 	envQA = Environment{
@@ -177,15 +195,17 @@ var (
 			"https://activation.qa.grid.tf/activation/activate",
 			"https://activation.02.qa.grid.tf/activation/activate",
 		},
-		FlistURL: flistURL,
-		HubURL:   hubURL,
-		BinRepo:  "tf-zos-v3-bins.qanet",
+		FlistURL:   flistURL,
+		HubURL:     hubURL,
+		HubStorage: defaultHubStorage,
+		BinRepo:    "tf-zos-v3-bins.qanet",
 		GraphQL: []string{
 			"https://graphql.qa.grid.tf/graphql",
 			"https://graphql.02.qa.grid.tf/graphql",
 		},
 		KycURL:       "https://kyc.qa.grid.tf",
 		RegistrarURL: "https://registrar.qa4.grid.tf",
+		GeoipURLs:    defaultGeoipURLs,
 	}
 
 	envProd = Environment{
@@ -206,9 +226,10 @@ var (
 			"https://activation.grid.tf/activation/activate",
 			"https://activation.02.grid.tf/activation/activate",
 		},
-		HubURL:   hubURL,
-		FlistURL: flistURL,
-		BinRepo:  "tf-zos-v3-bins",
+		FlistURL:   flistURL,
+		HubURL:     hubURL,
+		HubStorage: defaultHubStorage,
+		BinRepo:    "tf-zos-v3-bins",
 		GraphQL: []string{
 			"https://graphql.grid.threefold.me/graphql",
 			"https://graphql.grid.tf/graphql",
@@ -216,6 +237,7 @@ var (
 		},
 		KycURL:       "https://kyc.threefold.me",
 		RegistrarURL: "https://registrar.prod4.threefold.me",
+		GeoipURLs:    defaultGeoipURLs,
 	}
 )
 
@@ -330,14 +352,6 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.GraphQL = graphql
 	}
 
-	if flist := config.FlistURL; len(flist) > 0 {
-		env.FlistURL = flist
-	}
-
-	if hub := config.HubURL; len(hub) > 0 {
-		env.HubURL = hub
-	}
-
 	if bin := config.BinRepo; len(bin) > 0 {
 		env.BinRepo = bin
 	}
@@ -348,6 +362,28 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 
 	if registrar := config.RegistrarURL; len(registrar) > 0 {
 		env.RegistrarURL = registrar
+	}
+
+	if geoip := config.GeoipURLs; len(geoip) > 0 {
+		env.GeoipURLs = geoip
+	}
+
+	// if the node running v4 chage urls to use v4 hub
+	if params.IsV4() {
+		env.FlistURL = v4FlistURL
+		if flist := config.V4FlistURL; len(flist) > 0 {
+			env.FlistURL = flist
+		}
+
+		env.HubURL = v4HubURL
+		if hub := config.V4HubURL; len(hub) > 0 {
+			env.HubURL = hub
+		}
+
+		env.HubStorage = defaultV4HubStorage
+		if storage := config.V4HubStorage; len(storage) > 0 {
+			env.HubStorage = storage
+		}
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {
@@ -425,12 +461,6 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 
 	if e := os.Getenv("ZOS_BIN_REPO"); e != "" {
 		env.BinRepo = e
-	}
-
-	// if the node running v4 chage flisturl to use v4.hub.threefold.me
-	if params.IsV4() {
-		env.FlistURL = v4FlistURL
-		env.HubURL = v4HubURL
 	}
 
 	return env, nil
