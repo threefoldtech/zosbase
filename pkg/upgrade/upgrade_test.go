@@ -21,8 +21,7 @@ func TestUpgraderDownload(t *testing.T) {
 	}
 
 	env := environment.MustGet()
-	hubStorage := env.HubStorage
-	err := Storage(hubStorage)(up)
+	err := Storage(env.HubStorage)(up)
 	require.NoError(err)
 
 	const repo = "azmy.3bot"

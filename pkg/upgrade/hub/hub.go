@@ -98,11 +98,10 @@ func (h *HubClient) StorageURL() string {
 // StorageURL return hub storage url
 func (h *HubClient) HubBaseURL() string {
 	env := environment.MustGet()
-	hubBaseURL := env.HubURL
 	if kernel.GetParams().IsV4() {
 		return env.V4HubURL
 	}
-	return hubBaseURL
+	return env.HubURL
 }
 
 // Info gets flist info from hub
