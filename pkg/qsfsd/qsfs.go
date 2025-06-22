@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,13 +16,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 const (
-	qsfsFlist             = "https://hub.grid.tf/tf-autobuilder/qsfs-0.2.0-rc2.flist"
 	qsfsContainerNS       = "qsfs"
 	qsfsRootFsPropagation = pkg.RootFSPropagationSlave
 	zstorSocket           = "/var/run/zstor.sock"
@@ -122,6 +123,13 @@ func (q *QSFS) Mount(wlID string, cfg zos.QuantumSafeFS) (info pkg.QSFSInfo, err
 	if err != nil {
 		return info, errors.Wrap(err, "failed to prepare qsfs")
 	}
+
+	env := environment.MustGet()
+	qsfsFlist, err := url.JoinPath(env.HubURL, "tf-autobuilder", "qsfs-0.2.0-rc2.flist")
+	if err != nil {
+		err = errors.Wrap(err, "failed to construct url")
+		return
+	}
 	flistPath, err := flistd.Mount(ctx, wlID, qsfsFlist, pkg.MountOptions{
 		ReadOnly: false,
 		Limit:    cfg.Cache,
@@ -195,7 +203,6 @@ func (f *QSFS) waitUntilMounted(ctx context.Context, path string) error {
 			return fmt.Errorf("waiting for zdbfs mount %s timedout: context cancelled", path)
 		}
 	}
-
 }
 
 func (f *QSFS) isMounted(path string) (bool, error) {

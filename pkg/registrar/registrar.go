@@ -71,7 +71,7 @@ type Registrar struct {
 	mutex sync.RWMutex
 }
 
-func NewRegistrar(ctx context.Context, cl zbus.Client, env environment.Environment, info RegistrationInfo) *Registrar {
+func NewRegistrar(ctx context.Context, cl zbus.Client, info RegistrationInfo) *Registrar {
 	r := Registrar{
 		State{
 			0,
@@ -82,7 +82,7 @@ func NewRegistrar(ctx context.Context, cl zbus.Client, env environment.Environme
 		sync.RWMutex{},
 	}
 
-	go r.register(ctx, cl, env, info)
+	go r.register(ctx, cl, info)
 	return &r
 }
 
@@ -100,7 +100,7 @@ func (r *Registrar) getState() State {
 
 // register a node and then blocks forever watching the node account. It tries to re-activate the
 // account if needed
-func (r *Registrar) register(ctx context.Context, cl zbus.Client, env environment.Environment, info RegistrationInfo) {
+func (r *Registrar) register(ctx context.Context, cl zbus.Client, info RegistrationInfo) {
 	if app.CheckFlag(app.LimitedCache) {
 		r.setState(FailedState(errors.New("no disks")))
 		return
@@ -116,6 +116,7 @@ func (r *Registrar) register(ctx context.Context, cl zbus.Client, env environmen
 	bo := backoff.WithContext(exp, ctx)
 	register := func() {
 		err := backoff.RetryNotify(func() error {
+			env := environment.MustGet()
 			nodeID, twinID, err := r.registration(ctx, cl, env, info)
 			if err != nil {
 				r.setState(FailedState(err))
@@ -145,6 +146,7 @@ func (r *Registrar) register(ctx context.Context, cl zbus.Client, env environmen
 		select {
 		case <-ctx.Done():
 		case <-time.After(monitorAccountEvery):
+			env := environment.MustGet()
 			if err := r.reActivate(ctx, cl, env); err != nil {
 				log.Error().Err(err).Msg("failed to reactivate account")
 			}
