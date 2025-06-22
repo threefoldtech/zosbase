@@ -15,7 +15,7 @@ To run the upgrade module you first need to create a new upgrader instance with 
 |     Option     |                 Description                  |        Default        |
 | :------------: | :------------------------------------------: | :-------------------: |
 | `NoZosUpgrade` | enable or disable the update of zos binaries |  enabled by default   |
-|   `Storage`    |    overrides the default hub storage url     |     `hub.threefold.me`     |
+|   `Storage`    |    overrides the default hub storage url     |     `hub.grid.tf`     |
 |    `Zinit`     |      overrides the default zinit socket      | "/var/run/zinit.sock" |
 
 ```go
