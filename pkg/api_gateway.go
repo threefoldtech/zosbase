@@ -10,6 +10,7 @@ import (
 //go:generate zbusc -module api-gateway -version 0.0.1 -name api-gateway -package stubs github.com/threefoldtech/zosbase/pkg+SubstrateGateway stubs/api_gateway_stub.go
 
 type SubstrateGateway interface {
+	UpdateSubstrateGatewayConnection(manager substrate.Manager) (err error)
 	CreateNode(node substrate.Node) (uint32, error)
 	CreateTwin(relay string, pk []byte) (uint32, error)
 	EnsureAccount(activationURL []string, termsAndConditionsLink string, termsAndConditionsHash string) (info substrate.AccountInfo, err error)
