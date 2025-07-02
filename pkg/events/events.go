@@ -66,7 +66,8 @@ type Callback func(events *substrate.EventRecords)
 // Events processor receives all events starting from the given state
 // and for each set of events calls callback cb
 type Processor struct {
-	sub substrate.Manager
+	sub     substrate.Manager
+	updated bool
 
 	cb    Callback
 	state State
@@ -97,6 +98,7 @@ func (e *Processor) process(changes []types.StorageChangeSet, meta *types.Metada
 		}
 	}
 }
+
 func (e *Processor) eventsTo(cl *gsrpc.SubstrateAPI, meta *types.Metadata, block types.Header) error {
 	//
 	last, err := e.state.Get(cl)
@@ -120,7 +122,7 @@ func (e *Processor) eventsTo(cl *gsrpc.SubstrateAPI, meta *types.Metadata, block
 			return errors.Wrapf(err, "failed to get block hash '%d'", start)
 		}
 
-		//state.ErrUnknownBlock
+		// state.ErrUnknownBlock
 		changes, err := cl.RPC.State.QueryStorageAt([]types.StorageKey{key}, hash)
 		if err, ok := err.(rpc.Error); ok {
 			if err.ErrorCode() == -32000 { // block is too old not in archive anymore
@@ -169,6 +171,23 @@ func (e *Processor) subscribe(ctx context.Context) error {
 			if err := e.state.Set(block.Number); err != nil {
 				return errors.Wrap(err, "failed to commit last block number")
 			}
+
+		}
+
+		if e.updated {
+			e.updated = false
+			newCL, NewMeta, err := e.sub.Raw()
+			if err != nil {
+				log.Debug().Err(err).Msg("failed to update substrate connection")
+			}
+
+			// only update cl and mata after creating the new connection successfully
+			cl.Client.Close()
+			cl = newCL
+			meta = NewMeta
+
+			log.Debug().Msg("done updating sub connection for substrate events listener")
+
 		}
 	}
 }
@@ -183,4 +202,9 @@ func (e *Processor) Start(ctx context.Context) {
 		}
 		return
 	}
+}
+
+func (e *Processor) updateSubstrateConn(sub substrate.Manager) {
+	e.sub = sub
+	e.updated = true
 }
