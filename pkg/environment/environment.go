@@ -5,7 +5,6 @@ import (
 	"os"
 	"slices"
 	"strconv"
-	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -126,9 +125,9 @@ const (
 )
 
 var (
-	pool     substrate.Manager
-	subURLs  []string
-	poolOnce sync.Once
+	pool    substrate.Manager
+	subURLs []string
+	// poolOnce sync.Once
 
 	envDev = Environment{
 		RunningMode: RunningDev,
