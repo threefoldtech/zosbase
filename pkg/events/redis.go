@@ -29,11 +29,12 @@ const (
 )
 
 type RedisStream struct {
-	sub   substrate.Manager
-	state string
-	farm  pkg.FarmID
-	node  uint32
-	pool  *redis.Pool
+	sub       substrate.Manager
+	state     string
+	farm      pkg.FarmID
+	node      uint32
+	pool      *redis.Pool
+	processor *Processor
 }
 
 func NewRedisStream(sub substrate.Manager, address string, farm pkg.FarmID, node uint32, state string) (*RedisStream, error) {
@@ -49,6 +50,11 @@ func NewRedisStream(sub substrate.Manager, address string, farm pkg.FarmID, node
 		node:  node,
 		pool:  pool,
 	}, nil
+}
+
+func (r *RedisStream) UpdateSubstrateManager(sub substrate.Manager) {
+	r.sub = sub
+	r.processor.updateSubstrateConn(sub)
 }
 
 func (r *RedisStream) push(con redis.Conn, queue string, event interface{}) error {
@@ -139,11 +145,11 @@ func (r *RedisStream) process(events *substrate.EventRecords) {
 			log.Error().Err(err).Msg("failed to push event")
 		}
 	}
-
 }
 
 func (r *RedisStream) Start(ctx context.Context) {
 	ps := NewProcessor(r.sub, r.process, NewFileState(r.state))
+	r.processor = ps
 	ps.Start(ctx)
 }
 
@@ -184,7 +190,6 @@ func (r *RedisConsumer) pop(con redis.Conn, group, stream string) ([]payload, er
 		"BLOCK", 0,
 		"STREAMS", stream,
 		0))
-
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +207,6 @@ func (r *RedisConsumer) pop(con redis.Conn, group, stream string) ([]payload, er
 		"BLOCK", 3000,
 		"STREAMS", stream,
 		">"))
-
 	if err != nil {
 		return nil, err
 	}
