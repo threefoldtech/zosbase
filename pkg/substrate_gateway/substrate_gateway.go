@@ -31,6 +31,20 @@ func NewSubstrateGateway(manager substrate.Manager, identity substrate.Identity)
 	return gw, nil
 }
 
+// UpdateSubstrateGatewayConnection allow modules to update substrate manager so that the node can recover chain outage
+func (g *substrateGateway) UpdateSubstrateGatewayConnection(manager substrate.Manager) error {
+	sub, err := manager.Substrate()
+	if err != nil {
+		return err
+	}
+
+	// close the old connection
+	g.sub.Close()
+
+	g.sub = sub
+	return nil
+}
+
 func (g *substrateGateway) GetZosVersion() (string, error) {
 	log.Debug().Str("method", "GetZosVersion").Msg("method called")
 
@@ -207,6 +221,7 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 	defer g.mu.Unlock()
 	return g.sub.UpdateNodeUptimeV2(g.identity, uptime, timestampHint)
 }
+
 func (g *substrateGateway) GetTime() (time.Time, error) {
 	log.Trace().Str("method", "Time").Msg("method called")
 
