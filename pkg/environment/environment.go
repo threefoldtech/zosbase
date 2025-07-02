@@ -127,6 +127,7 @@ const (
 
 var (
 	pool     substrate.Manager
+	subURLs  []string
 	poolOnce sync.Once
 
 	envDev = Environment{
@@ -288,9 +289,16 @@ func GetSubstrate() (substrate.Manager, error) {
 		return nil, errors.Wrap(err, "failed to get boot environment")
 	}
 
-	poolOnce.Do(func() {
+	// if substrate url changed then update subURLs and update pool with new manager
+	if !slices.Equal(subURLs, env.SubstrateURL) {
+		log.Debug().Strs("substrate_urls", env.SubstrateURL).Msg("updating to sub manager with url")
+		subURLs = env.SubstrateURL
 		pool = substrate.NewManager(env.SubstrateURL...)
-	})
+	}
+
+	// poolOnce.Do(func() {
+	// 	pool = substrate.NewManager(env.SubstrateURL...)
+	// })
 
 	return pool, nil
 }
@@ -323,6 +331,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env = envProd
 	}
 
+	// update it to read local config file instead of trying to download config over and over again
 	config, err := getConfig(env.RunningMode, baseExtendedURL, http.DefaultClient)
 	if err != nil {
 		// maybe the node can't reach the internet right now
