@@ -39,14 +39,14 @@ type Config struct {
 	BinRepo       string   `json:"bin_repo"`
 	GeoipURLs     []string `json:"geoip_urls"`
 
-	FlistURL   string `json:"flist_url"`
-	V4FlistURL string `json:"v4_flist_url"`
+	// FlistURL   string `json:"flist_url"`
+	// V4FlistURL string `json:"v4_flist_url"`
 
 	HubURL   string `json:"hub_url"`
 	V4HubURL string `json:"v4_hub_url"`
 
-	HubStorage   string `json:"hub_storage"`
-	V4HubStorage string `json:"v4_hub_storage"`
+	// HubStorage   string `json:"hub_storage"`
+	// V4HubStorage string `json:"v4_hub_storage"`
 }
 
 // Merge, updates current config with cfg merging and override config

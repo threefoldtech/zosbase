@@ -368,14 +368,15 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	if geoip := config.GeoipURLs; len(geoip) > 0 {
 		env.GeoipURLs = geoip
 	}
-
-	if flist := config.FlistURL; len(flist) > 0 {
-		env.FlistURL = flist
-	}
-
-	if storage := config.HubStorage; len(storage) > 0 {
-		env.HubStorage = storage
-	}
+	// flist url and hub urls shouldn't listen to changes in config as long as we can't change it at run time.
+	// it would cause breakage in vmd that needs a reboot to be recovered.
+	// if flist := config.FlistURL; len(flist) > 0 {
+	// 	env.FlistURL = flist
+	// }
+	//
+	// if storage := config.HubStorage; len(storage) > 0 {
+	// 	env.HubStorage = storage
+	// }
 
 	if hub := config.HubURL; len(hub) > 0 {
 		env.HubURL = hub
@@ -389,14 +390,14 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	// if the node running v4 chage urls to use v4 hub
 	if params.IsV4() {
 		env.FlistURL = defaultV4FlistURL
-		if flist := config.V4FlistURL; len(flist) > 0 {
-			env.FlistURL = flist
-		}
+		// if flist := config.V4FlistURL; len(flist) > 0 {
+		// 	env.FlistURL = flist
+		// }
 
 		env.HubStorage = defaultV4HubStorage
-		if storage := config.V4HubStorage; len(storage) > 0 {
-			env.HubStorage = storage
-		}
+		// if storage := config.V4HubStorage; len(storage) > 0 {
+		// 	env.HubStorage = storage
+		// }
 
 	}
 
