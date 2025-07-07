@@ -127,7 +127,6 @@ const (
 var (
 	pool    substrate.Manager
 	subURLs []string
-	// poolOnce sync.Once
 
 	envDev = Environment{
 		RunningMode: RunningDev,
@@ -330,7 +329,6 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env = envProd
 	}
 
-	// update it to read local config file instead of trying to download config over and over again
 	config, err := getConfig(env.RunningMode, baseExtendedURL, http.DefaultClient)
 	if err != nil {
 		// maybe the node can't reach the internet right now

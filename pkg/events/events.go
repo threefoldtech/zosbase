@@ -179,6 +179,7 @@ func (e *Processor) subscribe(ctx context.Context) error {
 			newCL, NewMeta, err := e.sub.Raw()
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to update substrate connection")
+				continue
 			}
 
 			// only update cl and mata after creating the new connection successfully
