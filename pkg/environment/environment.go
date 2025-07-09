@@ -287,6 +287,9 @@ func GetSubstrate() (substrate.Manager, error) {
 		return nil, errors.Wrap(err, "failed to get boot environment")
 	}
 
+	slices.Sort(subURLs)
+	slices.Sort(env.SubstrateURL)
+
 	// if substrate url changed then update subURLs and update pool with new manager
 	if !slices.Equal(subURLs, env.SubstrateURL) {
 		log.Debug().Strs("substrate_urls", env.SubstrateURL).Msg("updating to sub manager with url")
