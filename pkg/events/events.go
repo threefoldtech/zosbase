@@ -171,23 +171,23 @@ func (e *Processor) subscribe(ctx context.Context) error {
 			if err := e.state.Set(block.Number); err != nil {
 				return errors.Wrap(err, "failed to commit last block number")
 			}
+		default:
+			if e.updated {
+				e.updated = false
+				newCL, NewMeta, err := e.sub.Raw()
+				if err != nil {
+					log.Debug().Err(err).Msg("failed to update substrate connection")
+					continue
+				}
 
-		}
+				// only update cl and mata after creating the new connection successfully
+				cl.Client.Close()
+				cl = newCL
+				meta = NewMeta
 
-		if e.updated {
-			e.updated = false
-			newCL, NewMeta, err := e.sub.Raw()
-			if err != nil {
-				log.Debug().Err(err).Msg("failed to update substrate connection")
-				continue
+				log.Debug().Msg("done updating sub connection for substrate events listener")
+
 			}
-
-			// only update cl and mata after creating the new connection successfully
-			cl.Client.Close()
-			cl = newCL
-			meta = NewMeta
-
-			log.Debug().Msg("done updating sub connection for substrate events listener")
 
 		}
 	}
