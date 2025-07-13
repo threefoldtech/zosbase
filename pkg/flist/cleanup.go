@@ -149,19 +149,20 @@ func (f *flistModule) cleanUnusedMounts() error {
 	return nil
 }
 
+// forceUnmountAndRemove tries to fix the clean up of broken mounts by attempting to unmount them first
 func (f *flistModule) forceUnmountAndRemove(path string) error {
-	// Try normal unmount first
+	// try normal unmount first
 	err := f.system.Unmount(path, 0)
 	if err != nil {
 		log.Warn().Err(err).Msgf("normal unmount failed for %s, trying lazy unmount", path)
 
-		// Try lazy unmount (MNT_DETACH)
-		err = syscall.Unmount(path, syscall.MNT_DETACH)
+		// try lazy unmount
+		err = f.system.Unmount(path, syscall.MNT_DETACH)
 		if err != nil {
 			return errors.Wrapf(err, "lazy unmount also failed for %s", path)
 		}
 	}
-	// Now try to remove the directory
+	// try to remove the path after unmount
 	if err := os.RemoveAll(path); err != nil {
 		return errors.Wrapf(err, "failed to remove mountpoint %s", path)
 	}
