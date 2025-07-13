@@ -140,7 +140,7 @@ func (f *flistModule) cleanUnusedMounts() error {
 
 		if err := os.Remove(path); err != nil {
 			log.Debug().Msgf("failed to remove path, trying to forcibly clean up : %+v", path)
-			if err := f.forceUnmountAndRemove(path); err != nil {
+			if err := f.forceRemoveBrokenMounts(path); err != nil {
 				log.Error().Err(err).Msgf("failed to clean mountpoint %s", path)
 			}
 		}
@@ -149,8 +149,8 @@ func (f *flistModule) cleanUnusedMounts() error {
 	return nil
 }
 
-// forceUnmountAndRemove tries to fix the clean up of broken mounts by attempting to unmount them first
-func (f *flistModule) forceUnmountAndRemove(path string) error {
+// forceRemoveBrokenMounts tries to force the clean up of broken mounts by attempting to unmount them first
+func (f *flistModule) forceRemoveBrokenMounts(path string) error {
 	// try normal unmount first
 	err := f.system.Unmount(path, 0)
 	if err != nil {
