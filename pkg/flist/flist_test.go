@@ -3,6 +3,7 @@ package flist
 import (
 	"bytes"
 	"context"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/zosbase/pkg"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
@@ -159,7 +161,10 @@ func TestMountUnmount(t *testing.T) {
 
 	sys.On("Mount", "overlay", filepath.Join(root, "mountpoint", name), "overlay", uintptr(syscall.MS_NOATIME), mock.Anything).Return(nil)
 
-	mnt, err := flister.mountInNamespace(name, "https://hub.grid.tf/thabet/redis.flist", pkg.DefaultMountOptions, "")
+	redisFlist, err := url.JoinPath(environment.MustGet().HubURL, "thabet", "redis.flist")
+	require.NoError(t, err)
+
+	mnt, err := flister.mountInNamespace(name, redisFlist, pkg.DefaultMountOptions, "")
 	require.NoError(t, err)
 
 	// Trick flister into thinking that 0-fs has exited
@@ -186,7 +191,10 @@ func TestMountUnmountRO(t *testing.T) {
 	flist := mock.Anything
 	sys.On("Mount", flist, filepath.Join(root, "mountpoint", name), "bind", uintptr(syscall.MS_BIND), "").Return(nil)
 
-	mnt, err := flister.mountInNamespace(name, "https://hub.grid.tf/thabet/redis.flist", pkg.ReadOnlyMountOptions, "")
+	redisFlist, err := url.JoinPath(environment.MustGet().HubURL, "thabet", "redis.flist")
+	require.NoError(t, err)
+
+	mnt, err := flister.mountInNamespace(name, redisFlist, pkg.ReadOnlyMountOptions, "")
 	require.NoError(t, err)
 
 	// Trick flister into thinking that 0-fs has exited
@@ -223,11 +231,14 @@ func TestIsolation(t *testing.T) {
 	name2 := "test2"
 	sys.On("Mount", "overlay", filepath.Join(root, "mountpoint", name2), "overlay", uintptr(syscall.MS_NOATIME), mock.Anything).Return(nil)
 
-	path1, err := flister.mountInNamespace(name1, "https://hub.grid.tf/thabet/redis.flist", pkg.DefaultMountOptions, "")
+	redisFlist, err := url.JoinPath(environment.MustGet().HubURL, "thabet", "redis.flist")
+	require.NoError(err)
+
+	path1, err := flister.mountInNamespace(name1, redisFlist, pkg.DefaultMountOptions, "")
 	require.NoError(err)
 	args1 := cmder.m
 
-	path2, err := flister.mountInNamespace(name2, "https://hub.grid.tf/thabet/redis.flist", pkg.DefaultMountOptions, "")
+	path2, err := flister.mountInNamespace(name2, redisFlist, pkg.DefaultMountOptions, "")
 	require.NoError(err)
 	args2 := cmder.m
 
@@ -246,14 +257,17 @@ func TestDownloadFlist(t *testing.T) {
 
 	f := newFlister(root, strg, cmder, sys)
 
-	hash1, path1, err := f.downloadFlist("https://hub.grid.tf/thabet/redis.flist", "")
+	redisFlist, err := url.JoinPath(environment.MustGet().HubURL, "thabet", "redis.flist")
+	require.NoError(err)
+
+	hash1, path1, err := f.downloadFlist(redisFlist, "")
 	require.NoError(err)
 
 	// now corrupt the flist
 	err = os.Truncate(string(path1), 512)
 	require.NoError(err)
 
-	hash2, path2, err := f.downloadFlist("https://hub.grid.tf/thabet/redis.flist", "")
+	hash2, path2, err := f.downloadFlist(redisFlist, "")
 	require.NoError(err)
 
 	require.EqualValues(path1, path2)

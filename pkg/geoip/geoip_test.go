@@ -6,6 +6,7 @@ import (
 
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
 func TestGetLocation(t *testing.T) {
@@ -21,7 +22,8 @@ func TestGetLocation(t *testing.T) {
 			City:      "Cairo",
 		}
 
-		for _, url := range geoipURLs {
+		env := environment.MustGet()
+		for _, url := range env.GeoipURLs {
 			httpmock.RegisterResponder("GET", url,
 				func(req *http.Request) (*http.Response, error) {
 					return httpmock.NewJsonResponse(200, l)
@@ -41,7 +43,8 @@ func TestGetLocation(t *testing.T) {
 	}
 
 	t.Run("test 404 status code", func(t *testing.T) {
-		for _, url := range geoipURLs {
+		env := environment.MustGet()
+		for _, url := range env.GeoipURLs {
 			httpmock.RegisterResponder("GET", url,
 				func(req *http.Request) (*http.Response, error) {
 					return httpmock.NewJsonResponse(404, l)
@@ -55,7 +58,8 @@ func TestGetLocation(t *testing.T) {
 	})
 
 	t.Run("test invalid response data", func(t *testing.T) {
-		for _, url := range geoipURLs {
+		env := environment.MustGet()
+		for _, url := range env.GeoipURLs {
 			httpmock.RegisterResponder("GET", url,
 				func(req *http.Request) (*http.Response, error) {
 					resp, err := httpmock.NewJsonResponse(200, "Cairo")
