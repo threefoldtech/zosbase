@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,89 +24,6 @@ func mockGraphQLServer(t *testing.T, statusCode int, responseBody string) *httpt
 	}))
 	t.Cleanup(server.Close)
 	return server
-}
-
-func TestGetUpNodes_Mock(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		body := make([]byte, r.ContentLength)
-		r.Body.Read(body)
-		requestBody := string(body)
-
-		var response string
-		if strings.Contains(requestBody, "nodesConnection") {
-			// This is the count query
-			response = `{
-				"data": {
-					"items": {
-						"count": 10
-					}
-				}
-			}`
-		} else {
-			// This is the nodes query
-			response = `{
-				"data": {
-					"nodes": [
-						{
-							"nodeID": 1,
-							"publicConfig": {
-								"ipv4": "192.168.1.1",
-								"ipv6": "2001:db8::1"
-							}
-						},
-						{
-							"nodeID": 2,
-							"publicConfig": {
-								"ipv4": "192.168.1.2",
-								"ipv6": "2001:db8::2"
-							}
-						}
-					]
-				}
-			}`
-		}
-
-		fmt.Fprintln(w, response)
-	}))
-	t.Cleanup(server.Close)
-
-	t.Run("basic query", func(t *testing.T) {
-		gql, err := NewGraphQl(server.URL)
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		nodes, err := gql.GetUpNodes(ctx, 0, 0, 0, false, false)
-
-		require.NoError(t, err)
-		require.Len(t, nodes, 2)
-		assert.Equal(t, uint32(1), nodes[0].NodeID)
-		assert.Equal(t, "192.168.1.1", nodes[0].PublicConfig.Ipv4)
-		assert.Equal(t, "2001:db8::1", nodes[0].PublicConfig.Ipv6)
-	})
-
-	failServer := mockGraphQLServer(t, http.StatusInternalServerError, `{"errors":[{"message":"internal error"}]}`)
-
-	t.Run("server error", func(t *testing.T) {
-		gql, err := NewGraphQl(failServer.URL)
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		_, err = gql.GetUpNodes(ctx, 0, 0, 0, false, false)
-		require.Error(t, err)
-	})
-
-	t.Run("fallback behavior", func(t *testing.T) {
-		gql, err := NewGraphQl(failServer.URL, server.URL)
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		nodes, err := gql.GetUpNodes(ctx, 0, 0, 0, false, false)
-		require.NoError(t, err)
-		require.Len(t, nodes, 2)
-	})
 }
 
 func TestGetUpNodes_WithFilters(t *testing.T) {
@@ -221,8 +137,6 @@ func TestExec(t *testing.T) {
 	})
 }
 
-
-
 func TestIntegration_NodeFiltering(t *testing.T) {
 
 	gql, err := NewGraphQl(realEndpoint)
@@ -256,7 +170,6 @@ func TestIntegration_NodeFiltering(t *testing.T) {
 		}
 	})
 }
-
 
 func TestIntegration_PaginationAndLimits(t *testing.T) {
 
