@@ -290,7 +290,7 @@ func (p *Manager) createZdbContainer(ctx context.Context, device pkg.Device) err
 	)
 
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -394,7 +394,7 @@ func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device
 	)
 
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -952,7 +952,7 @@ func (p *Manager) initialize(ctx context.Context) error {
 	)
 	// fetching extected hash
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
@@ -1019,7 +1019,7 @@ func (p *Manager) initializeLight(ctx context.Context) error {
 	)
 	// fetching extected hash
 	env := environment.MustGet()
-	zdbFlistURL, err := url.JoinPath(env.FlistURL, flistRepo, flistName)
+	zdbFlistURL, err := url.JoinPath(env.HubURL, flistRepo, flistName)
 	if err != nil {
 		return errors.Wrap(err, "failed to construct zdb flist url")
 	}
