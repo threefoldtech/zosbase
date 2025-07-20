@@ -121,7 +121,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.dev.grid.tf",
-			"wss://relay.02.dev.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.dev.grid.tf/activation/activate",
@@ -146,7 +145,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.test.grid.tf",
-			"wss://relay.02.test.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.test.grid.tf/activation/activate",
@@ -171,7 +169,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.qa.grid.tf",
-			"wss://relay.02.qa.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.qa.grid.tf/activation/activate",
@@ -199,7 +196,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.grid.tf",
-			// "wss://relay.02.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.grid.threefold.me/activation/activate",
