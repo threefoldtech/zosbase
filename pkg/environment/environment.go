@@ -326,13 +326,13 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.GraphQL = graphql
 	}
 
-	if flist := config.FlistURL; len(flist) > 0 {
-		env.FlistURL = flist[0]
-	}
+	// if flist := config.FlistURL; len(flist) > 0 {
+	// 	env.FlistURL = flist[0]
+	// }
 
-	if hub := config.HubURL; len(hub) > 0 {
-		env.HubURL = hub[0]
-	}
+	// if hub := config.HubURL; len(hub) > 0 {
+	// 	env.HubURL = hub[0]
+	// }
 
 	if bin := config.BinRepo; len(bin) > 0 {
 		env.BinRepo = bin
