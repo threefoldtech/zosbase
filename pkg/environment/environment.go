@@ -327,11 +327,11 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	}
 
 	if flist := config.FlistURL; len(flist) > 0 {
-		env.FlistURL = flist
+		env.FlistURL = flist[0]
 	}
 
 	if hub := config.HubURL; len(hub) > 0 {
-		env.HubURL = hub
+		env.HubURL = hub[0]
 	}
 
 	if bin := config.BinRepo; len(bin) > 0 {

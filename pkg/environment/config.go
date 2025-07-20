@@ -36,8 +36,8 @@ type Config struct {
 	GraphQL       []string `json:"graphql_urls"`
 	KycURL        string   `json:"kyc_url"`
 	RegistrarURL  string   `json:"registrar_url"`
-	FlistURL      string   `json:"flist_url"`
-	HubURL        string   `json:"hub_url"`
+	FlistURL      []string `json:"flist_url"`
+	HubURL        []string `json:"hub_url"`
 	BinRepo       string   `json:"bin_repo"`
 }
 
