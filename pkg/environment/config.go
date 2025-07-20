@@ -30,7 +30,15 @@ type Config struct {
 	RolloutUpgrade struct {
 		TestFarms []uint32 `json:"test_farms"`
 	} `json:"rollout_upgrade"`
-	RelaysURLs []string `json:"relays_urls"`
+	RelaysURLs    []string `json:"relays_urls"`
+	SubstrateURL  []string `json:"substrate_urls"`
+	ActivationURL []string `json:"activation_urls"`
+	GraphQL       []string `json:"graphql_urls"`
+	KycURL        string   `json:"kyc_url"`
+	RegistrarURL  string   `json:"registrar_url"`
+	FlistURL      string   `json:"flist_url"`
+	HubURL        string   `json:"hub_url"`
+	BinRepo       string   `json:"bin_repo"`
 }
 
 // Merge, updates current config with cfg merging and override config
