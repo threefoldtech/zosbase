@@ -57,8 +57,9 @@ func NewZosAPI(manager substrate.Manager, client zbus.Client, msgBrokerCon strin
 		diagnosticsManager:     diagnosticsManager,
 	}
 	exp := backoff.NewExponentialBackOff()
-	exp.MaxInterval = 2 * time.Minute
-	exp.MaxElapsedTime = 5 * time.Minute
+	exp.MaxInterval = 2 * time.Second
+	exp.InitialInterval = 500 * time.Millisecond
+	exp.MaxElapsedTime = 5 * time.Second
 	var farm substrate.Farm
 	err = backoff.Retry(func() error {
 		id := uint32(environment.MustGet().FarmID)

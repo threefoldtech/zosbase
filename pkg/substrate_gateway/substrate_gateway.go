@@ -35,8 +35,9 @@ func NewSubstrateGateway(manager substrate.Manager, identity substrate.Identity)
 // createBackoff creates an exponential backoff configuration for substrate calls
 func createBackoff() backoff.BackOff {
 	exp := backoff.NewExponentialBackOff()
-	exp.MaxInterval = 2 * time.Minute
-	exp.MaxElapsedTime = 5 * time.Minute
+	exp.MaxInterval = 2 * time.Second
+	exp.InitialInterval = 500 * time.Millisecond
+	exp.MaxElapsedTime = 5 * time.Second
 	return exp
 }
 
