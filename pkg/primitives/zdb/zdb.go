@@ -67,6 +67,29 @@ func (se *safeError) Error() string {
 func (z *tZDBContainer) DataMount() (string, error) {
 	for _, mnt := range z.Mounts {
 		if mnt.Target == zdbContainerDataMnt {
+			// Verify that this is a valid ZDB data directory by checking for expected subdirectories
+			source := mnt.Source
+			if stat, err := os.Stat(source); err != nil || !stat.IsDir() {
+				return "", fmt.Errorf("container '%s' data mount path doesn't exist or isn't a directory", z.Name)
+			}
+
+			// Check for data and index directories which should exist in a valid ZDB mount
+			requiredDirs := []string{"data", "index"}
+			valid := true
+
+			for _, dir := range requiredDirs {
+				path := filepath.Join(source, dir)
+				if stat, err := os.Stat(path); err != nil || !stat.IsDir() {
+					valid = false
+					log.Warn().Str("container", z.Name).Str("path", path).Msg("missing required ZDB directory")
+					break
+				}
+			}
+
+			if !valid {
+				return "", fmt.Errorf("container '%s' data mount doesn't appear to be a valid ZDB directory structure", z.Name)
+			}
+
 			return mnt.Source, nil
 		}
 	}
@@ -94,8 +117,31 @@ func (p *Manager) Provision(ctx context.Context, wl *gridtypes.WorkloadWithID) (
 	return res, newSafeError(err)
 }
 
+func (p *Manager) zdbCleanUp(ctx context.Context, z tZDBContainer, containerID pkg.ContainerID) {
+	var (
+		flist   = stubs.NewFlisterStub(p.zbus)
+		network = stubs.NewNetworkerStub(p.zbus)
+	)
+	rootFS, err := p.zdbRootFS(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get zdb root fs")
+	}
+	for _, mnt := range z.Mounts {
+		if mnt.Target == zdbContainerDataMnt {
+			source := mnt.Source
+			if err := os.RemoveAll(source); err != nil {
+				log.Error().Err(err).Str("path", source).Msg("failed to delete invalid ZDB source directory")
+			}
+		}
+	}
+	if err := flist.Unmount(ctx, string(containerID)); err != nil {
+		log.Error().Err(err).Str("path", rootFS).Msgf("failed to unmount")
+	}
+	_ = network.ZDBDestroy(ctx, string(containerID))
+}
+
 func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZDBContainer, error) {
-	contmod := stubs.NewContainerModuleStub(p.zbus)
+	var contmod = stubs.NewContainerModuleStub(p.zbus)
 
 	containerIDs, err := contmod.List(ctx, zdbContainerNS)
 	if err != nil {
@@ -116,7 +162,7 @@ func (p *Manager) zdbListContainers(ctx context.Context) (map[pkg.ContainerID]tZ
 
 		if _, err = cont.DataMount(); err != nil {
 			log.Error().Err(err).Msg("failed to get data directory of zdb container")
-			continue
+			p.zdbCleanUp(ctx, cont, containerID)
 		}
 		m[containerID] = cont
 	}

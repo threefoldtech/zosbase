@@ -171,7 +171,7 @@ func TestMountUnmount(t *testing.T) {
 	os.Remove(cmder.m["pid"])
 	strg.On("VolumeDelete", mock.Anything, filepath.Base(mnt)).Return(nil)
 
-	sys.On("Unmount", mnt, 0).Return(nil)
+	sys.On("Unmount", mnt, 3).Return(nil)
 
 	err = flister.Unmount(name)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestMountUnmountRO(t *testing.T) {
 	os.Remove(cmder.m["pid"])
 	strg.On("VolumeDelete", mock.Anything, filepath.Base(mnt)).Return(nil)
 
-	sys.On("Unmount", mnt, 0).Return(nil)
+	sys.On("Unmount", mnt, 3).Return(nil)
 
 	err = flister.Unmount(name)
 	require.NoError(t, err)
@@ -224,6 +224,8 @@ func TestIsolation(t *testing.T) {
 
 	strg.On("VolumeCreate", mock.Anything, mock.Anything, mock.Anything, uint64(256*mib)).
 		Return(backend, nil)
+
+	sys.On("Unmount", mock.Anything, 3).Return(nil)
 
 	name1 := "test1"
 	sys.On("Mount", "overlay", filepath.Join(root, "mountpoint", name1), "overlay", uintptr(syscall.MS_NOATIME), mock.Anything).Return(nil)
