@@ -35,8 +35,9 @@ func NewSubstrateGateway(manager substrate.Manager, identity substrate.Identity)
 // createBackoff creates an exponential backoff configuration for substrate calls
 func createBackoff() backoff.BackOff {
 	exp := backoff.NewExponentialBackOff()
-	exp.MaxInterval = 2 * time.Minute
-	exp.MaxElapsedTime = 5 * time.Minute
+	exp.MaxInterval = 2 * time.Second
+	exp.InitialInterval = 500 * time.Millisecond
+	exp.MaxElapsedTime = 5 * time.Second
 	return exp
 }
 
@@ -65,9 +66,9 @@ func (g *substrateGateway) CreateNode(node substrate.Node) (uint32, error) {
 		Msg("method called")
 
 	var result uint32
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		nodeID, err := g.sub.CreateNode(g.identity, node)
 		if err != nil {
 			log.Debug().Err(err).Msg("CreateNode failed, retrying")
@@ -84,9 +85,9 @@ func (g *substrateGateway) CreateTwin(relay string, pk []byte) (uint32, error) {
 	log.Debug().Str("method", "CreateTwin").Str("relay", relay).Str("pk", hex.EncodeToString(pk)).Msg("method called")
 
 	var result uint32
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		twinID, err := g.sub.CreateTwin(g.identity, relay, pk)
 		if err != nil {
 			log.Debug().Err(err).Msg("CreateTwin failed, retrying")
@@ -107,10 +108,10 @@ func (g *substrateGateway) EnsureAccount(activationURL []string, termsAndConditi
 		Str("terms and conditions hash", termsAndConditionsHash).
 		Msg("method called")
 
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	for _, url := range activationURL {
 		err = backoff.Retry(func() error {
-			g.mu.Lock()
-			defer g.mu.Unlock()
 			accountInfo, retryErr := g.sub.EnsureAccount(g.identity, url, termsAndConditionsLink, termsAndConditionsHash)
 			if retryErr != nil {
 				log.Debug().Str("activation url", url).Err(retryErr).Msg("EnsureAccount failed, retrying")
@@ -320,9 +321,9 @@ func (g *substrateGateway) Report(consumptions []substrate.NruConsumption) (type
 	log.Debug().Str("method", "Report").Uints64("contract ids", contractIDs).Msg("method called")
 
 	var result types.Hash
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		hash, retryErr := g.sub.Report(g.identity, consumptions)
 		if retryErr != nil {
 			log.Debug().Err(retryErr).Uints64("contract ids", contractIDs).Msg("Report failed, retrying")
@@ -342,9 +343,9 @@ func (g *substrateGateway) SetContractConsumption(resources ...substrate.Contrac
 	}
 	log.Debug().Str("method", "SetContractConsumption").Uints64("contract ids", contractIDs).Msg("method called")
 
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		retryErr := g.sub.SetContractConsumption(g.identity, resources...)
 		if retryErr != nil {
 			log.Debug().Err(retryErr).Uints64("contract ids", contractIDs).Msg("SetContractConsumption failed, retrying")
@@ -359,9 +360,9 @@ func (g *substrateGateway) SetContractConsumption(resources ...substrate.Contrac
 func (g *substrateGateway) SetNodePowerState(up bool) (hash types.Hash, err error) {
 	log.Debug().Str("method", "SetNodePowerState").Bool("up", up).Msg("method called")
 
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err = backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		resultHash, retryErr := g.sub.SetNodePowerState(g.identity, up)
 		if retryErr != nil {
 			log.Debug().Err(retryErr).Bool("up", up).Msg("SetNodePowerState failed, retrying")
@@ -378,9 +379,9 @@ func (g *substrateGateway) UpdateNode(node substrate.Node) (uint32, error) {
 	log.Debug().Str("method", "UpdateNode").Msg("method called")
 
 	var result uint32
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		nodeID, retryErr := g.sub.UpdateNode(g.identity, node)
 		if retryErr != nil {
 			log.Debug().Err(retryErr).Msg("UpdateNode failed, retrying")
@@ -400,9 +401,9 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 		Uint64("timestamp hint", timestampHint).
 		Msg("method called")
 
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	err = backoff.Retry(func() error {
-		g.mu.Lock()
-		defer g.mu.Unlock()
 		resultHash, retryErr := g.sub.UpdateNodeUptimeV2(g.identity, uptime, timestampHint)
 		if retryErr != nil {
 			log.Debug().Err(retryErr).Uint64("uptime", uptime).Uint64("timestamp hint", timestampHint).Msg("UpdateNodeUptimeV2 failed, retrying")
