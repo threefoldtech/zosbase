@@ -63,7 +63,7 @@ func (pm *PerformanceMonitor) runTask(ctx context.Context, task Task) error {
 		return errors.Wrapf(err, "failed to run task: %s", task.ID())
 	}
 
-	err = pm.setCache(ctx, pkg.TaskResult{
+	err = pm.set(pkg.TaskResult{
 		Name:        task.ID(),
 		Timestamp:   uint64(time.Now().Unix()),
 		Description: task.Description(),
