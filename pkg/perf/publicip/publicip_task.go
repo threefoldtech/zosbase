@@ -246,7 +246,7 @@ func isLeastValidNode(ctx context.Context, farmID uint32, substrateGateway *stub
 		// stop at three and quiet output
 		err = exec.CommandContext(ctx, "ping", "-c", "3", "-q", ip).Run()
 		if err != nil {
-			log.Err(err).Msgf("failed to ping node %d", node.NodeID)
+			log.Debug().Err(err).Msgf("failed to ping node %d", node.NodeID)
 			continue
 		}
 		return false, nil
@@ -336,7 +336,6 @@ func getPublicIPFromSTUN(stunServer string) (net.IP, error) {
 			return
 		}
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("STUN request failed: %w", err)
 	}

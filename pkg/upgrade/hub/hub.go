@@ -15,18 +15,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/0-fs/meta"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/kernel"
 )
 
 const (
-	// hubBaseURL base hub url
-	hubBaseURL   = "https://hub.threefold.me/"
-	hubv4BaseURL = "https://v4.hub.threefold.me"
-
-	// hubStorage default hub db
-	hubStorage   = "zdb://hub.threefold.me:9900"
-	hubv4Storage = "zdb://hub.threefold.me:9940"
-
 	defaultHubCallTimeout = 20 * time.Second
 )
 
@@ -94,18 +87,21 @@ func (h *HubClient) MountURL(flist string) string {
 
 // StorageURL return hub storage url
 func (h *HubClient) StorageURL() string {
-	if kernel.GetParams().IsV4() {
-		return hubv4Storage
-	}
-	return hubStorage
+	env := environment.MustGet()
+	return env.HubStorage
+	// if kernel.GetParams().IsV4() {
+	// 	return hubv4Storage
+	// }
+	// return hubStorage
 }
 
 // StorageURL return hub storage url
 func (h *HubClient) HubBaseURL() string {
+	env := environment.MustGet()
 	if kernel.GetParams().IsV4() {
-		return hubv4BaseURL
+		return env.V4HubURL
 	}
-	return hubBaseURL
+	return env.HubURL
 }
 
 // Info gets flist info from hub
@@ -304,10 +300,12 @@ func (b *Regular) Files(repo string) ([]FileInfo, error) {
 	var content struct {
 		Content []FileInfo `json:"content"`
 	}
-	baseURL := hubBaseURL
+	env := environment.MustGet()
+	baseURL := env.HubURL
 	if kernel.GetParams().IsV4() {
-		baseURL = hubv4BaseURL
+		baseURL = env.V4HubURL
 	}
+
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		panic("invalid base url")

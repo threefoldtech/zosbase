@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
 // Location holds the result of a geoip request
@@ -19,15 +20,12 @@ type Location struct {
 	City        string  `json:"city_name"`
 }
 
-var (
-	geoipURLs = []string{"https://geoip.threefold.me/", "https://geoip.grid.tf/", "https://02.geoip.grid.tf/", "https://03.geoip.grid.tf/"}
-
-	defaultHTTPClient = retryablehttp.NewClient()
-)
+var defaultHTTPClient = retryablehttp.NewClient()
 
 // Fetch retrieves the location of the system calling this function
 func Fetch() (Location, error) {
-	for _, url := range geoipURLs {
+	env := environment.MustGet()
+	for _, url := range env.GeoipURLs {
 		l, err := getLocation(url)
 		if err != nil {
 			log.Err(err).Str("url", url).Msg("failed to fetch location from geoip service")
