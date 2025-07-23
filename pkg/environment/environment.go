@@ -75,7 +75,6 @@ type Environment struct {
 	GeoipURLs     []string
 	KycURL        string
 	RegistrarURL  string
-	HubURL        string
 
 	// private vlan to join
 	// if set, zos will use this as its priv vlan
@@ -368,7 +367,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		env.GeoipURLs = geoip
 	}
 
-	// flist url and hub urls shouldn't listen to changes in config as long as we can't change it at run time.
+	// flist url and hub storage urls shouldn't listen to changes in config as long as we can't change it at run time.
 	// it would cause breakage in vmd that needs a reboot to be recovered.
 	// if flist := config.FlistURL; len(flist) > 0 {
 	// 	env.FlistURL = flist[0]
