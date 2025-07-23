@@ -110,7 +110,8 @@ func TestPerformanceMonitor_Get_Mock(t *testing.T) {
 		s2 := miniredis.RunT(t)
 		pm2, err := newTestPerformanceMonitorWithMockRedis(s2.Addr())
 		require.NoError(t, err)
-		s2.Set(generateKey("test-task"), "{invalid json")
+		err = s2.Set(generateKey("test-task"), "{invalid json")
+		require.NoError(t, err)
 		result, err := pm2.Get("test-task")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unmarshal data from json")
@@ -207,7 +208,8 @@ func TestPerformanceMonitor_GetAll_Mock(t *testing.T) {
 		err = pm3.setCache(ctx, validTask)
 		require.NoError(t, err)
 
-		s3.Set(generateKey("corrupted-task"), "{invalid json")
+		err = s3.Set(generateKey("corrupted-task"), "{invalid json")
+		require.NoError(t, err)
 
 		results, err := pm3.GetAll()
 		assert.NoError(t, err)
@@ -236,4 +238,3 @@ func TestGenerateKey(t *testing.T) {
 		})
 	}
 }
-
