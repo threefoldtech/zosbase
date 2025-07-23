@@ -63,7 +63,7 @@ func TestPerformanceMonitor_SetCache_Mock(t *testing.T) {
 		ctx := context.Background()
 		taskResult := createTestTaskResult("test-task", uint64(time.Now().Unix()))
 		s.Close()
-		
+
 		err := pm.setCache(ctx, taskResult)
 		assert.Error(t, err)
 	})
@@ -79,7 +79,7 @@ func TestPerformanceMonitor_Get_Mock(t *testing.T) {
 
 	t.Run("successful Get", func(t *testing.T) {
 		taskResult := createTestTaskResult("test-task", uint64(time.Now().Unix()))
-		
+
 		ctx := context.Background()
 		err := pm.setCache(ctx, taskResult)
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestPerformanceMonitor_Get_Mock(t *testing.T) {
 	t.Run("Get with invalid JSON", func(t *testing.T) {
 		s2 := miniredis.RunT(t)
 		pm2, err := newTestPerformanceMonitorWithMockRedis(s2.Addr())
-		require.NoError(t, err)		
+		require.NoError(t, err)
 		s2.Set(generateKey("test-task"), "{invalid json")
 		result, err := pm2.Get("test-task")
 		assert.Error(t, err)
@@ -164,7 +164,7 @@ func TestPerformanceMonitor_GetAll_Mock(t *testing.T) {
 		ctx := context.Background()
 		task1 := createTestTaskResult("task1", uint64(time.Now().Unix()))
 		task2 := createTestTaskResult("task2", uint64(time.Now().Unix()-100))
-		
+
 		err := pm.setCache(ctx, task1)
 		require.NoError(t, err)
 		err = pm.setCache(ctx, task2)
@@ -173,7 +173,7 @@ func TestPerformanceMonitor_GetAll_Mock(t *testing.T) {
 		results, err := pm.GetAll()
 		assert.NoError(t, err)
 		assert.Len(t, results, 2)
-		
+
 		taskNames := []string{results[0].Name, results[1].Name}
 		assert.Contains(t, taskNames, "task1")
 		assert.Contains(t, taskNames, "task2")
@@ -201,12 +201,12 @@ func TestPerformanceMonitor_GetAll_Mock(t *testing.T) {
 		s3 := miniredis.RunT(t)
 		pm3, err := newTestPerformanceMonitorWithMockRedis(s3.Addr())
 		require.NoError(t, err)
-		
+
 		ctx := context.Background()
 		validTask := createTestTaskResult("valid-task", uint64(time.Now().Unix()))
 		err = pm3.setCache(ctx, validTask)
 		require.NoError(t, err)
-		
+
 		s3.Set(generateKey("corrupted-task"), "{invalid json")
 
 		results, err := pm3.GetAll()
@@ -236,3 +236,4 @@ func TestGenerateKey(t *testing.T) {
 		})
 	}
 }
+
