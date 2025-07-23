@@ -75,6 +75,7 @@ type Environment struct {
 	GeoipURLs     []string
 	KycURL        string
 	RegistrarURL  string
+	HubURL        string
 
 	// private vlan to join
 	// if set, zos will use this as its priv vlan
@@ -137,7 +138,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.dev.grid.tf",
-			"wss://relay.02.dev.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.dev.grid.tf/activation/activate",
@@ -165,7 +165,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.test.grid.tf",
-			"wss://relay.02.test.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.test.grid.tf/activation/activate",
@@ -193,7 +192,6 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.qa.grid.tf",
-			"wss://relay.02.qa.grid.tf",
 		},
 		ActivationURL: []string{
 			"https://activation.qa.grid.tf/activation/activate",
@@ -224,9 +222,9 @@ var (
 		},
 		relaysURLs: []string{
 			"wss://relay.grid.tf",
-			// "wss://relay.02.grid.tf",
 		},
 		ActivationURL: []string{
+			"https://activation.grid.threefold.me/activation/activate",
 			"https://activation.grid.tf/activation/activate",
 			"https://activation.02.grid.tf/activation/activate",
 			"https://activation.grid.threefold.me/activation/activate",
@@ -237,6 +235,7 @@ var (
 		HubStorage: defaultHubStorage,
 		BinRepo:    "tf-zos-v3-bins",
 		GraphQL: []string{
+			"https://graphql.grid.threefold.me/graphql",
 			"https://graphql.grid.tf/graphql",
 			"https://graphql.02.grid.tf/graphql",
 			"https://graphql.grid.threefold.me/graphql",
@@ -368,23 +367,25 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	if geoip := config.GeoipURLs; len(geoip) > 0 {
 		env.GeoipURLs = geoip
 	}
+
 	// flist url and hub urls shouldn't listen to changes in config as long as we can't change it at run time.
 	// it would cause breakage in vmd that needs a reboot to be recovered.
 	// if flist := config.FlistURL; len(flist) > 0 {
-	// 	env.FlistURL = flist
+	// 	env.FlistURL = flist[0]
 	// }
 	//
 	// if storage := config.HubStorage; len(storage) > 0 {
 	// 	env.HubStorage = storage
 	// }
 
+	// maybe we should verify that we're usein a working hub url
 	if hub := config.HubURL; len(hub) > 0 {
-		env.HubURL = hub
+		env.HubURL = hub[0]
 	}
 
 	// some modules needs v3 hub url even if the node is of v4
 	if hub := config.V4HubURL; len(hub) > 0 {
-		env.V4HubURL = hub
+		env.V4HubURL = hub[0]
 	}
 
 	// if the node running v4 chage urls to use v4 hub
@@ -398,7 +399,6 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 		// if storage := config.V4HubStorage; len(storage) > 0 {
 		// 	env.HubStorage = storage
 		// }
-
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {

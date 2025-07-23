@@ -39,12 +39,12 @@ type Config struct {
 	BinRepo       string   `json:"bin_repo"`
 	GeoipURLs     []string `json:"geoip_urls"`
 
+	HubURL   []string `json:"hub_url"`
+	V4HubURL string   `json:"v4_hub_url"`
+
+	// we should not be supporting flist url or hub storage from zos-config until we can update them on runtime
 	// FlistURL   string `json:"flist_url"`
 	// V4FlistURL string `json:"v4_flist_url"`
-
-	HubURL   string `json:"hub_url"`
-	V4HubURL string `json:"v4_hub_url"`
-
 	// HubStorage   string `json:"hub_storage"`
 	// V4HubStorage string `json:"v4_hub_storage"`
 }

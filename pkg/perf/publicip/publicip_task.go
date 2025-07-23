@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os/exec"
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/hashicorp/go-retryablehttp"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pion/stun"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/zosbase/pkg/environment"
@@ -98,7 +97,7 @@ func (p *publicIPValidationTask) Run(ctx context.Context) (interface{}, error) {
 	}
 	var report map[string]IPReport
 	err = netNS.Do(func(_ ns.NetNS) error {
-		report, err = p.validateIPs(farm.PublicIPs)
+		report, err = p.validateIPs(farm.PublicIPs, nil)
 		return err
 	})
 	if err != nil {
@@ -107,16 +106,31 @@ func (p *publicIPValidationTask) Run(ctx context.Context) (interface{}, error) {
 	return report, nil
 }
 
-func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (map[string]IPReport, error) {
+// MacvlanInterface defines the interface for macvlan mocking in tests.
+type MacvlanInterface interface {
+	GetByName(name string) (*netlink.Macvlan, error)
+	Install(link *netlink.Macvlan, hw net.HardwareAddr, ips []*net.IPNet, routes []*netlink.Route, netns ns.NetNS) error
+}
+
+func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, macVlanMock MacvlanInterface) (map[string]IPReport, error) {
 	report := make(map[string]IPReport)
-	mv, err := macvlan.GetByName(testMacvlan)
+
+	var mv *netlink.Macvlan
+	var err error
+	if macVlanMock != nil {
+		mv, err = macVlanMock.GetByName(testMacvlan)
+	} else {
+		mv, err = macvlan.GetByName(testMacvlan)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get macvlan %s in namespace %s: %w", testMacvlan, testNamespace, err)
 	}
-	// to delete any leftover IPs or routes
-	err = deleteAllIPsAndRoutes(mv)
-	if err != nil {
-		log.Err(err).Send()
+
+	if macVlanMock == nil {
+		err = deleteAllIPsAndRoutes(mv)
+		if err != nil {
+			log.Err(err).Send()
+		}
 	}
 
 	for _, publicIP := range publicIPs {
@@ -140,7 +154,12 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (ma
 			log.Err(err).Send()
 			continue
 		}
-		err = macvlan.Install(mv, nil, ipNet, routes, nil)
+
+		if macVlanMock != nil {
+			err = macVlanMock.Install(mv, nil, ipNet, routes, nil)
+		} else {
+			err = macvlan.Install(mv, nil, ipNet, routes, nil)
+		}
 		if err != nil {
 			report[publicIP.IP] = IPReport{
 				State:  InvalidState,
@@ -168,14 +187,19 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP) (ma
 			}
 		}
 
-		err = deleteAllIPsAndRoutes(mv)
-		if err != nil {
-			log.Err(err).Send()
+		if macVlanMock == nil {
+			err = deleteAllIPsAndRoutes(mv)
+			if err != nil {
+				log.Err(err).Send()
+			}
 		}
 	}
-	err = netlink.LinkSetDown(mv)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set link down: %w", err)
+
+	if macVlanMock == nil {
+		err = netlink.LinkSetDown(mv)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set link down: %w", err)
+		}
 	}
 
 	return report, nil
@@ -264,37 +288,64 @@ func getIPWithRoute(publicIP substrate.PublicIP) (net.IP, []*net.IPNet, []*netli
 }
 
 func getRealPublicIP() (net.IP, error) {
-	// for testing now, should change to cloudflare
-	con, err := net.DialTimeout("tcp", "api.ipify.org:443", 10*time.Second)
+	stunServers := []string{
+		"stun:stun1.l.google.com:19302",
+		"stun:stun2.l.google.com:19302",
+		"stun:stun3.l.google.com:19302",
+		"stun:stun4.l.google.com:19302",
+		"stun:stun.l.google.com:19302",
+	}
+
+	var errs error
+	for _, stunServer := range stunServers {
+		ip, err := getPublicIPFromSTUN(stunServer)
+		if err != nil {
+			errs = multierror.Append(errs, err)
+			log.Err(err).Msgf("failed to get public IP from STUN server %s", stunServer)
+			continue
+		}
+		return ip, nil
+	}
+
+	if errs != nil {
+		return nil, errors.Join(errs, errPublicIPLookup)
+	}
+	return nil, errors.Join(fmt.Errorf("no STUN servers available"), errPublicIPLookup)
+}
+
+func getPublicIPFromSTUN(stunServer string) (net.IP, error) {
+	u, err := stun.ParseURI(stunServer)
 	if err != nil {
-		return nil, errors.Join(err, errPublicIPLookup)
+		return nil, fmt.Errorf("failed to parse STUN server %s: %w", stunServer, err)
 	}
 
-	defer con.Close()
-
-	cl := retryablehttp.NewClient()
-	cl.HTTPClient.Transport = &http.Transport{
-		DisableKeepAlives: true,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return con, nil
-		},
-	}
-	cl.RetryMax = 5
-
-	response, err := cl.Get("https://api.ipify.org/")
+	client, err := stun.DialURI(u, &stun.DialConfig{})
 	if err != nil {
-		return nil, errors.Join(err, errPublicIPLookup)
+		return nil, fmt.Errorf("failed to connect to STUN server %s: %w", stunServer, err)
 	}
-	defer response.Body.Close()
+	defer client.Close()
+	message := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 
-	if response.StatusCode != 200 {
-		return nil, fmt.Errorf("request to get public IP failed with status code %d", response.StatusCode)
-	}
-	body, err := io.ReadAll(response.Body)
+	var xorAddr stun.XORMappedAddress
+	err = client.Do(message, func(res stun.Event) {
+		if res.Error != nil {
+			return
+		}
+
+		if getErr := xorAddr.GetFrom(res.Message); getErr != nil {
+			return
+		}
+	})
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("STUN request failed: %w", err)
 	}
-	return net.ParseIP(string(body)), nil
+
+	if xorAddr.IP == nil {
+		return nil, fmt.Errorf("no public IP address found in STUN response")
+	}
+
+	return xorAddr.IP, nil
 }
 
 func deleteAllIPsAndRoutes(macvlan netlink.Link) error {
