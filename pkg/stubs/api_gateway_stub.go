@@ -387,3 +387,18 @@ func (s *SubstrateGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 uint
 	}
 	return
 }
+
+func (s *SubstrateGatewayStub) UpdateSubstrateGatewayConnection(ctx context.Context, arg0 tfchainclientgo.Manager) (ret0 error) {
+	args := []interface{}{arg0}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "UpdateSubstrateGatewayConnection", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret0 = result.CallError()
+	loader := zbus.Loader{}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}

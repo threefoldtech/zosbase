@@ -32,6 +32,20 @@ func NewSubstrateGateway(manager substrate.Manager, identity substrate.Identity)
 	return gw, nil
 }
 
+// UpdateSubstrateGatewayConnection allow modules to update substrate manager so that the node can recover chain outage
+func (g *substrateGateway) UpdateSubstrateGatewayConnection(manager substrate.Manager) error {
+	sub, err := manager.Substrate()
+	if err != nil {
+		return err
+	}
+
+	// close the old connection
+	g.sub.Close()
+
+	g.sub = sub
+	return nil
+}
+
 // createBackoff creates an exponential backoff configuration for substrate calls
 func createBackoff() backoff.BackOff {
 	exp := backoff.NewExponentialBackOff()
@@ -415,6 +429,7 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 
 	return
 }
+
 func (g *substrateGateway) GetTime() (time.Time, error) {
 	log.Trace().Str("method", "Time").Msg("method called")
 

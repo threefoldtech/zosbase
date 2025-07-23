@@ -5,7 +5,6 @@ import (
 	"os"
 	"slices"
 	"strconv"
-	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -126,8 +125,8 @@ const (
 )
 
 var (
-	pool     substrate.Manager
-	poolOnce sync.Once
+	pool    substrate.Manager
+	subURLs []string
 
 	envDev = Environment{
 		RunningMode: RunningDev,
@@ -286,9 +285,19 @@ func GetSubstrate() (substrate.Manager, error) {
 		return nil, errors.Wrap(err, "failed to get boot environment")
 	}
 
-	poolOnce.Do(func() {
+	slices.Sort(subURLs)
+	slices.Sort(env.SubstrateURL)
+
+	// if substrate url changed then update subURLs and update pool with new manager
+	if !slices.Equal(subURLs, env.SubstrateURL) {
+		log.Debug().Strs("substrate_urls", env.SubstrateURL).Msg("updating to sub manager with url")
+		subURLs = env.SubstrateURL
 		pool = substrate.NewManager(env.SubstrateURL...)
-	})
+	}
+
+	// poolOnce.Do(func() {
+	// 	pool = substrate.NewManager(env.SubstrateURL...)
+	// })
 
 	return pool, nil
 }
