@@ -377,7 +377,7 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	// 	env.HubStorage = storage
 	// }
 
-	// maybe we should verify that we're usein a working hub url
+	// maybe we should verify that we're using a working hub url
 	if hub := config.HubURL; len(hub) > 0 {
 		env.HubURL = hub[0]
 	}

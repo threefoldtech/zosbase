@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	// https://hub.grid.tf/api/flist/tf-autobuilder/threefoldtech-0-db-development.flist/light
 	// To get the latest symlink pointer
 	flistRepo           = "tf-autobuilder"
 	flistName           = "threefoldtech-0-db-release-v2.0.8-55737c9202.flist"
