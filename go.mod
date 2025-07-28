@@ -37,6 +37,7 @@ require (
 	github.com/hasura/go-graphql-client v0.10.0
 	github.com/jbenet/go-base58 v0.0.0-20150317085156-6237cf65f3a6
 	github.com/joncrlsn/dque v0.0.0-20200702023911-3e80e3146ce5
+	github.com/leanovate/gopter v0.2.11
 	github.com/lestrrat-go/jwx v1.1.7
 	github.com/machinebox/graphql v0.2.2
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
