@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"os"
-	"sync/atomic"
 	"time"
 
 	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
@@ -67,8 +66,7 @@ type Callback func(events *substrate.EventRecords)
 // Events processor receives all events starting from the given state
 // and for each set of events calls callback cb
 type Processor struct {
-	sub     substrate.Manager
-	updated atomic.Bool
+	sub substrate.Manager
 
 	cb    Callback
 	state State
@@ -161,6 +159,9 @@ func (e *Processor) subscribe(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-sub.Err():
+			// sub.Err returns error if the connection is closed unexpectedly
+			// so if sub manager is updated by now, then retrying to subscribe after 10 seconds will use the new manager
+			// with the updated urls
 			return err
 		case block := <-sub.Chan():
 			err := e.eventsTo(cl, meta, block)
@@ -171,24 +172,6 @@ func (e *Processor) subscribe(ctx context.Context) error {
 
 			if err := e.state.Set(block.Number); err != nil {
 				return errors.Wrap(err, "failed to commit last block number")
-			}
-		default:
-			if e.updated.Load() {
-				e.updated.Swap(false)
-
-				newCL, newMeta, err := e.sub.Raw()
-				if err != nil {
-					log.Debug().Err(err).Msg("failed to update substrate connection")
-					break
-				}
-
-				// only update cl and mata after creating the new connection successfully
-				cl.Client.Close()
-				cl = newCL
-				meta = newMeta
-
-				log.Debug().Msg("done updating sub connection for substrate events listener")
-
 			}
 		}
 	}
@@ -204,9 +187,4 @@ func (e *Processor) Start(ctx context.Context) {
 		}
 		return
 	}
-}
-
-func (e *Processor) updateSubstrateConn(sub substrate.Manager) {
-	e.sub = sub
-	e.updated.Swap(true)
 }

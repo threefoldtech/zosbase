@@ -54,7 +54,7 @@ func NewRedisStream(sub substrate.Manager, address string, farm pkg.FarmID, node
 
 func (r *RedisStream) UpdateSubstrateManager(sub substrate.Manager) {
 	r.sub = sub
-	r.processor.updateSubstrateConn(sub)
+	r.processor.sub = sub
 }
 
 func (r *RedisStream) push(con redis.Conn, queue string, event interface{}) error {
