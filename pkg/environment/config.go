@@ -45,7 +45,6 @@ type Config struct {
 	// we should not be supporting flist url or hub storage from zos-config until we can update them on runtime
 	// FlistURL   string `json:"flist_url"`
 	// V4FlistURL string `json:"v4_flist_url"`
-	//
 	// HubStorage   string `json:"hub_storage"`
 	// V4HubStorage string `json:"v4_hub_storage"`
 }

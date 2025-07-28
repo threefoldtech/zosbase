@@ -284,22 +284,26 @@ func GetSubstrate() (substrate.Manager, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get boot environment")
 	}
+	updatedSubURLs := env.SubstrateURL
 
 	slices.Sort(subURLs)
-	slices.Sort(env.SubstrateURL)
+	slices.Sort(updatedSubURLs)
 
 	// if substrate url changed then update subURLs and update pool with new manager only if the old connection is broken
-	if !slices.Equal(subURLs, env.SubstrateURL) {
+	if !slices.Equal(subURLs, updatedSubURLs) {
 		// before attempting to update the manager check if pool variable maintain a healthy connection
 		// pool.Row() checks the health of the connection and if all the urls used in pool are down, then it will return error
-		cl, _, err := pool.Raw()
-		// if the old manager is broken, then we should update the manager
-		if err != nil {
-			log.Debug().Strs("substrate_urls", env.SubstrateURL).Msg("updating to sub manager with url")
-			subURLs = env.SubstrateURL
-			pool = substrate.NewManager(env.SubstrateURL...)
+		if pool != nil {
+			cl, _, err := pool.Raw()
+			if err == nil {
+				cl.Client.Close()
+				return pool, nil
+			}
 		}
-		cl.Client.Close()
+
+		log.Debug().Strs("substrate_urls", updatedSubURLs).Msg("updating to sub manager with url")
+		pool = substrate.NewManager(env.SubstrateURL...)
+		subURLs = updatedSubURLs
 	}
 
 	// poolOnce.Do(func() {
