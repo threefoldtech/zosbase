@@ -508,7 +508,51 @@ func (u *Upgrader) install(repo, name string) error {
 		return errors.Wrap(err, "failed to list services from flist")
 	}
 
-	return u.ensureRestarted(services...)
+	if err := u.ensureRestarted(services...); err != nil {
+		return err
+	}
+
+	// restarting mycelium instances on user's namespaces
+	return u.restartMyceliumInstances()
+}
+
+// this method restarts all mycelium-<usernetwork> instances on user's namespaces to catch mycelium version updates
+func (u *Upgrader) restartMyceliumInstances() error {
+	const zinitPath = "/etc/zinit"
+
+	// Get all services from host
+	entries, err := os.ReadDir(zinitPath)
+	if err != nil {
+		return fmt.Errorf("failed to read host zinit directory: %w", err)
+	}
+
+	var myceliumServices []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") || !strings.HasPrefix(entry.Name(), "mycelium-") {
+			continue
+		}
+
+		serviceName := strings.TrimSuffix(entry.Name(), ".yaml")
+		myceliumServices = append(myceliumServices, serviceName)
+	}
+
+	if len(myceliumServices) == 0 {
+		return nil
+	}
+
+	log.Info().Strs("services", myceliumServices).Msg("restarting mycelium instances")
+	if err := u.zinit.StopMultiple(20*time.Second, myceliumServices...); err != nil {
+		log.Error().Err(err).Msg("failed to stop all mycelium services")
+	}
+
+	for _, name := range myceliumServices {
+		log.Info().Str("service", name).Msg("starting mycelium service")
+		if err := u.zinit.Start(name); err != nil {
+			log.Error().Err(err).Str("service", name).Msg("could not start mycelium service")
+		}
+	}
+
+	return nil
 }
 
 func (u *Upgrader) servicesFromStore(store meta.Walker) ([]string, error) {
