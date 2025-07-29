@@ -2,11 +2,11 @@ package crypto
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
+	crypto_rand "crypto/rand"
+	"math/rand"
+	"reflect"
 	"testing"
-
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/prop"
+	"testing/quick"
 )
 
 type keyPair struct {
@@ -14,280 +14,245 @@ type keyPair struct {
 	PrivateKey ed25519.PrivateKey
 }
 
-// Generators for property-based testing
-
-// genEd25519KeyPair generates a random ed25519 key pair
-func genEd25519KeyPair() gopter.Gen {
-	return func(genParams *gopter.GenParameters) *gopter.GenResult {
-		pub, priv, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			return &gopter.GenResult{Result: nil, Sieve: nil}
-		}
-		return gopter.NewGenResult(keyPair{
-			PublicKey:  pub,
-			PrivateKey: priv,
-		}, gopter.NoShrinker)
+// Generate implements quick.Generator for keyPair
+func (keyPair) Generate(rand *rand.Rand, size int) reflect.Value {
+	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
+	if err != nil {
+		panic(err)
 	}
+	kp := keyPair{
+		PublicKey:  pub,
+		PrivateKey: priv,
+	}
+	return reflect.ValueOf(kp)
 }
 
-// genMessage generates random byte slices for messages
-func genMessage() gopter.Gen {
-	return func(genParams *gopter.GenParameters) *gopter.GenResult {
-		size := 1 + genParams.Rng.Intn(1024) // 1 to 1024
-		result := make([]byte, size)
-		for i := range size {
-			result[i] = byte(genParams.Rng.Intn(256))
-		}
-		return gopter.NewGenResult(result, gopter.NoShrinker)
-	}
+// randomMessage generates a random byte slice for testing
+type randomMessage []byte
+
+// Generate implements quick.Generator for randomMessage
+func (randomMessage) Generate(rand *rand.Rand, size int) reflect.Value {
+	// Generate message size between 1 and 1024 bytes
+	msgSize := 1 + rand.Intn(1024)
+	message := make([]byte, msgSize)
+	rand.Read(message)
+	return reflect.ValueOf(randomMessage(message))
 }
 
-// Property-based tests
+// Property-based tests using testing/quick
 
 func TestEncryptionDecryptionRoundtrip(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted, err := Encrypt(message, kp.PublicKey)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("encrypt/decrypt roundtrip preserves message", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			encrypted, err := Encrypt(message, keyPair1.PublicKey)
-			if err != nil {
-				return false
-			}
+		decrypted, err := Decrypt(encrypted, kp.PrivateKey)
+		if err != nil {
+			return false
+		}
 
-			decrypted, err := Decrypt(encrypted, keyPair1.PrivateKey)
-			if err != nil {
-				return false
-			}
+		return bytesEqual(decrypted, message)
+	}
 
-			return bytesEqual(decrypted, message)
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("encrypt/decrypt roundtrip error message:", err)
+	}
 }
 
 func TestEncryptionNonDeterminism(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted1, err1 := Encrypt(message, kp.PublicKey)
+		encrypted2, err2 := Encrypt(message, kp.PublicKey)
 
-	properties.Property("encryption is non-deterministic", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			encrypted1, err1 := Encrypt(message, keyPair1.PublicKey)
-			encrypted2, err2 := Encrypt(message, keyPair1.PublicKey)
+		if err1 != nil || err2 != nil {
+			return false
+		}
 
-			if err1 != nil || err2 != nil {
-				return false
-			}
+		return !bytesEqual(encrypted1, encrypted2)
+	}
 
-			return !bytesEqual(encrypted1, encrypted2)
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("encryption is non-deterministic failed with error:", err)
+	}
 }
 
 func TestEncryptionCiphertextSize(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted, err := Encrypt(message, kp.PublicKey)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("ciphertext has expected size overhead", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			encrypted, err := Encrypt(message, keyPair1.PublicKey)
-			if err != nil {
-				return false
-			}
+		// NaCl sealed box adds 48 bytes overhead (32 bytes ephemeral key + 16 bytes MAC)
+		expectedSize := len(message) + 48
+		return len(encrypted) == expectedSize
+	}
 
-			// NaCl sealed box adds 48 bytes overhead (32 bytes ephemeral key + 16 bytes MAC)
-			expectedSize := len(message) + 48
-			return len(encrypted) == expectedSize
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("ciphertext has expected size overhead:", err)
+	}
 }
 
 func TestECDHEncryptionRoundtrip(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted, err := EncryptECDH(message, kp1.PrivateKey, kp2.PublicKey)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("ECDH encrypt/decrypt roundtrip preserves message", prop.ForAll(
-		func(keyPair1, keyPair2 keyPair, message []byte) bool {
-			encrypted, err := EncryptECDH(message, keyPair1.PrivateKey, keyPair2.PublicKey)
-			if err != nil {
-				return false
-			}
+		decrypted, err := DecryptECDH(encrypted, kp2.PrivateKey, kp1.PublicKey)
+		if err != nil {
+			return false
+		}
 
-			decrypted, err := DecryptECDH(encrypted, keyPair2.PrivateKey, keyPair1.PublicKey)
-			if err != nil {
-				return false
-			}
+		return bytesEqual(decrypted, message)
+	}
 
-			return bytesEqual(decrypted, message)
-		},
-		genEd25519KeyPair(),
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("ECDH encrypt/decrypt roundtrip error message:", err)
+	}
 }
 
 func TestECDHSymmetry(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted1, err := EncryptECDH(message, kp1.PrivateKey, kp2.PublicKey)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("ECDH encryption is symmetric", prop.ForAll(
-		func(keyPair1, keyPair2 keyPair, message []byte) bool {
-			encrypted1, err := EncryptECDH(message, keyPair1.PrivateKey, keyPair2.PublicKey)
-			if err != nil {
-				return false
-			}
+		decrypted1, err := DecryptECDH(encrypted1, kp2.PrivateKey, kp1.PublicKey)
+		if err != nil {
+			return false
+		}
 
-			decrypted1, err := DecryptECDH(encrypted1, keyPair2.PrivateKey, keyPair1.PublicKey)
-			if err != nil {
-				return false
-			}
+		encrypted2, err := EncryptECDH(message, kp2.PrivateKey, kp1.PublicKey)
+		if err != nil {
+			return false
+		}
 
-			encrypted2, err := EncryptECDH(message, keyPair2.PrivateKey, keyPair1.PublicKey)
-			if err != nil {
-				return false
-			}
+		decrypted2, err := DecryptECDH(encrypted2, kp1.PrivateKey, kp2.PublicKey)
+		if err != nil {
+			return false
+		}
 
-			decrypted2, err := DecryptECDH(encrypted2, keyPair1.PrivateKey, keyPair2.PublicKey)
-			if err != nil {
-				return false
-			}
+		return bytesEqual(decrypted1, message) &&
+			bytesEqual(decrypted2, message) &&
+			bytesEqual(decrypted1, decrypted2)
+	}
 
-			return bytesEqual(decrypted1, message) &&
-				bytesEqual(decrypted2, message) &&
-				bytesEqual(decrypted1, decrypted2)
-		},
-		genEd25519KeyPair(),
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("ECDH encryption is symmetric failed with error:", err)
+	}
 }
 
 func TestSignatureRoundtrip(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		signature, err := Sign(kp.PrivateKey, message)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("sign/verify roundtrip succeeds for valid signatures", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			signature, err := Sign(keyPair1.PrivateKey, message)
-			if err != nil {
-				return false
-			}
+		err = Verify(kp.PublicKey, message, signature)
+		return err == nil
+	}
 
-			err = Verify(keyPair1.PublicKey, message, signature)
-			return err == nil
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("sign/verify roundtrip succeeds for valid signatures failed with error:", err)
+	}
 }
 
 func TestSignatureDeterminism(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		sig1, err1 := Sign(kp.PrivateKey, message)
+		sig2, err2 := Sign(kp.PrivateKey, message)
 
-	properties.Property("ed25519 signatures are deterministic", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			sig1, err1 := Sign(keyPair1.PrivateKey, message)
-			sig2, err2 := Sign(keyPair1.PrivateKey, message)
+		if err1 != nil || err2 != nil {
+			return false
+		}
 
-			if err1 != nil || err2 != nil {
-				return false
-			}
+		return bytesEqual(sig1, sig2)
+	}
 
-			return bytesEqual(sig1, sig2)
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("ed25519 signatures are deterministic failed with error:", err)
+	}
 }
 
 func TestWrongKeyRejection(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
+		if bytesEqual(kp1.PublicKey, kp2.PublicKey) {
+			return true // Skip if keys are the same
+		}
 
-	properties.Property("wrong public key rejects signature", prop.ForAll(
-		func(keyPair1, keyPair2 keyPair, message []byte) bool {
-			if bytesEqual(keyPair1.PublicKey, keyPair2.PublicKey) {
-				return true
-			}
+		message := []byte(msg)
+		signature, err := Sign(kp1.PrivateKey, message)
+		if err != nil {
+			return false
+		}
 
-			signature, err := Sign(keyPair1.PrivateKey, message)
-			if err != nil {
-				return false
-			}
+		err = Verify(kp2.PublicKey, message, signature)
+		return err != nil // Should fail with wrong key
+	}
 
-			err = Verify(keyPair2.PublicKey, message, signature)
-			return err != nil
-		},
-		genEd25519KeyPair(),
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("wrong public key rejects signature failed with error:", err)
+	}
 }
 
 func TestMessageIntegrity(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg1, msg2 randomMessage) bool {
+		message1 := []byte(msg1)
+		message2 := []byte(msg2)
 
-	properties.Property("tampered message fails verification", prop.ForAll(
-		func(keyPair1 keyPair, message1, message2 []byte) bool {
-			if bytesEqual(message1, message2) {
-				return true
-			}
+		if bytesEqual(message1, message2) {
+			return true // Skip if messages are the same
+		}
 
-			signature, err := Sign(keyPair1.PrivateKey, message1)
-			if err != nil {
-				return false
-			}
+		signature, err := Sign(kp.PrivateKey, message1)
+		if err != nil {
+			return false
+		}
 
-			err = Verify(keyPair1.PublicKey, message2, signature)
-			return err != nil
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-		genMessage(),
-	))
+		err = Verify(kp.PublicKey, message2, signature)
+		return err != nil // Should fail with tampered message
+	}
 
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("tampered message fails verification failed with error:", err)
+	}
 }
 
 func TestEncryptionNotAllZeros(t *testing.T) {
-	properties := gopter.NewProperties(nil)
+	f := func(kp keyPair, msg randomMessage) bool {
+		message := []byte(msg)
+		encrypted, err := Encrypt(message, kp.PublicKey)
+		if err != nil {
+			return false
+		}
 
-	properties.Property("encryption doesn't produce all-zero output", prop.ForAll(
-		func(keyPair1 keyPair, message []byte) bool {
-			encrypted, err := Encrypt(message, keyPair1.PublicKey)
-			if err != nil {
-				return false
+		allZeros := true
+		for _, b := range encrypted {
+			if b != 0 {
+				allZeros = false
+				break
 			}
+		}
 
-			allZeros := true
-			for _, b := range encrypted {
-				if b != 0 {
-					allZeros = false
-					break
-				}
-			}
+		return !allZeros
+	}
 
-			return !allZeros
-		},
-		genEd25519KeyPair(),
-		genMessage(),
-	))
-
-	properties.TestingRun(t)
+	if err := quick.Check(f, nil); err != nil {
+		t.Error("encryption doesn't produce all-zero output failed with error:", err)
+	}
 }
 
 // Helper functions
