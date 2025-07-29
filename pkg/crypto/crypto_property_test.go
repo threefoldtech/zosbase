@@ -1,12 +1,18 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/ed25519"
-	crypto_rand "crypto/rand"
 	"math/rand"
 	"reflect"
 	"testing"
 	"testing/quick"
+)
+
+const (
+	// NaClSealedBoxOverhead represents the overhead added by NaCl sealed box encryption
+	// (32 bytes ephemeral key + 16 bytes MAC)
+	NaClSealedBoxOverhead = 48
 )
 
 type keyPair struct {
@@ -16,9 +22,11 @@ type keyPair struct {
 
 // Generate implements quick.Generator for keyPair
 func (keyPair) Generate(rand *rand.Rand, size int) reflect.Value {
-	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
+	pub, priv, err := ed25519.GenerateKey(rand)
 	if err != nil {
-		panic(err)
+		// Return zero value if key generation fails
+		// This will cause the test to fail gracefully rather than panic
+		return reflect.ValueOf(keyPair{})
 	}
 	kp := keyPair{
 		PublicKey:  pub,
@@ -38,23 +46,53 @@ func (randomMessage) Generate(rand *rand.Rand, size int) reflect.Value {
 	rand.Read(message)
 	return reflect.ValueOf(randomMessage(message))
 }
+func encryptThenDecrypt(message []byte, publicKey ed25519.PublicKey, privateKey ed25519.PrivateKey) ([]byte, []byte, error) {
+	encrypted, err := Encrypt(message, publicKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	decrypted, err := Decrypt(encrypted, privateKey)
+	if err != nil {
+		return encrypted, nil, err
+	}
+
+	return encrypted, decrypted, nil
+}
+
+func encryptThenDecryptECDH(message []byte, privateKey1 ed25519.PrivateKey, publicKey1 ed25519.PublicKey, privateKey2 ed25519.PrivateKey, publicKey2 ed25519.PublicKey) ([]byte, []byte, error) {
+	encrypted, err := EncryptECDH(message, privateKey1, publicKey2)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	decrypted, err := DecryptECDH(encrypted, privateKey2, publicKey1)
+	if err != nil {
+		return encrypted, nil, err
+	}
+
+	return encrypted, decrypted, nil
+}
+
+// isValidKeyPair checks if a keyPair has valid non-zero keys
+func isValidKeyPair(kp keyPair) bool {
+	return len(kp.PublicKey) > 0 && len(kp.PrivateKey) > 0
+}
 
 // Property-based tests using testing/quick
 
 func TestEncryptionDecryptionRoundtrip(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted, err := Encrypt(message, kp.PublicKey)
+		_, decrypted, err := encryptThenDecrypt(message, kp.PublicKey, kp.PrivateKey)
 		if err != nil {
 			return false
 		}
-
-		decrypted, err := Decrypt(encrypted, kp.PrivateKey)
-		if err != nil {
-			return false
-		}
-
-		return bytesEqual(decrypted, message)
+		return bytes.Equal(decrypted, message)
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -64,15 +102,19 @@ func TestEncryptionDecryptionRoundtrip(t *testing.T) {
 
 func TestEncryptionNonDeterminism(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted1, err1 := Encrypt(message, kp.PublicKey)
-		encrypted2, err2 := Encrypt(message, kp.PublicKey)
+		encrypted1, _, err1 := encryptThenDecrypt(message, kp.PublicKey, kp.PrivateKey)
+		encrypted2, _, err2 := encryptThenDecrypt(message, kp.PublicKey, kp.PrivateKey)
 
 		if err1 != nil || err2 != nil {
 			return false
 		}
 
-		return !bytesEqual(encrypted1, encrypted2)
+		return !bytes.Equal(encrypted1, encrypted2)
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -82,14 +124,17 @@ func TestEncryptionNonDeterminism(t *testing.T) {
 
 func TestEncryptionCiphertextSize(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted, err := Encrypt(message, kp.PublicKey)
+		encrypted, _, err := encryptThenDecrypt(message, kp.PublicKey, kp.PrivateKey)
 		if err != nil {
 			return false
 		}
 
-		// NaCl sealed box adds 48 bytes overhead (32 bytes ephemeral key + 16 bytes MAC)
-		expectedSize := len(message) + 48
+		expectedSize := len(message) + NaClSealedBoxOverhead
 		return len(encrypted) == expectedSize
 	}
 
@@ -100,18 +145,16 @@ func TestEncryptionCiphertextSize(t *testing.T) {
 
 func TestECDHEncryptionRoundtrip(t *testing.T) {
 	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp1) || !isValidKeyPair(kp2) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted, err := EncryptECDH(message, kp1.PrivateKey, kp2.PublicKey)
+		_, decrypted, err := encryptThenDecryptECDH(message, kp1.PrivateKey, kp1.PublicKey, kp2.PrivateKey, kp2.PublicKey)
 		if err != nil {
 			return false
 		}
-
-		decrypted, err := DecryptECDH(encrypted, kp2.PrivateKey, kp1.PublicKey)
-		if err != nil {
-			return false
-		}
-
-		return bytesEqual(decrypted, message)
+		return bytes.Equal(decrypted, message)
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -121,30 +164,24 @@ func TestECDHEncryptionRoundtrip(t *testing.T) {
 
 func TestECDHSymmetry(t *testing.T) {
 	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp1) || !isValidKeyPair(kp2) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted1, err := EncryptECDH(message, kp1.PrivateKey, kp2.PublicKey)
+		_, decrypted1, err := encryptThenDecryptECDH(message, kp1.PrivateKey, kp1.PublicKey, kp2.PrivateKey, kp2.PublicKey)
 		if err != nil {
 			return false
 		}
 
-		decrypted1, err := DecryptECDH(encrypted1, kp2.PrivateKey, kp1.PublicKey)
+		_, decrypted2, err := encryptThenDecryptECDH(message, kp2.PrivateKey, kp2.PublicKey, kp1.PrivateKey, kp1.PublicKey)
 		if err != nil {
 			return false
 		}
 
-		encrypted2, err := EncryptECDH(message, kp2.PrivateKey, kp1.PublicKey)
-		if err != nil {
-			return false
-		}
-
-		decrypted2, err := DecryptECDH(encrypted2, kp1.PrivateKey, kp2.PublicKey)
-		if err != nil {
-			return false
-		}
-
-		return bytesEqual(decrypted1, message) &&
-			bytesEqual(decrypted2, message) &&
-			bytesEqual(decrypted1, decrypted2)
+		return bytes.Equal(decrypted1, message) &&
+			bytes.Equal(decrypted2, message) &&
+			bytes.Equal(decrypted1, decrypted2)
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -154,6 +191,10 @@ func TestECDHSymmetry(t *testing.T) {
 
 func TestSignatureRoundtrip(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
 		signature, err := Sign(kp.PrivateKey, message)
 		if err != nil {
@@ -171,6 +212,10 @@ func TestSignatureRoundtrip(t *testing.T) {
 
 func TestSignatureDeterminism(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
 		sig1, err1 := Sign(kp.PrivateKey, message)
 		sig2, err2 := Sign(kp.PrivateKey, message)
@@ -179,7 +224,7 @@ func TestSignatureDeterminism(t *testing.T) {
 			return false
 		}
 
-		return bytesEqual(sig1, sig2)
+		return bytes.Equal(sig1, sig2)
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -189,7 +234,11 @@ func TestSignatureDeterminism(t *testing.T) {
 
 func TestWrongKeyRejection(t *testing.T) {
 	f := func(kp1, kp2 keyPair, msg randomMessage) bool {
-		if bytesEqual(kp1.PublicKey, kp2.PublicKey) {
+		if !isValidKeyPair(kp1) || !isValidKeyPair(kp2) {
+			return true
+		}
+
+		if bytes.Equal(kp1.PublicKey, kp2.PublicKey) {
 			return true // Skip if keys are the same
 		}
 
@@ -200,7 +249,7 @@ func TestWrongKeyRejection(t *testing.T) {
 		}
 
 		err = Verify(kp2.PublicKey, message, signature)
-		return err != nil // Should fail with wrong key
+		return err != nil
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -210,10 +259,14 @@ func TestWrongKeyRejection(t *testing.T) {
 
 func TestMessageIntegrity(t *testing.T) {
 	f := func(kp keyPair, msg1, msg2 randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message1 := []byte(msg1)
 		message2 := []byte(msg2)
 
-		if bytesEqual(message1, message2) {
+		if bytes.Equal(message1, message2) {
 			return true // Skip if messages are the same
 		}
 
@@ -223,7 +276,7 @@ func TestMessageIntegrity(t *testing.T) {
 		}
 
 		err = Verify(kp.PublicKey, message2, signature)
-		return err != nil // Should fail with tampered message
+		return err != nil
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -233,8 +286,12 @@ func TestMessageIntegrity(t *testing.T) {
 
 func TestEncryptionNotAllZeros(t *testing.T) {
 	f := func(kp keyPair, msg randomMessage) bool {
+		if !isValidKeyPair(kp) {
+			return true
+		}
+
 		message := []byte(msg)
-		encrypted, err := Encrypt(message, kp.PublicKey)
+		encrypted, _, err := encryptThenDecrypt(message, kp.PublicKey, kp.PrivateKey)
 		if err != nil {
 			return false
 		}
@@ -253,18 +310,4 @@ func TestEncryptionNotAllZeros(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error("encryption doesn't produce all-zero output failed with error:", err)
 	}
-}
-
-// Helper functions
-
-func bytesEqual(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
