@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/app"
+	"golang.org/x/sys/unix"
 )
 
 // Cleaner interface, implementer of this interface
@@ -134,12 +135,27 @@ func (f *flistModule) cleanUnusedMounts() error {
 
 	for _, entry := range entries {
 		path := filepath.Join(f.mountpoint, entry.Name())
-		if err := f.isMountpoint(path); err == nil {
+
+		// First check if it's a mountpoint - clean non-mountpoints as before
+		if err := f.isMountpoint(path); err != nil {
+			if err := os.Remove(path); err != nil {
+				log.Error().Err(err).Msgf("failed to clean mountpoint %s", path)
+			}
 			continue
 		}
 
-		if err := os.Remove(path); err != nil {
-			log.Error().Err(err).Msgf("failed to clean mountpoint %s", path)
+		// New check: If it's a mountpoint, verify it's not empty
+		contents, readErr := os.ReadDir(path)
+		if readErr == nil && len(contents) == 0 {
+			log.Debug().Str("path", path).Msg("cleaning empty mountpoint")
+			if unmountErr := f.system.Unmount(path, unix.MNT_DETACH|unix.MNT_FORCE); unmountErr != nil {
+				log.Error().Err(unmountErr).Str("path", path).Msg("failed to unmount empty mountpoint")
+				continue
+			}
+
+			if removeErr := os.RemoveAll(path); removeErr != nil {
+				log.Error().Err(removeErr).Str("path", path).Msg("failed to clean empty mountpoint")
+			}
 		}
 	}
 
