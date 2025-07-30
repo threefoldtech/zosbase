@@ -315,10 +315,12 @@ func (s *statsStream) ListGPUs() ([]pkg.GPUInfo, error) {
 
 	for _, pciDevice := range devices {
 		id := pciDevice.ShortID()
+		gpu, _ := capacity.GetGpuDevice(&pciDevice)
 		info := pkg.GPUInfo{
 			ID:       id,
 			Vendor:   "unknown",
 			Device:   "unknown",
+			Vram:     gpu.Vram,
 			Contract: used[id],
 		}
 
