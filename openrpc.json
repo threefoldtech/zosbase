@@ -1,0 +1,2035 @@
+{
+  "openrpc": "1.2.3",
+  "info": {
+    "title": "ZOS Mycelium API",
+    "description": "This is an API for interacting with the ZOS nodes over Mycelium.",
+    "version": "1.0.0"
+  },
+  "methods": [
+    {
+      "name": "system.version",
+      "description": "Retrieves the current version information for ZOS (Zero OS) and Zinit process manager. This method executes 'zinit -V' command to get Zinit version and queries the version monitor stub for ZOS version.",
+      "params": [],
+      "result": {
+        "name": "Version",
+        "description": "Version information containing ZOS and Zinit versions",
+        "schema": {
+          "$ref": "#/components/schemas/Version"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get system version",
+          "params": [],
+          "result": {
+            "name": "Version",
+            "value": {
+              "zos": "0.5.6",
+              "zinit": "0.2.14"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "system.hypervisor",
+      "description": "Detects the hypervisor type running on the node by querying the resource oracle. Returns the hypervisor name if the node is running in a virtualized environment, or indicates bare metal if no hypervisor is detected.",
+      "params": [],
+      "result": {
+        "name": "Hypervisor",
+        "description": "The name of the detected hypervisor (e.g., 'kvm', 'vmware', 'xen') or 'bare-metal' if no hypervisor is detected",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get hypervisor type",
+          "params": [],
+          "result": {
+            "name": "Hypervisor",
+            "value": "kvm"
+          }
+        }
+      ]
+    },
+    {
+      "name": "system.diagnostics",
+      "description": "Performs comprehensive system diagnostics including CPU usage, memory statistics, disk information, and running processes. Also checks the health status of ZOS modules and overall system health.",
+      "params": [],
+      "result": {
+        "name": "Diagnostics",
+        "description": "Comprehensive system diagnostic information including CPU, memory, disk, and process statistics",
+        "schema": {
+          "$ref": "#/components/schemas/Diagnostics"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get system diagnostics",
+          "params": [],
+          "result": {
+            "name": "Diagnostics",
+            "value": {
+              "cpu": [{"user": 15.2, "system": 8.1, "idle": 76.7}],
+              "memory": {"used": 2147483648, "total": 8589934592, "cached": 1073741824, "buffers": 536870912},
+              "disks": [{"device": "/dev/sda1", "size": 107374182400, "used": 53687091200, "filesystem": "ext4", "mounted": "/"}],
+              "processes": [{"command": "systemd", "cpu": 0.1, "memory": 0.5, "rss": 8388608, "vms": 167772160}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "system.dmi",
+      "description": "Retrieves Desktop Management Interface (DMI) information from the system BIOS/UEFI. This includes detailed hardware information such as system manufacturer, product name, BIOS version, memory modules, and other hardware components.",
+      "params": [],
+      "result": {
+        "name": "DMI",
+        "description": "DMI hardware information including system details, BIOS information, and hardware components",
+        "schema": {
+          "$ref": "#/components/schemas/DMI"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get DMI information",
+          "params": [],
+          "result": {
+            "name": "DMI",
+            "value": {
+              "tooling": {"aggregator": "dmidecode", "decoder": "dmi"},
+              "sections": [
+                {
+                  "handleline": "Handle 0x0001, DMI type 1, 27 bytes",
+                  "typestr": "System Information",
+                  "typenum": 1,
+                  "subsections": [
+                    {
+                      "title": "System Information",
+                      "properties": [
+                        {"name": "Manufacturer", "value": "Dell Inc."},
+                        {"name": "Product Name", "value": "PowerEdge R740"}
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "system.features",
+      "description": "Returns a list of supported node features based on the current system configuration and available services. Features indicate what types of workloads and capabilities the node supports.",
+      "params": [],
+      "result": {
+        "name": "NodeFeatures",
+        "description": "Array of supported node features as strings",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "Get node features",
+          "params": [],
+          "result": {
+            "name": "NodeFeatures",
+            "value": ["zmachine", "zdb", "network", "volume", "kubernetes"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitor.speed",
+      "description": "Performs network speed tests using iperf to measure upload and download speeds to other nodes in the grid. Tests network connectivity and bandwidth performance between nodes.",
+      "params": [],
+      "result": {
+        "name": "SpeedResult",
+        "description": "Network speed test results including upload/download speeds and CPU utilization during tests",
+        "schema": {
+          "$ref": "#/components/schemas/IperfTaskResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get network speed test results",
+          "params": [],
+          "result": {
+            "name": "SpeedResult",
+            "value": {
+              "name": "iperf",
+              "description": "Network speed test using iperf",
+              "timestamp": 1640995200,
+              "result": [
+                {
+                  "node_id": 123,
+                  "node_ip": "192.168.1.100",
+                  "test_type": "upload",
+                  "upload_speed": 95.5,
+                  "download_speed": 87.2,
+                  "cpu_report": {"user": 12.5, "system": 8.3, "idle": 79.2}
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitor.health",
+      "description": "Performs comprehensive health checks on the node including system services, network connectivity, and resource availability. Returns detailed health status and any detected issues.",
+      "params": [],
+      "result": {
+        "name": "HealthResult",
+        "description": "Health check results including test status and any errors detected",
+        "schema": {
+          "$ref": "#/components/schemas/HealthTaskResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get health check results",
+          "params": [],
+          "result": {
+            "name": "HealthResult",
+            "value": {
+              "name": "health_check",
+              "description": "System health check",
+              "timestamp": 1640995200,
+              "result": {
+                "test_name": "system_health",
+                "errors": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitor.publicip",
+      "description": "Tests public IP connectivity and accessibility from external networks. Verifies that public IPs assigned to the node are reachable and properly configured.",
+      "params": [],
+      "result": {
+        "name": "PublicIpResult",
+        "description": "Public IP connectivity test results showing the status of each public IP",
+        "schema": {
+          "$ref": "#/components/schemas/PublicIpTaskResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get public IP test results",
+          "params": [],
+          "result": {
+            "name": "PublicIpResult",
+            "value": {
+              "name": "public_ip_test",
+              "description": "Public IP connectivity test",
+              "timestamp": 1640995200,
+              "result": [
+                {
+                  "ip": "203.0.113.10",
+                  "state": "ok",
+                  "reason": "IP is reachable"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitor.benchmark",
+      "description": "Performs CPU benchmark tests to measure single-core and multi-core performance. Uses standardized benchmarking tools to assess computational capabilities.",
+      "params": [],
+      "result": {
+        "name": "BenchmarkResult",
+        "description": "CPU benchmark results including single-core and multi-core performance scores",
+        "schema": {
+          "$ref": "#/components/schemas/CpuBenchTaskResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get CPU benchmark results",
+          "params": [],
+          "result": {
+            "name": "BenchmarkResult",
+            "value": {
+              "name": "cpu_benchmark",
+              "description": "CPU performance benchmark",
+              "timestamp": 1640995200,
+              "result": {
+                "single": 1250.5,
+                "multi": 8500.2,
+                "threads": 8,
+                "workloads": 4
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "monitor.all",
+      "description": "Executes all monitoring tests (speed, health, public IP, and benchmark) and returns combined results. Provides a comprehensive overview of node performance and status.",
+      "params": [],
+      "result": {
+        "name": "AllTaskResults",
+        "description": "Combined results from all monitoring tests including speed, health, public IP, and benchmark tests",
+        "schema": {
+          "$ref": "#/components/schemas/AllTaskResult"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get all monitoring test results",
+          "params": [],
+          "result": {
+            "name": "AllTaskResults",
+            "value": {
+              "health_check": {
+                "name": "health_check",
+                "description": "System health check",
+                "timestamp": 1640995200,
+                "result": {"test_name": "system_health", "errors": []}
+              },
+              "iperf": {
+                "name": "iperf",
+                "description": "Network speed test",
+                "timestamp": 1640995200,
+                "result": [{"node_id": 123, "upload_speed": 95.5, "download_speed": 87.2}]
+              },
+              "public_ip": {
+                "name": "public_ip_test",
+                "description": "Public IP test",
+                "timestamp": 1640995200,
+                "result": [{"ip": "203.0.113.10", "state": "ok"}]
+              },
+              "cpu_benchmark": {
+                "name": "cpu_benchmark",
+                "description": "CPU benchmark",
+                "timestamp": 1640995200,
+                "result": {"single": 1250.5, "multi": 8500.2}
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "network.wg_ports",
+      "description": "Retrieves the list of WireGuard ports currently in use by the node. These ports are used for secure VPN connections between nodes in the grid. Not supported in light mode.",
+      "params": [],
+      "result": {
+        "name": "WGPorts",
+        "description": "List of WireGuard ports currently allocated and in use",
+        "schema": {
+          "$ref": "#/components/schemas/WGPorts"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get WireGuard ports",
+          "params": [],
+          "result": {
+            "name": "WGPorts",
+            "value": {
+              "ports": [51820, 51821, 51822]
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32000,
+          "message": "method is not supported in light mode"
+        }
+      ]
+    },
+    {
+      "name": "network.public_config",
+      "description": "Retrieves the public network configuration for the node including IPv4/IPv6 addresses, gateways, and domain information. Not supported in light mode.",
+      "params": [],
+      "result": {
+        "name": "PublicConfig",
+        "description": "Public network configuration including IP addresses, gateways, and domain settings",
+        "schema": {
+          "$ref": "#/components/schemas/PublicConfig"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get public network configuration",
+          "params": [],
+          "result": {
+            "name": "PublicConfig",
+            "value": {
+              "type": "static",
+              "ipv4": "203.0.113.10/24",
+              "ipv6": "2001:db8::10/64",
+              "gw4": "203.0.113.1",
+              "gw6": "2001:db8::1",
+              "domain": "example.com"
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32000,
+          "message": "method is not supported in light mode"
+        }
+      ]
+    },
+    {
+      "name": "network.has_ipv6",
+      "description": "Checks whether the node has IPv6 connectivity available. Returns false in light mode or if no IPv6 subnet is configured.",
+      "params": [],
+      "result": {
+        "name": "HasIpv6",
+        "description": "Boolean indicating whether IPv6 connectivity is available on the node",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "examples": [
+        {
+          "name": "Check IPv6 availability",
+          "params": [],
+          "result": {
+            "name": "HasIpv6",
+            "value": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "network.public_ips",
+      "description": "Lists all public IP addresses currently allocated and in use by deployments on the node. Not supported in light mode.",
+      "params": [],
+      "result": {
+        "name": "PublicIps",
+        "description": "List of public IP addresses allocated to the node",
+        "schema": {
+          "$ref": "#/components/schemas/Ips"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get public IP addresses",
+          "params": [],
+          "result": {
+            "name": "PublicIps",
+            "value": {
+              "ips": ["203.0.113.10", "203.0.113.11", "2001:db8::10"]
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32000,
+          "message": "method is not supported in light mode"
+        }
+      ]
+    },
+    {
+      "name": "network.private_ips",
+      "description": "Lists private IP addresses allocated to a specific network for the requesting twin. Requires authentication and returns IPs only for networks owned by the caller's twin ID.",
+      "params": [
+        {
+          "name": "network_name",
+          "description": "Name of the private network to query for IP addresses",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "PrivateIps",
+        "description": "List of private IP addresses allocated to the specified network",
+        "schema": {
+          "$ref": "#/components/schemas/Ips"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get private IPs for network",
+          "params": [
+            {
+              "name": "network_name",
+              "value": "mynetwork"
+            }
+          ],
+          "result": {
+            "name": "PrivateIps",
+            "value": {
+              "ips": ["10.1.0.2", "10.1.0.3", "10.1.0.4"]
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "network.interfaces",
+      "description": "Lists network interfaces available on the node including their IP addresses and MAC addresses. In light mode, returns interfaces from the light networker. In full mode, returns specific interfaces (zos, ygg) with their configurations.",
+      "params": [],
+      "result": {
+        "name": "Interfaces",
+        "description": "Array of network interfaces with their IP addresses and MAC addresses",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Interface"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "Get network interfaces",
+          "params": [],
+          "result": {
+            "name": "Interfaces",
+            "value": [
+              {
+                "name": "zos",
+                "ips": ["192.168.1.100", "fe80::1"],
+                "mac": "00:11:22:33:44:55"
+              },
+              {
+                "name": "ygg",
+                "ips": ["200:1234::1"],
+                "mac": "00:11:22:33:44:56"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "network.set_public_nic",
+      "description": "Sets the public network interface device for the node. This configures which physical network interface should be used for public traffic. Not supported in light mode.",
+      "params": [
+        {
+          "name": "device",
+          "description": "Name of the network device to set as the public interface (e.g., 'eth0', 'ens3')",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "SetResult",
+        "description": "Empty object indicating successful configuration",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "examples": [
+        {
+          "name": "Set public network interface",
+          "params": [
+            {
+              "name": "device",
+              "value": "eth0"
+            }
+          ],
+          "result": {
+            "name": "SetResult",
+            "value": {}
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32000,
+          "message": "method is not supported in light mode"
+        }
+      ]
+    },
+    {
+      "name": "network.get_public_nic",
+      "description": "Retrieves the current public network interface configuration including whether it's in single or dual mode and the associated physical interface. Not supported in light mode.",
+      "params": [],
+      "result": {
+        "name": "PublicNIC",
+        "description": "Public network interface configuration details",
+        "schema": {
+          "$ref": "#/components/schemas/ExitDevice"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get public network interface",
+          "params": [],
+          "result": {
+            "name": "PublicNIC",
+            "value": {
+              "is_single": false,
+              "is_dual": true,
+              "dual_interface": "eth0"
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32000,
+          "message": "method is not supported in light mode"
+        }
+      ]
+    },
+    {
+      "name": "network.admin.interfaces",
+      "description": "Lists all network interfaces available on the node for administrative purposes. This provides a comprehensive view of all network interfaces regardless of their current configuration or usage.",
+      "params": [],
+      "result": {
+        "name": "Interfaces",
+        "description": "Array of all network interfaces available for administrative configuration",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Interface"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "Get all network interfaces",
+          "params": [],
+          "result": {
+            "name": "Interfaces",
+            "value": [
+              {
+                "name": "eth0",
+                "ips": ["192.168.1.100"],
+                "mac": "00:11:22:33:44:55"
+              },
+              {
+                "name": "eth1",
+                "ips": [],
+                "mac": "00:11:22:33:44:56"
+              },
+              {
+                "name": "lo",
+                "ips": ["127.0.0.1", "::1"],
+                "mac": "00:00:00:00:00:00"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "deployment.deploy",
+      "description": "Creates a new deployment on the node with the specified workloads. The deployment must have a valid signature and the contract must exist on the blockchain with the correct contract hash. Requires authentication via twin ID.",
+      "params": [
+        {
+          "name": "deployment",
+          "description": "Complete deployment specification including workloads, metadata, and signature requirements",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      ],
+      "result": {
+        "name": "createResult",
+        "description": "Empty object indicating successful deployment creation",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "examples": [
+        {
+          "name": "Deploy workloads",
+          "params": [
+            {
+              "name": "deployment",
+              "value": {
+                "version": 1,
+                "twin_id": 123,
+                "contract_id": 456,
+                "metadata": "deployment metadata",
+                "description": "Test deployment",
+                "expiration": 1672531200,
+                "workloads": [
+                  {
+                    "version": 1,
+                    "name": "test-vm",
+                    "type": "zmachine",
+                    "data": {},
+                    "metadata": "vm metadata",
+                    "description": "Test virtual machine"
+                  }
+                ]
+              }
+            }
+          ],
+          "result": {
+            "name": "createResult",
+            "value": {}
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "deployment.update",
+      "description": "Updates an existing deployment with new workload configurations. The deployment must already exist and the caller must be the owner (same twin ID). Requires valid signature for the updated deployment.",
+      "params": [
+        {
+          "name": "deployment",
+          "description": "Updated deployment specification with modified workloads or metadata",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      ],
+      "result": {
+        "name": "updateResult",
+        "description": "Empty object indicating successful deployment update",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "examples": [
+        {
+          "name": "Update deployment",
+          "params": [
+            {
+              "name": "deployment",
+              "value": {
+                "version": 2,
+                "twin_id": 123,
+                "contract_id": 456,
+                "metadata": "updated metadata",
+                "description": "Updated deployment",
+                "expiration": 1672531200,
+                "workloads": [
+                  {
+                    "version": 2,
+                    "name": "test-vm",
+                    "type": "zmachine",
+                    "data": {},
+                    "metadata": "updated vm metadata",
+                    "description": "Updated virtual machine"
+                  }
+                ]
+              }
+            }
+          ],
+          "result": {
+            "name": "updateResult",
+            "value": {}
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "deployment.get",
+      "description": "Retrieves a specific deployment by its contract ID. Only returns deployments owned by the requesting twin ID for security purposes.",
+      "params": [
+        {
+          "name": "contract_id",
+          "description": "Unique contract ID of the deployment to retrieve",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "Deployment",
+        "description": "Complete deployment specification including all workloads and metadata",
+        "schema": {
+          "$ref": "#/components/schemas/Deployment"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get deployment by contract ID",
+          "params": [
+            {
+              "name": "contract_id",
+              "value": 456
+            }
+          ],
+          "result": {
+            "name": "Deployment",
+            "value": {
+              "version": 1,
+              "twin_id": 123,
+              "contract_id": 456,
+              "metadata": "deployment metadata",
+              "description": "Test deployment",
+              "expiration": 1672531200,
+              "workloads": [
+                {
+                  "version": 1,
+                  "name": "test-vm",
+                  "type": "zmachine",
+                  "data": {},
+                  "metadata": "vm metadata",
+                  "description": "Test virtual machine"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "deployment.list",
+      "description": "Lists all deployments owned by the requesting twin ID. Returns an array of deployments with their complete specifications and current status.",
+      "params": [],
+      "result": {
+        "name": "Deployments",
+        "description": "Array of all deployments owned by the requesting twin",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Deployment"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "List all deployments",
+          "params": [],
+          "result": {
+            "name": "Deployments",
+            "value": [
+              {
+                "version": 1,
+                "twin_id": 123,
+                "contract_id": 456,
+                "metadata": "deployment metadata",
+                "description": "Test deployment",
+                "expiration": 1672531200,
+                "workloads": [
+                  {
+                    "version": 1,
+                    "name": "test-vm",
+                    "type": "zmachine",
+                    "data": {},
+                    "metadata": "vm metadata",
+                    "description": "Test virtual machine"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "deployment.changes",
+      "description": "Retrieves workloads that have changed or been updated in a specific deployment. This is useful for tracking deployment modifications and their current state.",
+      "params": [
+        {
+          "name": "contract_id",
+          "description": "Contract ID of the deployment to check for changes",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "Workloads",
+        "description": "Array of workloads that have been modified in the deployment",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Workload"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "Get deployment changes",
+          "params": [
+            {
+              "name": "contract_id",
+              "value": 456
+            }
+          ],
+          "result": {
+            "name": "Workloads",
+            "value": [
+              {
+                "version": 2,
+                "name": "test-vm",
+                "type": "zmachine",
+                "data": {},
+                "metadata": "updated vm metadata",
+                "description": "Updated virtual machine",
+                "result": {
+                  "created": 1640995200,
+                  "state": "ok",
+                  "message": "Workload deployed successfully",
+                  "data": {}
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32001,
+          "message": "could not get twin_id from context"
+        }
+      ]
+    },
+    {
+      "name": "deployment.delete",
+      "description": "Deletion over the API is disabled for security reasons. To delete a deployment, you must cancel the associated contract on the blockchain instead.",
+      "params": [
+        {
+          "name": "contract_id",
+          "description": "Contract ID of the deployment to delete (operation will fail)",
+          "required": true,
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "deleteResult",
+        "description": "This operation always fails - deletion must be done via contract cancellation",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "examples": [
+        {
+          "name": "Attempt to delete deployment",
+          "params": [
+            {
+              "name": "contract_id",
+              "value": 456
+            }
+          ],
+          "result": {
+            "name": "deleteResult",
+            "value": {}
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32002,
+          "message": "deletion over the api is disabled, please cancel your contract instead"
+        }
+      ]
+    },
+    {
+      "name": "gpu.list",
+      "description": "Lists all GPU devices available on the node including their vendor, device information, and current contract assignment. Only discrete GPUs from whitelisted vendors (NVIDIA, AMD) are included.",
+      "params": [],
+      "result": {
+        "name": "Gpus",
+        "description": "Array of GPU devices with vendor, device, and contract information",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/GPU"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "List available GPUs",
+          "params": [],
+          "result": {
+            "name": "Gpus",
+            "value": [
+              {
+                "id": "0000:01:00.0",
+                "vendor": "NVIDIA Corporation",
+                "device": "GeForce RTX 3080",
+                "contract": 0
+              },
+              {
+                "id": "0000:02:00.0",
+                "vendor": "Advanced Micro Devices, Inc.",
+                "device": "Radeon RX 6800 XT",
+                "contract": 789
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "storage.pools",
+      "description": "Retrieves metrics for all storage pools on the node including pool names, types (SSD/HDD), total size, and used space. Provides insight into storage capacity and utilization.",
+      "params": [],
+      "result": {
+        "name": "PoolMetrics",
+        "description": "Array of storage pool metrics with size and usage information",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/PoolMetrics"
+          }
+        }
+      },
+      "examples": [
+        {
+          "name": "Get storage pool metrics",
+          "params": [],
+          "result": {
+            "name": "PoolMetrics",
+            "value": [
+              {
+                "name": "ssd_pool",
+                "type": "SSD",
+                "size": 1099511627776,
+                "used": 549755813888
+              },
+              {
+                "name": "hdd_pool",
+                "type": "HDD",
+                "size": 4398046511104,
+                "used": 1099511627776
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "statistics",
+      "description": "Retrieves comprehensive node resource statistics including total capacity, used resources, system reserved resources, and user deployment statistics. Provides overview of node utilization and activity.",
+      "params": [],
+      "result": {
+        "name": "Counters",
+        "description": "Node resource statistics and usage counters",
+        "schema": {
+          "$ref": "#/components/schemas/Counters"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get node statistics",
+          "params": [],
+          "result": {
+            "name": "Counters",
+            "value": {
+              "users": {
+                "deployments": 15,
+                "workloads": 42,
+                "last_deployment_timestamp": 1640995200
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "vm.logs",
+      "description": "Retrieves log content for a specific virtual machine by reading the log file from the VM logs directory. Useful for debugging and monitoring VM operations.",
+      "params": [
+        {
+          "name": "file_name",
+          "description": "Name of the log file to retrieve (relative to VM logs directory)",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "LogContent",
+        "description": "Raw log file content as a string",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get VM logs",
+          "params": [
+            {
+              "name": "file_name",
+              "value": "vm-123.log"
+            }
+          ],
+          "result": {
+            "name": "LogContent",
+            "value": "2024-01-01 12:00:00 [INFO] VM started successfully\n2024-01-01 12:00:01 [INFO] Network interface configured\n2024-01-01 12:00:02 [INFO] VM ready for connections"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32003,
+          "message": "failed to read file, path: /var/cache/modules/vmd/logs/vm-123.log, no such file or directory"
+        }
+      ]
+    },
+    {
+      "name": "location.get",
+      "description": "Retrieves the geographical location of the node using GeoIP services. Location data is cached for 24 hours to reduce external API calls. Includes coordinates, country, city, and continent information.",
+      "params": [],
+      "result": {
+        "name": "Location",
+        "description": "Geographical location information for the node",
+        "schema": {
+          "$ref": "#/components/schemas/Location"
+        }
+      },
+      "examples": [
+        {
+          "name": "Get node location",
+          "params": [],
+          "result": {
+            "name": "Location",
+            "value": {
+              "country": "United States",
+              "city": "New York",
+              "longitude": -74.0059,
+              "latitude": 40.7128,
+              "continent": "North America",
+              "region_name": "New York",
+              "region_code": "NY"
+            }
+          }
+        }
+      ],
+      "errors": [
+        {
+          "code": -32004,
+          "message": "failed to fetch location information"
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Version": {
+        "type": "object",
+        "description": "System version information containing ZOS and Zinit versions",
+        "properties": {
+          "zos": {
+            "type": "string",
+            "description": "Version of ZOS (Zero OS) currently running on the node"
+          },
+          "zinit": {
+            "type": "string",
+            "description": "Version of Zinit process manager, or error message if version detection failed"
+          }
+        },
+        "required": ["zos", "zinit"]
+      },
+      "DMI": {
+        "type": "object",
+        "description": "Desktop Management Interface information containing hardware details from system BIOS/UEFI",
+        "properties": {
+          "tooling": {
+            "$ref": "#/components/schemas/Tooling",
+            "description": "Information about the tools used to gather DMI data"
+          },
+          "sections": {
+            "type": "array",
+            "description": "Array of DMI sections containing hardware information",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            }
+          }
+        },
+        "required": ["tooling", "sections"]
+      },
+      "Tooling": {
+        "type": "object",
+        "description": "Information about the tools used to gather and decode DMI data",
+        "properties": {
+          "aggregator": {
+            "type": "string",
+            "description": "Tool used to aggregate DMI data (typically 'dmidecode')"
+          },
+          "decoder": {
+            "type": "string",
+            "description": "Tool used to decode DMI data (typically 'dmi')"
+          }
+        },
+        "required": ["aggregator", "decoder"]
+      },
+      "Section": {
+        "type": "object",
+        "description": "DMI section containing hardware information for a specific component type",
+        "properties": {
+          "handleline": {
+            "type": "string",
+            "description": "DMI handle line identifier (e.g., 'Handle 0x0001, DMI type 1, 27 bytes')"
+          },
+          "typestr": {
+            "type": "string",
+            "description": "Human-readable description of the DMI type (e.g., 'System Information', 'BIOS Information')"
+          },
+          "typenum": {
+            "type": "integer",
+            "description": "Numeric DMI type identifier"
+          },
+          "subsections": {
+            "type": "array",
+            "description": "Array of subsections containing detailed hardware properties",
+            "items": {
+              "$ref": "#/components/schemas/SubSection"
+            }
+          }
+        },
+        "required": ["handleline", "typestr", "typenum", "subsections"]
+      },
+      "SubSection": {
+        "type": "object",
+        "description": "DMI subsection containing grouped hardware properties",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the subsection (e.g., 'System Information', 'Memory Device')"
+          },
+          "properties": {
+            "type": "array",
+            "description": "Array of hardware properties within this subsection",
+            "items": {
+              "$ref": "#/components/schemas/PropertyData"
+            }
+          }
+        },
+        "required": ["title", "properties"]
+      },
+      "PropertyData": {
+        "type": "object",
+        "description": "Individual hardware property with name, value, and optional list items",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the hardware property (e.g., 'Manufacturer', 'Product Name', 'Serial Number')"
+          },
+          "value": {
+            "type": "string",
+            "description": "Value of the hardware property"
+          },
+          "items": {
+            "type": "array",
+            "description": "Optional array of related items for properties that have multiple values",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name"]
+      },
+      "Diagnostics": {
+        "type": "object",
+        "description": "Comprehensive system diagnostic information including CPU, memory, disk, and process statistics",
+        "properties": {
+          "cpu": {
+            "type": "array",
+            "description": "Array of CPU usage statistics, typically one entry per CPU core",
+            "items": {
+              "$ref": "#/components/schemas/CPUInfo"
+            }
+          },
+          "memory": {
+            "description": "Memory usage statistics including RAM and swap information",
+            "$ref": "#/components/schemas/MemoryInfo"
+          },
+          "disks": {
+            "type": "array",
+            "description": "Array of disk usage information for all mounted filesystems",
+            "items": {
+              "$ref": "#/components/schemas/DiskInfo"
+            }
+          },
+          "processes": {
+            "type": "array",
+            "description": "Array of running process information with resource usage",
+            "items": {
+              "$ref": "#/components/schemas/ProcessesInfo"
+            }
+          }
+        },
+        "required": ["cpu", "memory", "disks", "processes"]
+      },
+      "CPUInfo": {
+        "type": "object",
+        "description": "CPU usage statistics showing time spent in different modes",
+        "properties": {
+          "user": {
+            "type": "number",
+            "description": "Percentage of time spent in user mode"
+          },
+          "system": {
+            "type": "number",
+            "description": "Percentage of time spent in system/kernel mode"
+          },
+          "idle": {
+            "type": "number",
+            "description": "Percentage of time CPU was idle"
+          }
+        },
+        "required": ["user", "system", "idle"]
+      },
+      "MemoryInfo": {
+        "type": "object",
+        "description": "Memory usage statistics including RAM and swap information",
+        "properties": {
+          "used": {
+            "type": "integer",
+            "description": "Used memory in bytes"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total available memory in bytes"
+          },
+          "cached": {
+            "type": "integer",
+            "description": "Cached memory in bytes"
+          },
+          "buffers": {
+            "type": "integer",
+            "description": "Buffer memory in bytes"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Memory limit in bytes (if applicable)"
+          },
+          "usedswap": {
+            "type": "integer",
+            "description": "Used swap space in bytes"
+          },
+          "totalswap": {
+            "type": "integer",
+            "description": "Total swap space in bytes"
+          }
+        },
+        "required": ["used", "total"]
+      },
+      "DiskInfo": {
+        "type": "object",
+        "description": "Disk usage information for a mounted filesystem",
+        "properties": {
+          "device": {
+            "type": "string",
+            "description": "Device path of the disk (e.g., '/dev/sda1', '/dev/nvme0n1p1')"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Total size of the filesystem in bytes"
+          },
+          "used": {
+            "type": "integer",
+            "description": "Used space on the filesystem in bytes"
+          },
+          "filesystem": {
+            "type": "string",
+            "description": "Filesystem type (e.g., 'ext4', 'xfs', 'btrfs')"
+          },
+          "mounted": {
+            "type": "string",
+            "description": "Mount point path where the filesystem is mounted"
+          }
+        },
+        "required": ["device", "size", "used", "filesystem", "mounted"]
+      },
+      "ProcessesInfo": {
+        "type": "object",
+        "description": "Process information including resource usage statistics",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "Command name or executable path of the process"
+          },
+          "cpu": {
+            "type": "number",
+            "description": "CPU usage percentage for this process"
+          },
+          "memory": {
+            "type": "number",
+            "description": "Memory usage percentage for this process"
+          },
+          "rss": {
+            "type": "integer",
+            "description": "Resident Set Size - physical memory currently used by the process in bytes"
+          },
+          "vms": {
+            "type": "integer",
+            "description": "Virtual Memory Size - total virtual memory used by the process in bytes"
+          },
+          "swap": {
+            "type": "integer",
+            "description": "Swap memory used by the process in bytes"
+          },
+          "time": {
+            "type": "integer",
+            "description": "Total CPU time used by the process in seconds"
+          }
+        },
+        "required": ["command"]
+      },
+
+      "GPU": {
+        "type": "object",
+        "description": "GPU device information including vendor, device details, and contract assignment",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "PCI slot identifier for the GPU device (e.g., '0000:01:00.0')"
+          },
+          "vendor": {
+            "type": "string",
+            "description": "GPU vendor name (e.g., 'NVIDIA Corporation', 'Advanced Micro Devices, Inc.')"
+          },
+          "device": {
+            "type": "string",
+            "description": "GPU device model name (e.g., 'GeForce RTX 3080', 'Radeon RX 6800 XT')"
+          },
+          "contract": {
+            "type": "integer",
+            "description": "Contract ID currently using this GPU, or 0 if available"
+          }
+        },
+        "required": ["id", "vendor", "device", "contract"]
+      },
+
+      "PoolMetrics": {
+        "type": "object",
+        "description": "Storage pool metrics including capacity and usage information",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the storage pool"
+          },
+          "type": {
+            "type": "string",
+            "description": "Storage type (e.g., 'SSD', 'HDD')"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Total pool size in bytes"
+          },
+          "used": {
+            "type": "integer",
+            "description": "Used space in the pool in bytes"
+          }
+        },
+        "required": ["name", "type", "size", "used"]
+      },
+      "Counters": {
+        "type": "object",
+        "description": "Node resource statistics and usage counters providing overview of capacity and activity",
+        "properties": {
+          "total": {
+            "description": "Total system capacity available on the node",
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "used": {
+            "description": "Currently used capacity including user and system resources",
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "system": {
+            "description": "System reserved capacity for ZOS operations",
+            "$ref": "#/components/schemas/Capacity"
+          },
+          "users": {
+            "description": "User deployment and workload statistics",
+            "$ref": "#/components/schemas/UsersCounters"
+          },
+          "open_connections": {
+            "type": "integer",
+            "description": "Number of currently open network connections"
+          }
+        },
+        "required": ["users"]
+      },
+      "UsersCounters": {
+        "type": "object",
+        "description": "Statistics about user deployments and workloads on the node",
+        "properties": {
+          "deployments": {
+            "type": "integer",
+            "description": "Total number of active deployments on the node"
+          },
+          "workloads": {
+            "type": "integer",
+            "description": "Total number of active workloads across all deployments"
+          },
+          "last_deployment_timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp of the most recent deployment activity"
+          }
+        },
+        "required": ["deployments", "workloads", "last_deployment_timestamp"]
+      },
+      "Capacity": {
+        "type": "object",
+        "description": "Resource capacity information including CPU, memory, and storage",
+        "properties": {
+          "cru": {
+            "type": "integer",
+            "description": "Compute Resource Units (CPU cores)"
+          },
+          "mru": {
+            "type": "integer",
+            "description": "Memory Resource Units in bytes"
+          },
+          "hru": {
+            "type": "integer",
+            "description": "HDD Resource Units in bytes"
+          },
+          "sru": {
+            "type": "integer",
+            "description": "SSD Resource Units in bytes"
+          }
+        }
+      },
+      "CpuBenchTaskResult": {
+        "type": "object",
+        "description": "CPU benchmark test result containing performance scores and metadata",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the CPU benchmark test"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp when the benchmark was executed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/CPUBenchmarkResult",
+            "description": "CPU benchmark performance results"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name identifier for the benchmark test"
+          }
+        },
+        "required": ["name", "description", "timestamp", "result"]
+      },
+      "CPUBenchmarkResult": {
+        "type": "object",
+        "description": "CPU benchmark performance scores and system information",
+        "properties": {
+          "single": {
+            "type": "number",
+            "description": "Single-core performance score"
+          },
+          "multi": {
+            "type": "number",
+            "description": "Multi-core performance score"
+          },
+          "threads": {
+            "type": "integer",
+            "description": "Number of CPU threads available"
+          },
+          "workloads": {
+            "type": "integer",
+            "description": "Number of workloads used in the benchmark"
+          }
+        },
+        "required": ["single", "multi", "threads", "workloads"]
+      },
+      "HealthTaskResult": {
+        "type": "object",
+        "description": "Health check test result containing system status and any detected issues",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name identifier for the health check test"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the health check test"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp when the health check was executed"
+          },
+          "result": {
+            "$ref": "#/components/schemas/HealthReport",
+            "description": "Health check results and error information"
+          }
+        },
+        "required": ["name", "description", "timestamp", "result"]
+      },
+      "HealthReport": {
+        "type": "object",
+        "description": "Health check report containing test results and any detected errors",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "description": "Array of error messages detected during health checks (empty if no errors)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "test_name": {
+            "type": "string",
+            "description": "Name of the specific health test that was performed"
+          }
+        },
+        "required": ["errors", "test_name"]
+      },
+      "IperfTaskResult": {
+        "type": "object",
+        "description": "Network speed test result using iperf containing bandwidth measurements",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name identifier for the iperf test"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the iperf network speed test"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp when the iperf test was executed"
+          },
+          "result": {
+            "type": "array",
+            "description": "Array of iperf test results for different target nodes",
+            "items": {
+              "$ref": "#/components/schemas/IperfResult"
+            }
+          }
+        },
+        "required": ["name", "description", "timestamp", "result"]
+      },
+      "IperfResult": {
+        "type": "object",
+        "description": "Individual iperf test result for a specific target node",
+        "properties": {
+          "node_id": {
+            "type": "integer",
+            "description": "Target node ID for the iperf test"
+          },
+          "node_ip": {
+            "type": "string",
+            "description": "IP address of the target node"
+          },
+          "test_type": {
+            "type": "string",
+            "description": "Type of test performed (e.g., 'upload', 'download')"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if the test failed (omitted if successful)"
+          },
+          "cpu_report": {
+            "$ref": "#/components/schemas/CPUUtilizationPercent",
+            "description": "CPU utilization during the iperf test"
+          },
+          "upload_speed": {
+            "type": "number",
+            "description": "Upload speed in Mbps (megabits per second)"
+          },
+          "download_speed": {
+            "type": "number",
+            "description": "Download speed in Mbps (megabits per second)"
+          }
+        },
+        "required": ["node_id", "node_ip", "test_type"]
+      },
+      "CPUUtilizationPercent": {
+        "type": "object",
+        "description": "CPU utilization percentages during a test or operation",
+        "properties": {
+          "user": {
+            "type": "number",
+            "description": "Percentage of CPU time spent in user mode"
+          },
+          "system": {
+            "type": "number",
+            "description": "Percentage of CPU time spent in system/kernel mode"
+          },
+          "idle": {
+            "type": "number",
+            "description": "Percentage of CPU time that was idle"
+          }
+        },
+        "required": ["user", "system", "idle"]
+      },
+      "PublicIpTaskResult": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IPReport"
+            }
+          }
+        }
+      },
+      "IPReport": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "AllTaskResult": {
+        "type": "object",
+        "properties": {
+          "health_check": {
+            "$ref": "#/components/schemas/HealthTaskResult"
+          },
+          "iperf": {
+            "$ref": "#/components/schemas/IperfTaskResult"
+          },
+          "public_ip": {
+            "$ref": "#/components/schemas/PublicIpTaskResult"
+          },
+          "cpu_benchmark": {
+            "$ref": "#/components/schemas/CpuBenchTaskResult"
+          }
+        }
+      },
+
+      "Interface": {
+        "type": "object",
+        "description": "Network interface information including name, IP addresses, and MAC address",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the network interface (e.g., 'eth0', 'zos', 'ygg')"
+          },
+          "ips": {
+            "type": "array",
+            "description": "List of IP addresses assigned to this interface",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mac": {
+            "type": "string",
+            "description": "MAC address of the network interface"
+          }
+        },
+        "required": ["name", "ips", "mac"]
+      },
+      "Ips": {
+        "type": "object",
+        "description": "Container for a list of IP addresses",
+        "properties": {
+          "ips": {
+            "type": "array",
+            "description": "Array of IP addresses as strings",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["ips"]
+      },
+      "WGPorts": {
+        "type": "object",
+        "description": "Container for WireGuard port numbers",
+        "properties": {
+          "ports": {
+            "type": "array",
+            "description": "Array of WireGuard port numbers currently in use",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": ["ports"]
+      },
+      "PublicConfig": {
+        "type": "object",
+        "description": "Public network configuration including IP addresses, gateways, and domain information",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of public network configuration (e.g., 'static', 'dhcp')"
+          },
+          "ipv4": {
+            "type": "string",
+            "description": "IPv4 address with CIDR notation (e.g., '203.0.113.10/24')"
+          },
+          "ipv6": {
+            "type": "string",
+            "description": "IPv6 address with CIDR notation (e.g., '2001:db8::10/64')"
+          },
+          "gw4": {
+            "type": "string",
+            "description": "IPv4 gateway address"
+          },
+          "gw6": {
+            "type": "string",
+            "description": "IPv6 gateway address"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domain name associated with the public configuration"
+          }
+        }
+      },
+      "ExitDevice": {
+        "type": "object",
+        "properties": {
+          "is_single": {
+            "type": "boolean",
+            "description": "Set to true if br-pub is connected to zos bridge"
+          },
+          "is_dual": {
+            "type": "boolean",
+            "description": "Set to true if br-pub is connected to a physical nic"
+          },
+          "dual_interface": {
+            "type": "string",
+            "description": "Set to the physical interface name if is_dual is true"
+          }
+        }
+      },
+
+      "Workload": {
+        "type": "object",
+        "description": "Individual workload specification within a deployment",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Version number of the workload specification"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unique name for the workload within the deployment"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of workload (e.g., 'zmachine', 'zdb', 'network', 'volume', 'kubernetes')"
+          },
+          "data": {
+            "type": "object",
+            "description": "Workload-specific configuration data, varies by workload type"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "Optional metadata string for the workload"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the workload"
+          },
+          "result": {
+            "$ref": "#/components/schemas/WorkloadResult",
+            "description": "Result of workload deployment (populated after deployment)"
+          }
+        },
+        "required": ["version", "name", "type", "data"]
+      },
+      "WorkloadResult": {
+        "type": "object",
+        "description": "Result of workload deployment including status and output data",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "description": "Unix timestamp when the workload was created"
+          },
+          "state": {
+            "type": "string",
+            "description": "Current state of the workload (e.g., 'ok', 'error', 'deleted')"
+          },
+          "message": {
+            "type": "string",
+            "description": "Status message or error description"
+          },
+          "data": {
+            "type": "object",
+            "description": "Workload-specific result data, varies by workload type"
+          }
+        },
+        "required": ["created", "state"]
+      },
+      "Deployment": {
+        "type": "object",
+        "description": "Complete deployment specification containing workloads, metadata, and signature requirements",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Version number of the deployment specification"
+          },
+          "twin_id": {
+            "type": "integer",
+            "description": "Twin ID of the deployment owner"
+          },
+          "contract_id": {
+            "type": "integer",
+            "description": "Unique contract ID associated with this deployment"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "Optional metadata string for the deployment"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the deployment"
+          },
+          "expiration": {
+            "type": "integer",
+            "description": "Unix timestamp when the deployment expires"
+          },
+          "workloads": {
+            "type": "array",
+            "description": "Array of workloads to be deployed",
+            "items": {
+              "$ref": "#/components/schemas/Workload"
+            }
+          },
+          "signature_requirement": {
+            "$ref": "#/components/schemas/SignatureRequirement",
+            "description": "Signature requirements for deployment validation"
+          }
+        },
+        "required": ["version", "twin_id", "contract_id", "workloads"]
+      },
+      "SignatureRequirement": {
+        "type": "object",
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignatureRequest"
+            }
+          },
+          "weight_required": {
+            "type": "integer"
+          },
+          "signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Signature"
+            }
+          },
+          "signature_style": {
+            "type": "string"
+          }
+        }
+      },
+      "SignatureRequest": {
+        "type": "object",
+        "properties": {
+          "weight": {
+            "type": "integer"
+          },
+          "twin_id": {
+            "type": "integer"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Signature": {
+        "type": "object",
+        "properties": {
+          "twin_id": {
+            "type": "integer"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "signature_type": {
+            "type": "string"
+          }
+        }
+      },
+      "Location": {
+        "type": "object",
+        "description": "Geographical location information for the node obtained via GeoIP services",
+        "properties": {
+          "country": {
+            "type": "string",
+            "description": "Country name where the node is located"
+          },
+          "city": {
+            "type": "string",
+            "description": "City name where the node is located"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Longitude coordinate of the node location"
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Latitude coordinate of the node location"
+          },
+          "continent": {
+            "type": "string",
+            "description": "Continent where the node is located"
+          },
+          "region_name": {
+            "type": "string",
+            "description": "Region or state name where the node is located"
+          },
+          "region_code": {
+            "type": "string",
+            "description": "Region or state code (e.g., 'NY' for New York)"
+          }
+        },
+        "required": ["country", "city", "longitude", "latitude", "continent"]
+      }
+    }
+  }
+}
