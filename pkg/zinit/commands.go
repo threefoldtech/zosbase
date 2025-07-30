@@ -641,5 +641,12 @@ func (c *Client) Log(n int) (out []byte, err error) {
 
 // Restart restarts a service.
 func (c *Client) Restart(service string) error {
-	return exec.Command("zinit", "restart", service).Run()
+	err := exec.Command("zinit", "restart", service).Run()
+	if err != nil && strings.Contains(err.Error(), "The subcommand 'restart' wasn't recognized") {
+		if err := c.StopWait(30*time.Second, service); err != nil {
+			return err
+		}
+		return c.Start(service)
+	}
+	return err
 }
