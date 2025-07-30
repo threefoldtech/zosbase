@@ -369,13 +369,13 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 
 	// flist url and hub storage urls shouldn't listen to changes in config as long as we can't change it at run time.
 	// it would cause breakage in vmd that needs a reboot to be recovered.
-	// if flist := config.FlistURL; len(flist) > 0 {
-	// 	env.FlistURL = flist[0]
-	// }
-	//
-	// if storage := config.HubStorage; len(storage) > 0 {
-	// 	env.HubStorage = storage
-	// }
+	if flist := config.FlistURL; len(flist) > 0 {
+		env.FlistURL = flist
+	}
+
+	if storage := config.HubStorage; len(storage) > 0 {
+		env.HubStorage = storage
+	}
 
 	// maybe we should verify that we're using a working hub url
 	if hub := config.HubURL; len(hub) > 0 {
@@ -390,14 +390,14 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	// if the node running v4 chage urls to use v4 hub
 	if params.IsV4() {
 		env.FlistURL = defaultV4FlistURL
-		// if flist := config.V4FlistURL; len(flist) > 0 {
-		// 	env.FlistURL = flist
-		// }
+		if flist := config.V4FlistURL; len(flist) > 0 {
+			env.FlistURL = flist
+		}
 
 		env.HubStorage = defaultV4HubStorage
-		// if storage := config.V4HubStorage; len(storage) > 0 {
-		// 	env.HubStorage = storage
-		// }
+		if storage := config.V4HubStorage; len(storage) > 0 {
+			env.HubStorage = storage
+		}
 	}
 
 	if farmSecret, ok := params.Get("secret"); ok {
