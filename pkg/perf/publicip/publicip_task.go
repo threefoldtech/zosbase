@@ -246,7 +246,7 @@ func isLeastValidNode(ctx context.Context, farmID uint32, substrateGateway *stub
 		// stop at three and quiet output
 		err = exec.CommandContext(ctx, "ping", "-c", "3", "-q", ip).Run()
 		if err != nil {
-			log.Debug().Err(err).Msgf("failed to ping node %d", node.NodeID)
+			log.Warn().Err(err).Msgf("failed to ping node %d", node.NodeID)
 			continue
 		}
 		return false, nil
