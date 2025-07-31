@@ -42,9 +42,7 @@ var (
 const (
 	service = "upgrader"
 
-	defaultHubStorage   = "zdb://hub.threefold.me:9900"
-	defaultHubv4Storage = "zdb://v4.hub.threefold.me:9940"
-	defaultZinitSocket  = "/var/run/zinit.sock"
+	defaultZinitSocket = "/var/run/zinit.sock"
 
 	checkForUpdateEvery = 60 * time.Minute
 	checkJitter         = 10 // minutes
@@ -161,13 +159,14 @@ func NewUpgrader(root string, opts ...UpgraderOption) (*Upgrader, error) {
 			return nil, err
 		}
 	}
-	hub_storage := defaultHubStorage
-	if kernel.GetParams().IsV4() {
-		hub_storage = defaultHubv4Storage
-	}
+	env := environment.MustGet()
+	hubStorage := env.HubStorage
+	// if kernel.GetParams().IsV4() {
+	// 	hub_storage = defaultHubv4Storage
+	// }
 	if u.storage == nil {
 		// no storage option was set. use default
-		if err := Storage(hub_storage)(u); err != nil {
+		if err := Storage(hubStorage)(u); err != nil {
 			return nil, err
 		}
 	}
@@ -303,7 +302,6 @@ func (u *Upgrader) update(ctx context.Context) error {
 			return nil
 		}
 	} else {
-
 		if env.RunningMode != environment.RunningDev && (remoteVer != chainVer.Version) {
 			// nothing to do! hub version is not the same as the chain
 			return nil

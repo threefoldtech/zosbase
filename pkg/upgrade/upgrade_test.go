@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/0-fs/meta"
+	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/upgrade/hub"
 )
 
@@ -19,7 +20,8 @@ func TestUpgraderDownload(t *testing.T) {
 		hub:  hubClient,
 	}
 
-	err := Storage(defaultHubStorage)(up)
+	env := environment.MustGet()
+	err := Storage(env.HubStorage)(up)
 	require.NoError(err)
 
 	const repo = "azmy.3bot"
