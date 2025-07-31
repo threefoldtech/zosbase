@@ -75,9 +75,10 @@ type Processor struct {
 
 func NewProcessor(sub substrate.Manager, cb Callback, state State) *Processor {
 	return &Processor{
-		sub:   sub,
-		cb:    cb,
-		state: state,
+		update: make(chan substrate.Manager, 0),
+		sub:    sub,
+		cb:     cb,
+		state:  state,
 	}
 }
 
@@ -178,7 +179,7 @@ func (e *Processor) subscribe(ctx context.Context) error {
 			// if new update is received then the connection is broken as noded only issues new update only if
 			// the old manager is broken so we need to resubscribe with the new manager.
 			e.sub = newSub
-			return errors.New("new substrate manager received, trying to resubscribe to the new manager")
+			return errors.New("failed to listen to substrate events")
 		}
 	}
 }
