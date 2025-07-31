@@ -175,14 +175,10 @@ func (e *Processor) subscribe(ctx context.Context) error {
 				return errors.Wrap(err, "failed to commit last block number")
 			}
 		case newSub := <-e.update:
-			// if new update is received check if the current manager is healty, if not:
-			// update the manager and return error to force resubscribe with the new manager
-			cl, _, err := e.sub.Raw()
-			if err != nil {
-				e.sub = newSub
-				return err
-			}
-			cl.Client.Close()
+			// if new update is received then the connection is broken as noded only issues new update only if
+			// the old manager is broken so we need to resubscribe with the new manager.
+			e.sub = newSub
+			return errors.New("new substrate manager received, trying to resubscribe to the new manager")
 		}
 	}
 }
