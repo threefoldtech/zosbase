@@ -66,7 +66,8 @@ type Callback func(events *substrate.EventRecords)
 // Events processor receives all events starting from the given state
 // and for each set of events calls callback cb
 type Processor struct {
-	sub substrate.Manager
+	sub    substrate.Manager
+	update chan substrate.Manager
 
 	cb    Callback
 	state State
@@ -74,9 +75,10 @@ type Processor struct {
 
 func NewProcessor(sub substrate.Manager, cb Callback, state State) *Processor {
 	return &Processor{
-		sub:   sub,
-		cb:    cb,
-		state: state,
+		update: make(chan substrate.Manager, 0),
+		sub:    sub,
+		cb:     cb,
+		state:  state,
 	}
 }
 
@@ -97,6 +99,7 @@ func (e *Processor) process(changes []types.StorageChangeSet, meta *types.Metada
 		}
 	}
 }
+
 func (e *Processor) eventsTo(cl *gsrpc.SubstrateAPI, meta *types.Metadata, block types.Header) error {
 	//
 	last, err := e.state.Get(cl)
@@ -120,7 +123,7 @@ func (e *Processor) eventsTo(cl *gsrpc.SubstrateAPI, meta *types.Metadata, block
 			return errors.Wrapf(err, "failed to get block hash '%d'", start)
 		}
 
-		//state.ErrUnknownBlock
+		// state.ErrUnknownBlock
 		changes, err := cl.RPC.State.QueryStorageAt([]types.StorageKey{key}, hash)
 		if err, ok := err.(rpc.Error); ok {
 			if err.ErrorCode() == -32000 { // block is too old not in archive anymore
@@ -158,6 +161,9 @@ func (e *Processor) subscribe(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-sub.Err():
+			// sub.Err returns error if the connection is closed unexpectedly
+			// so if sub manager is updated by now, then retrying to subscribe after 10 seconds will use the new manager
+			// with the updated urls
 			return err
 		case block := <-sub.Chan():
 			err := e.eventsTo(cl, meta, block)
@@ -169,6 +175,11 @@ func (e *Processor) subscribe(ctx context.Context) error {
 			if err := e.state.Set(block.Number); err != nil {
 				return errors.Wrap(err, "failed to commit last block number")
 			}
+		case newSub := <-e.update:
+			// if new update is received then the connection is broken as noded only issues new update only if
+			// the old manager is broken so we need to resubscribe with the new manager.
+			e.sub = newSub
+			return errors.New("failed to listen to substrate events")
 		}
 	}
 }
