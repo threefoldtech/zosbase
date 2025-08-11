@@ -12,7 +12,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"	
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockExecWrapper is a mock of ExecWrapper interface.

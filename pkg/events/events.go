@@ -75,7 +75,7 @@ type Processor struct {
 
 func NewProcessor(sub substrate.Manager, cb Callback, state State) *Processor {
 	return &Processor{
-		update: make(chan substrate.Manager, 0),
+		update: make(chan substrate.Manager),
 		sub:    sub,
 		cb:     cb,
 		state:  state,
