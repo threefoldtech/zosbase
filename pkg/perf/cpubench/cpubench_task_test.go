@@ -11,7 +11,7 @@ import (
 	"github.com/threefoldtech/zbus"
 	"github.com/threefoldtech/zosbase/pkg/mocks"
 	"github.com/threefoldtech/zosbase/pkg/perf"
-	"github.com/threefoldtech/zosbase/pkg/perf/iperf"
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"go.uber.org/mock/gomock"
 )
 
@@ -35,8 +35,8 @@ func TestCPUBenchmarkTask_Run(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockExec := iperf.NewMockExecWrapper(ctrl)
-	mockCmd := iperf.NewMockExecCmd(ctrl)
+	mockExec := execwrapper.NewMockExecWrapper(ctrl)
+	mockCmd := execwrapper.NewMockExecCmd(ctrl)
 	task := NewTaskWithExecWrapper(mockExec).(*CPUBenchmarkTask)
 	ctx := context.Background()
 	mockZbus := mocks.NewMockClient(ctrl)

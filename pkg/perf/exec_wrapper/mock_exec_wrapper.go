@@ -5,15 +5,14 @@
 //
 //	mockgen -source=pkg/perf/iperf/exec_wrapper.go -destination=pkg/perf/iperf/mock_exec_wrapper.go -package=iperf
 //
-
-// Package iperf is a generated GoMock package.
-package iperf
+// Package execwrapper is a generated GoMock package.
+package execwrapper
 
 import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
+	gomock "go.uber.org/mock/gomock"	
 )
 
 // MockExecWrapper is a mock of ExecWrapper interface.

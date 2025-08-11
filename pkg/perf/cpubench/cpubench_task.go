@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/threefoldtech/zosbase/pkg/perf"
-	"github.com/threefoldtech/zosbase/pkg/perf/iperf" // Import for ExecWrapper
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 // CPUBenchmarkTask defines CPU benchmark task.
 type CPUBenchmarkTask struct {
-	execWrapper iperf.ExecWrapper
+	execWrapper execwrapper.ExecWrapper
 }
 
 // CPUBenchmarkResult holds CPU benchmark results with the workloads number during the benchmark.
@@ -28,11 +28,11 @@ var _ perf.Task = (*CPUBenchmarkTask)(nil)
 // NewTask returns a new CPU benchmark task.
 func NewTask() perf.Task {
 	return &CPUBenchmarkTask{
-		execWrapper: &iperf.RealExecWrapper{},
+		execWrapper: &execwrapper.RealExecWrapper{},
 	}
 }
 
-func NewTaskWithExecWrapper(execWrapper iperf.ExecWrapper) perf.Task {
+func NewTaskWithExecWrapper(execWrapper execwrapper.ExecWrapper) perf.Task {
 	return &CPUBenchmarkTask{
 		execWrapper: execWrapper,
 	}
