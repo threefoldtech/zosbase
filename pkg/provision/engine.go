@@ -360,6 +360,9 @@ func (e *NativeEngine) Provision(ctx context.Context, deployment gridtypes.Deplo
 		Op:     opProvision,
 	}
 
+	log.Info().Str("twin", fmt.Sprintf("%d", deployment.TwinID)).
+		Str("contract", fmt.Sprintf("%d", deployment.ContractID)).
+		Msg("queueing job")
 	return e.queue.Enqueue(&job)
 }
 
@@ -490,19 +493,29 @@ func (e *NativeEngine) Run(root context.Context) error {
 	}
 
 	for {
+		log.Info().Msg("engine waiting for next job")
 		obj, err := e.queue.PeekBlock()
 		if err != nil {
 			log.Error().Err(err).Msg("failed to check job queue")
 			<-time.After(2 * time.Second)
+			// TODO: should we dequeue the job on error?
 			continue
 		}
 
-		job := obj.(*engineJob)
-		ctx := withDeployment(root, job.Target.TwinID, job.Target.ContractID)
+		job, ok := obj.(*engineJob)
+		if !ok {
+			log.Error().Msg("failed to decode job from queue")
+			<-time.After(2 * time.Second)
+			continue
+		}
+
 		l := log.With().
 			Uint32("twin", job.Target.TwinID).
 			Uint64("contract", job.Target.ContractID).
 			Logger()
+
+		l.Info().Msg("processing job started")
+		ctx := withDeployment(root, job.Target.TwinID, job.Target.ContractID)
 
 		// contract validation
 		// this should ONLY be done on provosion and update operation
@@ -510,6 +523,7 @@ func (e *NativeEngine) Run(root context.Context) error {
 			job.Op == opUpdate ||
 			job.Op == opProvisionNoValidation {
 			// otherwise, contract validation is needed
+			l.Info().Msg("starting contract validation")
 			ctx, err = e.validate(ctx, &job.Target, job.Op == opProvisionNoValidation)
 			if err != nil {
 				l.Error().Err(err).Msg("contact validation fails")
@@ -529,14 +543,19 @@ func (e *NativeEngine) Run(root context.Context) error {
 		case opProvisionNoValidation:
 			fallthrough
 		case opProvision:
+			l.Info().Msg("starting deployment installation")
 			e.installDeployment(ctx, &job.Target)
 		case opDeprovision:
+			l.Info().Msg("starting deployment uninstallation")
 			e.uninstallDeployment(ctx, &job.Target, job.Message)
 		case opPause:
+			l.Info().Msg("starting deployment pause")
 			e.lockDeployment(ctx, &job.Target)
 		case opResume:
+			l.Info().Msg("starting deployment resume")
 			e.unlockDeployment(ctx, &job.Target)
 		case opUpdate:
+			l.Info().Msg("starting deployment update")
 			// update is tricky because we need to work against
 			// 2 versions of the object. Once that reflects the current state
 			// and the new one that is the target state but it does not know
@@ -552,16 +571,20 @@ func (e *NativeEngine) Run(root context.Context) error {
 			update, err := job.Source.Upgrade(&job.Target)
 			if err != nil {
 				l.Error().Err(err).Msg("failed to get update procedure")
-				break
+				// no need to break. just dequeue the problematic job and continue with next job
+				_, _ = e.queue.Dequeue()
+				continue
 			}
 			e.updateDeployment(ctx, update)
 		}
 
+		l.Info().Msg("job operation completed, dequeuing")
 		_, err = e.queue.Dequeue()
 		if err != nil {
 			l.Error().Err(err).Msg("failed to dequeue job")
 		}
 
+		l.Info().Msg("job processing completed successfully")
 		e.safeCallback(&job.Target, job.Op == opDeprovision)
 	}
 }
