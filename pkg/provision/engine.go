@@ -536,7 +536,7 @@ func (e *NativeEngine) Run(root context.Context) error {
 				continue
 			}
 
-			l.Debug().Msg("contact validation pass")
+			l.Info().Msg("contact validation pass")
 		}
 
 		switch job.Op {
@@ -937,6 +937,7 @@ func (e *NativeEngine) installDeployment(ctx context.Context, getter gridtypes.W
 		}
 
 		for _, wl := range workloads {
+			log.Info().Msgf("installing workload %s: %s", wl.Name.String(), wl.Type.String())
 			if err := e.installWorkload(ctx, wl); err != nil {
 				log.Error().Err(err).Stringer("id", wl.ID).Msg("failed to install workload")
 			}
