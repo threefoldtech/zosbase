@@ -24,6 +24,7 @@ const (
 	initialInterval = 5 * time.Minute
 	maxInterval     = 20 * time.Minute
 	maxElapsedTime  = time.Duration(maxRetries) * maxInterval
+	iperfTimeout    = 30 * time.Second
 
 	errServerBusy = "the server is busy running a test. try again later"
 )
@@ -177,7 +178,10 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 
 	var report iperfCommandOutput
 	operation := func() error {
-		res := runIperfCommand(ctx, opts, execWrap)
+		timeoutCtx, cancel := context.WithTimeout(ctx, iperfTimeout)
+		defer cancel()
+
+		res := runIperfCommand(timeoutCtx, opts, execWrap)
 		if res.Error == errServerBusy {
 			return errors.New(errServerBusy)
 		}
@@ -224,8 +228,15 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 func runIperfCommand(ctx context.Context, opts []string, execWrap ExecWrapper) iperfCommandOutput {
 	output, err := execWrap.CommandContext(ctx, "iperf", opts...).CombinedOutput()
 	exitErr := &exec.ExitError{}
-	if err != nil && !errors.As(err, &exitErr) {
-		log.Err(err).Msg("failed to run iperf")
+
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Warn().Msg("iperf command timed out for node with public IP: " + opts[1])
+		}
+		if !errors.As(err, &exitErr) {
+			log.Err(err).Msg("failed to run iperf")
+		}
+
 		return iperfCommandOutput{}
 	}
 
