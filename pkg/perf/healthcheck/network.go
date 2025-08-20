@@ -30,7 +30,7 @@ func networkCheck(ctx context.Context) []error {
 	services := map[string][]string{
 		"substrate":  env.SubstrateURL,
 		"activation": env.ActivationURL,
-		"relay":      environment.GetRelaysURLs(),
+		"relay":      env.RelaysURLs,
 		"graphql":    env.GraphQL,
 		"hub":        {env.FlistURL},
 		"kyc":        {env.KycURL},
