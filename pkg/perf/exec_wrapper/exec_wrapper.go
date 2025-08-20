@@ -1,4 +1,4 @@
-package iperf
+package execwrapper
 
 import (
 	"context"
@@ -38,6 +38,3 @@ type RealExecCmd struct {
 func (r *RealExecCmd) CombinedOutput() ([]byte, error) {
 	return r.cmd.CombinedOutput()
 }
-
-// Global instance that can be overridden in tests
-var execWrapper ExecWrapper = &RealExecWrapper{}

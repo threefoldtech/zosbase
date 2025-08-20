@@ -16,6 +16,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/network/iperf"
 	"github.com/threefoldtech/zosbase/pkg/perf"
+	"github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
 )
 
@@ -33,7 +34,7 @@ const (
 type IperfTest struct {
 	// Optional dependencies for testing
 	graphqlClient GraphQLClient
-	execWrapper   ExecWrapper
+	execWrapper   execwrapper.ExecWrapper
 }
 
 // IperfResult for iperf test results
@@ -171,7 +172,7 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 		opts = append(opts, "--length", "16B", "--udp")
 	}
 
-	execWrap := execWrapper
+	var execWrap execwrapper.ExecWrapper = &execwrapper.RealExecWrapper{}
 	if t.execWrapper != nil {
 		execWrap = t.execWrapper
 	}
@@ -225,7 +226,7 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 	return iperfResult
 }
 
-func runIperfCommand(ctx context.Context, opts []string, execWrap ExecWrapper) iperfCommandOutput {
+func runIperfCommand(ctx context.Context, opts []string, execWrap execwrapper.ExecWrapper) iperfCommandOutput {
 	output, err := execWrap.CommandContext(ctx, "iperf", opts...).CombinedOutput()
 	exitErr := &exec.ExitError{}
 

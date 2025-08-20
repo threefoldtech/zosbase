@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
 	"go.uber.org/mock/gomock"
 )
@@ -16,8 +17,8 @@ func TestIperfTest_Run_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockGraphQL := NewMockGraphQLClient(ctrl)
-	mockExec := NewMockExecWrapper(ctrl)
-	mockCmd := NewMockExecCmd(ctrl)
+	mockExec := execwrapper.NewMockExecWrapper(ctrl)
+	mockCmd := execwrapper.NewMockExecCmd(ctrl)
 
 	task := &IperfTest{
 		graphqlClient: mockGraphQL,
@@ -111,7 +112,7 @@ func TestIperfTest_Run_IperfNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockGraphQL := NewMockGraphQLClient(ctrl)
-	mockExec := NewMockExecWrapper(ctrl)
+	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 
 	task := &IperfTest{
 		graphqlClient: mockGraphQL,
@@ -142,7 +143,7 @@ func TestIperfTest_Run_InvalidIPAddress(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockGraphQL := NewMockGraphQLClient(ctrl)
-	mockExec := NewMockExecWrapper(ctrl)
+	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 
 	task := &IperfTest{
 		graphqlClient: mockGraphQL,

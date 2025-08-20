@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 
 	"github.com/threefoldtech/zosbase/pkg/perf"
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 // CPUBenchmarkTask defines CPU benchmark task.
-type CPUBenchmarkTask struct{}
+type CPUBenchmarkTask struct {
+	execWrapper execwrapper.ExecWrapper
+}
 
 // CPUBenchmarkResult holds CPU benchmark results with the workloads number during the benchmark.
 type CPUBenchmarkResult struct {
@@ -25,7 +27,15 @@ var _ perf.Task = (*CPUBenchmarkTask)(nil)
 
 // NewTask returns a new CPU benchmark task.
 func NewTask() perf.Task {
-	return &CPUBenchmarkTask{}
+	return &CPUBenchmarkTask{
+		execWrapper: &execwrapper.RealExecWrapper{},
+	}
+}
+
+func NewTaskWithExecWrapper(execWrapper execwrapper.ExecWrapper) perf.Task {
+	return &CPUBenchmarkTask{
+		execWrapper: execWrapper,
+	}
 }
 
 // ID returns task ID.
@@ -50,7 +60,8 @@ func (c *CPUBenchmarkTask) Jitter() uint32 {
 
 // Run executes the CPU benchmark.
 func (c *CPUBenchmarkTask) Run(ctx context.Context) (interface{}, error) {
-	cpubenchOut, err := exec.CommandContext(ctx, "cpubench", "-j").CombinedOutput()
+	cmd := c.execWrapper.CommandContext(ctx, "cpubench", "-j")
+	cpubenchOut, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute cpubench command: %w", err)
 	}
