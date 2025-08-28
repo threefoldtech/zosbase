@@ -68,7 +68,7 @@ type Environment struct {
 	// IMPORTANT NOTICE:
 	//   SINCE RELAYS FOR A NODE IS STORED ON THE CHAIN IN A LIMITED SPACE
 	//   PLEASE MAKE SURE THAT ANY ENV HAS NO MORE THAN FOUR RELAYS CONFIGURED
-	relaysURLs    []string
+	RelaysURLs    []string
 	ActivationURL []string
 	GraphQL       []string
 	GeoipURLs     []string
@@ -134,7 +134,7 @@ var (
 			"wss://tfchain.dev.grid.tf/",
 			"wss://tfchain.02.dev.grid.tf",
 		},
-		relaysURLs: []string{
+		RelaysURLs: []string{
 			"wss://relay.dev.grid.tf",
 		},
 		ActivationURL: []string{
@@ -161,7 +161,7 @@ var (
 			"wss://tfchain.test.grid.tf/",
 			"wss://tfchain.02.test.grid.tf",
 		},
-		relaysURLs: []string{
+		RelaysURLs: []string{
 			"wss://relay.test.grid.tf",
 		},
 		ActivationURL: []string{
@@ -188,7 +188,7 @@ var (
 			"wss://tfchain.qa.grid.tf/",
 			"wss://tfchain.02.qa.grid.tf/",
 		},
-		relaysURLs: []string{
+		RelaysURLs: []string{
 			"wss://relay.qa.grid.tf",
 		},
 		ActivationURL: []string{
@@ -218,7 +218,7 @@ var (
 			"wss://03.tfchain.grid.tf/",
 			"wss://04.tfchain.grid.tf/",
 		},
-		relaysURLs: []string{
+		RelaysURLs: []string{
 			"wss://relay.grid.tf",
 		},
 		ActivationURL: []string{
@@ -264,18 +264,6 @@ func Get() (Environment, error) {
 	}
 
 	return env, nil
-}
-
-func GetRelaysURLs() []string {
-	config, err := GetConfig()
-	if err == nil && len(config.RelaysURLs) > 0 {
-		log.Debug().Msg("using relays urls from zos-config")
-		return config.RelaysURLs
-	}
-
-	log.Debug().Msg("using relays urls from environment")
-	env := MustGet()
-	return env.relaysURLs
 }
 
 // GetSubstrate gets a client to subsrate blockchain
@@ -356,9 +344,9 @@ func getEnvironmentFromParams(params kernel.Params) (Environment, error) {
 	}
 
 	if relay, ok := params.Get("relay"); ok && len(relay) > 0 {
-		env.relaysURLs = relay
+		env.RelaysURLs = relay
 	} else if relay := config.RelaysURLs; len(relay) > 0 {
-		env.relaysURLs = relay
+		env.RelaysURLs = relay
 	}
 
 	if activation, ok := params.Get("activation"); ok && len(activation) > 0 {

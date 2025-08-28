@@ -53,6 +53,7 @@ func NewRedisStream(sub substrate.Manager, address string, farm pkg.FarmID, node
 }
 
 func (r *RedisStream) UpdateSubstrateManager(sub substrate.Manager) {
+	log.Info().Msg("updating substrate manager in RedisStream")
 	r.sub = sub
 	r.processor.update <- sub
 }
