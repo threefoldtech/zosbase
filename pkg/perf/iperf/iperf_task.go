@@ -13,10 +13,11 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/showwin/speedtest-go/speedtest"
 	"github.com/threefoldtech/zosbase/pkg/environment"
 	"github.com/threefoldtech/zosbase/pkg/network/iperf"
 	"github.com/threefoldtech/zosbase/pkg/perf"
-	"github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
 )
 
@@ -221,6 +222,31 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 	}
 	if !tcp && len(report.End.Streams) > 0 {
 		iperfResult.DownloadSpeed = report.End.Streams[0].UDP.BitsPerSecond
+	}
+	var speedtestServer *speedtest.Server
+	serverList, _ := speedtest.FetchServers()
+	servers, err := serverList.FindServer([]int{})
+	if err != nil && len(servers) > 0 {
+		speedtestServer = servers[0]
+		err = speedtestServer.DownloadTest()
+		if err != nil {
+			log.Error().Err(err).Msg("speedtest download test failed")
+		}
+		err = speedtestServer.UploadTest()
+		if err != nil {
+			log.Error().Err(err).Msg("speedtest upload test failed")
+		}
+		downloadSpeed := float64(speedtestServer.DLSpeed) * 8
+		uploadSpeed := float64(speedtestServer.ULSpeed) * 8
+		log.Debug().Msgf("speedtest: %f/%f  vs iperf results: %f/%f", downloadSpeed, uploadSpeed, iperfResult.DownloadSpeed, iperfResult.UploadSpeed)
+		// take the best result
+		if downloadSpeed > iperfResult.DownloadSpeed {
+			iperfResult.DownloadSpeed = downloadSpeed
+		}
+		if uploadSpeed > iperfResult.UploadSpeed {
+			iperfResult.UploadSpeed = uploadSpeed
+		}
+
 	}
 
 	return iperfResult
