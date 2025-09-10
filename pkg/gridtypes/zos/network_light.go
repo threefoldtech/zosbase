@@ -68,8 +68,24 @@ func (n NetworkLight) Valid(getter gridtypes.WorkloadGetter) error {
 
 // Challenge implements WorkloadData
 func (n NetworkLight) Challenge(b io.Writer) error {
+	if _, err := fmt.Fprintf(b, "%s", n.NetworkIPRange.String()); err != nil {
+		return err
+	}
 	if _, err := fmt.Fprintf(b, "%s", n.Subnet.String()); err != nil {
 		return err
+	}
+	if _, err := fmt.Fprintf(b, "%s", n.WGPrivateKey); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(b, "%d", n.WGListenPort); err != nil {
+		return err
+	}
+
+	for _, p := range n.Peers {
+		if err := p.Challenge(b); err != nil {
+			return err
+		}
 	}
 
 	if err := n.Mycelium.Challenge(b); err != nil {

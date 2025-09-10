@@ -216,6 +216,7 @@ func (n *systemMonitor) GetNodeFeatures() []pkg.NodeFeature {
 			pkg.NodeFeature(zos.QuantumSafeFSType),
 			pkg.NodeFeature(zos.ZLogsType),
 			pkg.NodeFeature("mycelium"),
+			pkg.NodeFeature("wireguard"),
 		}
 		feat = append(feat, zosLightFeat...)
 
