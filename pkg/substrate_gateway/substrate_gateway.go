@@ -413,7 +413,7 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 		Str("method", "UpdateNodeUptimeV2").
 		Uint64("uptime", uptime).
 		Uint64("timestamp hint", timestampHint).
-		Msg("method called")
+		Msg("submitting uptime extrinsic")
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -426,6 +426,12 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 		hash = resultHash
 		return nil
 	}, createBackoff())
+
+	log.Debug().
+		Str("method", "UpdateNodeUptimeV2").
+		Uint64("uptime", uptime).
+		Uint64("timestamp hint", timestampHint).
+		Msg("uptime extrinsic submitted successfully")
 
 	return
 }
