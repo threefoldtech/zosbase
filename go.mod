@@ -45,6 +45,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
+	github.com/showwin/speedtest-go v1.7.10
 	github.com/stretchr/testify v1.10.0
 	github.com/threefoldtech/0-fs v1.3.1-0.20240424140157-b488dfedcc56
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2
@@ -64,7 +65,6 @@ require (
 )
 
 require (
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/frankban/quicktest v1.14.3 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
