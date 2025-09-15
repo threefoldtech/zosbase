@@ -11,13 +11,16 @@ import (
 )
 
 func (g *ZosAPI) networkInterfacesHandler(ctx context.Context, payload []byte) (interface{}, error) {
-	results := make(map[string][]net.IPNet)
+	results := make(map[string][]net.IP)
 	interfaces, err := g.networkerLightStub.Interfaces(ctx, "zos", "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ips for 'zos' interface: %w", err)
 	}
-	zosIfc := interfaces.Interfaces["zos"]
-	results["zos"] = zosIfc.IPs
+	zosIfcIps := interfaces.Interfaces["zos"].IPs
+	results["zos"] = make([]net.IP, len(zosIfcIps))
+	for i, ip := range zosIfcIps {
+		results["zos"][i] = ip.IP
+	}
 
 	return results, nil
 }
