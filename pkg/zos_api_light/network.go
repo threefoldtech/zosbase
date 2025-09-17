@@ -44,3 +44,7 @@ func (g *ZosAPI) networkListPrivateIPsHandler(ctx context.Context, payload []byt
 func (g *ZosAPI) networkListWGPortsHandler(ctx context.Context, payload []byte) (interface{}, error) {
 	return g.networkerLightStub.WireguardPorts(ctx)
 }
+
+func (g *ZosAPI) networkPublicConfigGetHandler(ctx context.Context, payload []byte) (interface{}, error) {
+	return g.networkerLightStub.LoadPublicConfig(ctx)
+}
