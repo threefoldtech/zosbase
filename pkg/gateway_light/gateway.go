@@ -648,40 +648,45 @@ func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn stri
 		return errors.New("domain already registered")
 	}
 
-	// if config.Network == nil {
-	// not going over user private network
-	return g.setupRoutingGeneric(wlID, fqdn, tlsConfig, config)
-	// }
+	if config.Network == nil {
+		// not going over user private network
+		return g.setupRoutingGeneric(wlID, fqdn, tlsConfig, config)
+	}
 
 	// // otherwise we need to configure a nnc process
 	// // to forward the user traffic.
 
 	// // first validate that network exist and get the network namespace
-	// twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
-	// if err != nil {
-	// 	return errors.Wrap(err, "invalid workload id")
-	// }
+	twinID, _, _, err := gridtypes.WorkloadID(wlID).Parts()
+	if err != nil {
+		return errors.Wrap(err, "invalid workload id")
+	}
 	// // if network is set, means this ip need to be reached from inside the user NR
-	// net := stubs.NewNetworkerLightStub(g.cl)
+	net := stubs.NewNetworkerLightStub(g.cl)
 
-	// netID := zos.NetworkID(twinID, *config.Network)
-	// if _, err := net.GetNet(ctx, netID); err != nil {
-	// 	return errors.Wrap(err, "failed to get user network")
-	// }
-	// ns := net.Namespace(ctx, netID)
-	// backend, err = g.nncEnsure(wlID, ns, config.Backends[0])
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to ensure local gateway")
-	// }
+	netID := zos.NetworkID(twinID, *config.Network)
+	if _, err := net.GetNet(ctx, netID); err != nil {
+		return errors.Wrap(err, "failed to get user network")
+	}
+	ns := net.Namespace(ctx, netID.String())
+	processedBackends := []zos.Backend{}
+	for _, backend := range config.Backends {
+		processedBackend, err := g.nncEnsure(wlID, ns, backend)
+		if err != nil {
+			return errors.Wrap(err, "failed to ensure local gateway")
+		}
 
-	// if !config.TLSPassthrough {
-	// 	// if tls passthrough is disabled traefik expecting backend
-	// 	// to be in the format http://<ip>:port
-	// 	backend = zos.Backend(fmt.Sprintf("http://%s", backend))
-	// }
+		if !config.TLSPassthrough {
+			// Format for non-TLS passthrough
+			processedBackend = zos.Backend(fmt.Sprintf("http://%s", processedBackend))
+		}
 
-	// config.Backends = []zos.Backend{backend}
-	// return g.setupRoutingGeneric(wlID, fqdn, tlsConfig, config)
+		processedBackends = append(processedBackends, processedBackend)
+
+	}
+
+	config.Backends = processedBackends
+	return g.setupRoutingGeneric(wlID, fqdn, tlsConfig, config)
 }
 
 func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig TlsConfig, config zos.GatewayBase) error {
@@ -743,7 +748,7 @@ func (g *gatewayModule) setupRoutingGeneric(wlID string, fqdn string, tlsConfig 
 }
 
 func (g *gatewayModule) DeleteNamedProxy(wlID string) error {
-	// g.destroyNNC(wlID)
+	g.destroyNNC(wlID)
 
 	path := g.configPath(wlID)
 	_, domain, err := domainFromConfig(path)
