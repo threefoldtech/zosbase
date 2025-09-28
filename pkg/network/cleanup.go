@@ -59,7 +59,8 @@ func CleanupOrphanedNamespaces() error {
 	validNetworkIDs := make(map[string]bool)
 	entries, err := os.ReadDir(networksDir)
 	if err != nil {
-		return fmt.Errorf("failed to read networks directory %s: %w", networksDir, err)
+		log.Warn().Str("networkDir", networksDir).Err(err).Msg("failed to read networks dir")
+		return nil
 	}
 
 	for _, entry := range entries {
