@@ -52,7 +52,7 @@ func isOrphanVMTap(interfaceName string) bool {
 
 // CleanupOrphanedNamespaces removes network namespaces that start with "n-"
 // but don't have corresponding files in /var/run/cache/networkd/networks/
-func CleanupOrphanedNamespaces() error {
+func CleanupOrphanedNamespaces() {
 	const networksDir = "/var/run/cache/networkd/networks/"
 
 	// Get list of files in the networks directory
@@ -60,7 +60,7 @@ func CleanupOrphanedNamespaces() error {
 	entries, err := os.ReadDir(networksDir)
 	if err != nil {
 		log.Warn().Str("networkDir", networksDir).Err(err).Msg("failed to read networks dir")
-		return nil
+		return
 	}
 
 	for _, entry := range entries {
@@ -73,7 +73,8 @@ func CleanupOrphanedNamespaces() error {
 	cmd := exec.Command("ip", "netns", "list")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to list network namespaces: %w", err)
+		log.Warn().Err(err).Msg("failed to list network namespaces")
+		return
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -101,6 +102,7 @@ func CleanupOrphanedNamespaces() error {
 		// Check if corresponding file exists in networks directory
 		if !validNetworkIDs[networkID] {
 			// Remove the orphaned namespace
+			log.Info().Str("namespace", nsName).Msg("removing orphaned namespace")
 			delCmd := exec.Command("ip", "netns", "del", nsName)
 			if err := delCmd.Run(); err != nil {
 				log.Debug().Str("namespace", nsName).Err(err).Msg("failed to delete namespace")
@@ -109,5 +111,4 @@ func CleanupOrphanedNamespaces() error {
 		}
 	}
 
-	return nil
 }
