@@ -6,14 +6,29 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 const (
 	defaultHttpTimeout = 10 * time.Second
+	cacheDuration      = 6 * time.Hour
+)
+
+// cachedConfig holds a cached configuration with its timestamp
+type cachedConfig struct {
+	config    Config
+	timestamp time.Time
+}
+
+// configCache holds the cached configuration
+var (
+	configCache *cachedConfig
+	cacheMutex  sync.RWMutex
 )
 
 // Config is configuration set by the organization
@@ -88,6 +103,18 @@ func uniqueStr(slice []string) []string {
 }
 
 func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, err error) {
+	// Check cache first
+	cacheMutex.RLock()
+	// Return cached config if it exists and is not expired
+	if configCache != nil && time.Since(configCache.timestamp) < cacheDuration {
+		log.Debug().Msg("getting zos config from cache")
+		config := configCache.config
+		cacheMutex.RUnlock()
+		return config, nil
+	}
+	cacheMutex.RUnlock()
+	log.Debug().Msg("zos config cache expired fetching from git")
+	// Fetch new config from URL
 	if !strings.HasSuffix(url, "/") {
 		url += "/"
 	}
@@ -111,6 +138,14 @@ func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, er
 	if err := json.NewDecoder(response.Body).Decode(&ext); err != nil {
 		return ext, errors.Wrap(err, "failed to decode extended settings")
 	}
+
+	// Cache the new config
+	cacheMutex.Lock()
+	configCache = &cachedConfig{
+		config:    ext,
+		timestamp: time.Now(),
+	}
+	cacheMutex.Unlock()
 
 	return
 }
