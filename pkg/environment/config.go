@@ -113,7 +113,7 @@ func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, er
 		return config, nil
 	}
 	cacheMutex.RUnlock()
-	log.Debug().Msg("zos config cache expired fetching from git")
+	log.Debug().Msg("zos config cache expired fetching from github")
 	// Fetch new config from URL
 	if !strings.HasSuffix(url, "/") {
 		url += "/"
@@ -122,6 +122,11 @@ func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, er
 
 	response, err := httpClient.Get(u)
 	if err != nil {
+		// If URL is not responding and we have expired cache, use it
+		if configCache != nil {
+			log.Warn().Err(err).Msg("failed to fetch config from github, using expired cache data")
+			return configCache.config, nil
+		}
 		return ext, err
 	}
 
@@ -132,10 +137,20 @@ func getConfig(run RunMode, url string, httpClient *http.Client) (ext Config, er
 	}()
 
 	if response.StatusCode != http.StatusOK {
+		// If URL returns error and we have expired cache, use it
+		if configCache != nil {
+			log.Warn().Str("status", response.Status).Msg("github config returned error, using expired cache data")
+			return configCache.config, nil
+		}
 		return ext, fmt.Errorf("failed to get extended config: %s", response.Status)
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(&ext); err != nil {
+		// If decode fails and we have expired cache, use it
+		if configCache != nil {
+			log.Warn().Err(err).Msg("failed to decode config from github, using expired cache data")
+			return configCache.config, nil
+		}
 		return ext, errors.Wrap(err, "failed to decode extended settings")
 	}
 
