@@ -1,13 +1,13 @@
 # Contd
 
-Container module is reponsible for handling starting, stoppping and inspecting of containers.
+Container module is responsible for handling starting, stopping and inspecting of containers.
 
 Contd provides the entrypoint of the contd module, exposing it as a service over the message bus (zbus) so that other modules can handle the containers.
 
 ## How it works
 
 - Ensure that `shim-logs` binary is available, backoff until it's found.
-- Creates module root dirctory.
+- Creates module root directory.
 - Connects to `Redis` message broker over `zbus`.
 - Register itself as a `containerd` module.
 - Starts watching for events coming from `containerd`.

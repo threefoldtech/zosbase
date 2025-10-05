@@ -17,7 +17,7 @@ The networkd daemon receives tasks from the provisioning daemon, so that it can 
      - wired and has a signal 
      - can get public slaac IPv6
 if no nic is found zos is selected.
-- Creates `ndmz` namespace which represents the router between private user networs to public internet
+- Creates `ndmz` namespace which represents the router between private user networks and public internet
 - Sets up and starts `yggdrasil`
 - Sets up and starts `mycelium`
 - Creates a `networker` module that can be used over `zbus` and registers itself as the `network` module
