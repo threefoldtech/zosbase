@@ -168,7 +168,7 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 			if err != nil {
 				return zos.ZDBResult{}, errors.Wrap(err, "failed to find IP address on zdb0 interface")
 			}
-
+			log.Info().Msg("found a container matching this namespace of the requested zdb")
 			return zos.ZDBResult{
 				Namespace: nsID,
 				IPs:       ipsToString(containerIPs),
@@ -189,8 +189,24 @@ func (p *Manager) zdbProvisionImpl(ctx context.Context, wl *gridtypes.WorkloadWi
 
 	var cont tZDBContainer
 	if len(candidates) > 0 {
-		cont = candidates[0]
-	} else {
+		// try to find the first reachable zdb instance
+		for _, c := range candidates {
+			cl := zdbConnection(pkg.ContainerID(c.Name))
+			if err := cl.Connect(); err == nil {
+				_ = cl.Close()
+				log.Debug().Str("container name", c.Name).Msg(
+					"found running container suitable for provisioning the namespace of the requested zdb",
+				)
+				cont = c
+				break
+			}
+			log.Debug().Str("container name", c.Name).Msg("zdb container is not reachable")
+			_ = cl.Close()
+		}
+	}
+
+	// if no reachable candidate was found, allocate a new device and start a container
+	if cont.Name == "" {
 		// allocate new disk
 		device, err := storage.DeviceAllocate(ctx, config.Size)
 		if err != nil {
@@ -869,6 +885,7 @@ func socketFile(containerID pkg.ContainerID) string {
 // mock it in testing.
 var zdbConnection = func(id pkg.ContainerID) zdb.Client {
 	socket := fmt.Sprintf("unix://%s@%s", string(id), socketFile(id))
+	log.Debug().Str("Socket", socket).Msg("connecting to zdb container on socket")
 	return zdb.New(socket)
 }
 
