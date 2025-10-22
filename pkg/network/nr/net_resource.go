@@ -2,6 +2,7 @@ package nr
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -13,9 +14,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v3"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/network/macvlan"
+	"github.com/threefoldtech/zosbase/pkg/network/mycelium"
 	"github.com/threefoldtech/zosbase/pkg/network/ndmz"
 	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/threefoldtech/zosbase/pkg/network/tuntap"
@@ -309,19 +312,10 @@ func (nr *NetResource) SetMycelium() (err error) {
 		"--peers",
 	}
 
-	// set mycelium public addresses as the private peers
-	mycNamespace, mycInterface := ndmz.DmzNamespace, ndmz.DmzPub4
-	if namespace.Exists(publicNamespaceName) {
-		mycNamespace = publicNamespaceName
-		mycInterface = publicInterfaceName
-	}
-
-	ips, err := baseifaceutil.GetIPsForIFace(mycInterface, mycNamespace)
+	hostPeers, err := getMyceliumPeers()
 	if err != nil {
-		return errors.Wrap(err, "failed to get IPs for npub4")
+		return err
 	}
-
-	hostPeers := baseifaceutil.BuildMyceliumPeerURLs(ips)
 	args = append(args, hostPeers...)
 
 	err = zinit.AddService(name, zinit.InitService{
@@ -332,6 +326,46 @@ func (nr *NetResource) SetMycelium() (err error) {
 	}
 
 	return init.Monitor(name)
+}
+
+// will keep retrying to get the host interface ips for a min, eventually will failback to the public peers
+func getMyceliumPeers() ([]string, error) {
+	// set mycelium public addresses as the private peers
+	mycNamespace, mycInterface := ndmz.DmzNamespace, ndmz.DmzPub4
+	if namespace.Exists(publicNamespaceName) {
+		mycNamespace = publicNamespaceName
+		mycInterface = publicInterfaceName
+	}
+
+	var ips []net.IPNet
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxElapsedTime = time.Minute
+	bo.MaxInterval = 10 * time.Second
+
+	err := backoff.Retry(func() error {
+		ips, err := baseifaceutil.GetIPsForIFace(mycInterface, mycNamespace)
+		if err != nil {
+			return backoff.Permanent(errors.Wrap(err, "failed to get IPs"))
+		}
+		if len(ips) == 0 {
+			return fmt.Errorf("no IPs available yet")
+		}
+		return nil
+	}, bo)
+
+	var hostPeers []string
+	if err != nil {
+		log.Warn().Msg("failed to get IPs after 1 minute, falling back to public mycelium peers")
+		peers, err := mycelium.FindPeers(context.Background(), nil)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to find public mycelium peers")
+		}
+		hostPeers = peers
+	} else {
+		hostPeers = baseifaceutil.BuildMyceliumPeerURLs(ips)
+	}
+
+	return hostPeers, nil
 }
 
 func (nr *NetResource) ensureMyceliumNetwork(keyFile string) error {

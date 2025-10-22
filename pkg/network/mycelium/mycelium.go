@@ -131,7 +131,7 @@ func EnsureMycelium(ctx context.Context, privateKey ed25519.PrivateKey, ns Mycel
 	z := zinit.Default()
 
 	cfg := GenerateConfig(privateKey)
-	if err := cfg.FindPeers(ctx, filter); err != nil {
+	if err := cfg.AssignPeers(ctx, filter); err != nil {
 		return nil, err
 	}
 

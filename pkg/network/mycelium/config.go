@@ -15,19 +15,27 @@ type NodeConfig struct {
 	privateKey x25519.PrivateKey
 }
 
-func (n *NodeConfig) FindPeers(ctx context.Context, filter ...Filter) error {
+func FindPeers(ctx context.Context, filter ...Filter) (Peers, error) {
 	// fetching a peer list goes as this
 	// - Always include the list of peers from
 	peers, err := fetchZosMyList()
 	if err != nil {
-		return errors.Wrap(err, "failed to get zos public peer list")
+		return nil, errors.Wrap(err, "failed to get zos public peer list")
 	}
 
 	peers, err = peers.Ups(filter...)
 	if err != nil {
-		return errors.Wrap(err, "failed to filter out peer list")
+		return nil, errors.Wrap(err, "failed to filter out peer list")
 	}
 
+	return peers, nil
+}
+
+func (n *NodeConfig) AssignPeers(ctx context.Context, filter ...Filter) error {
+	peers, err := FindPeers(ctx, filter...)
+	if err != nil {
+		return err
+	}
 	n.Peers = peers
 	return nil
 }
