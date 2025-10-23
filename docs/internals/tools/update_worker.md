@@ -15,7 +15,7 @@ Each network directory in the destination is represented as a symlink that point
 ```
 
 # Code Flow
-1- Tool user creates a new worker using `NewWorker` and use it to call `UpdateWithInterval`
+1. Tool user creates a new worker using `NewWorker` and use it to call `UpdateWithInterval`
 ```go
 		worker, err := internal.NewWorker(src, dst, params)
 		if err != nil {
@@ -25,11 +25,11 @@ Each network directory in the destination is represented as a symlink that point
 		return nil
 ```
 
-2- `UpdateWithInterval` updates zos version for each network through `updateZosVersion` private method, which fetches the latest zos version from the chain and update the symbolic link to point to the correct version file
+2. `UpdateWithInterval` updates zos version for each network through `updateZosVersion` private method, which fetches the latest zos version from the chain and update the symbolic link to point to the correct version file
 
-3- `updateZosVersion` calculates relative path between src, dst to pass the correct link to `updateLink` private method
+3. `updateZosVersion` calculates relative path between src, dst to pass the correct link to `updateLink` private method
 
-3- `updateLink` ensures that the symlink at **latest** points to the correct **current** version
+4. `updateLink` ensures that the symlink at **latest** points to the correct **current** version
 
 
 ## Structure

@@ -4,9 +4,9 @@
 Certify tool is responsible for setting the nodes certification state. 
 
 ## Code Flow
-1- The command fires the `run` function with the passed options (flags) 
-2- It then queries the postgres database using graphql with `certification == Diy` and `secure == true` to get all the nodes on the chain that needs manual certification
-3- Sets the node certification state to true on the chain
+1. The command fires the `run` function with the passed options (flags) 
+2. It then queries the postgres database using graphql with `certification == Diy` and `secure == true` to get all the nodes on the chain that needs manual certification
+3. Sets the node certification state to true on the chain
 
 
 ## Command-line flags
