@@ -337,24 +337,31 @@ func getMyceliumPeers() ([]string, error) {
 		mycInterface = publicInterfaceName
 	}
 
+	log.Debug().Str("namespace", mycNamespace).Str("interface", mycInterface).Msg("get mycelium peers from")
+
 	var ips []net.IPNet
 	bo := backoff.NewExponentialBackOff()
 	bo.MaxElapsedTime = time.Minute
 	bo.MaxInterval = 10 * time.Second
 
-	err := backoff.Retry(func() error {
-		ips, err := baseifaceutil.GetIPsForIFace(mycInterface, mycNamespace)
+	op := func() error {
+		r, err := baseifaceutil.GetIPsForIFace(mycInterface, mycNamespace)
 		if err != nil {
-			return backoff.Permanent(errors.Wrap(err, "failed to get IPs"))
+			return errors.Wrap(err, "failed to get IPs")
 		}
-		if len(ips) == 0 {
+		if len(r) == 0 {
 			return fmt.Errorf("no IPs available yet")
 		}
+		ips = r // only set if success
 		return nil
-	}, bo)
+	}
+
+	notify := func(err error, d time.Duration) {
+		log.Debug().Err(err).Dur("wait", d).Msg("retrying to get mycelium IPs")
+	}
 
 	var hostPeers []string
-	if err != nil {
+	if err := backoff.RetryNotify(op, bo, notify); err != nil {
 		log.Warn().Msg("failed to get IPs after 1 minute, falling back to public mycelium peers")
 		peers, err := mycelium.FindPeers(context.Background(), nil)
 		if err != nil {
@@ -365,6 +372,7 @@ func getMyceliumPeers() ([]string, error) {
 		hostPeers = baseifaceutil.BuildMyceliumPeerURLs(ips)
 	}
 
+	log.Debug().Str("peers", fmt.Sprintf("%v", hostPeers)).Msg("mycelium peers discovered")
 	return hostPeers, nil
 }
 

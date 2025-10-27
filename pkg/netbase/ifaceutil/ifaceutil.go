@@ -30,9 +30,10 @@ func GetIPsForIFace(iface, nsName string) ([]net.IPNet, error) {
 		}
 
 		for _, ip := range ips {
-			results = append(results, *ip.IPNet)
+			if ip.IPNet != nil {
+				results = append(results, *ip.IPNet)
+			}
 		}
-
 		return results, nil
 	}
 
@@ -48,9 +49,9 @@ func GetIPsForIFace(iface, nsName string) ([]net.IPNet, error) {
 
 	var results []net.IPNet
 	err = netns.Do(func(_ ns.NetNS) error {
-		var getErr error
-		results, getErr = getIPs()
-		return getErr
+		r, e := getIPs()
+		results = r
+		return e
 	})
 
 	return results, err
