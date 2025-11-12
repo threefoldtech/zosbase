@@ -48,8 +48,8 @@ require (
 	github.com/showwin/speedtest-go v1.7.10
 	github.com/stretchr/testify v1.11.1
 	github.com/threefoldtech/0-fs v1.3.1-0.20240424140157-b488dfedcc56
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.0
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3
 	github.com/threefoldtech/zbus v1.0.1
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
