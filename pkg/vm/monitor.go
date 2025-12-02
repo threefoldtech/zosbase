@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -158,6 +159,10 @@ func (m *Module) monitorID(ctx context.Context, running map[string]Process, id s
 	stub := stubs.NewProvisionStub(m.client)
 	log := log.With().Str("id", id).Logger()
 
+	// skip healthcheck vms
+	if strings.HasPrefix(id, "healthcheck-vm") {
+		return nil
+	}
 	if ps, ok := running[id]; ok {
 		state, exists, err := stub.GetWorkloadStatus(ctx, id)
 		if err != nil {
