@@ -26,11 +26,11 @@ type Uptime struct {
 	Mark utils.Mark
 
 	id               substrate.Identity
-	substrateGateway *stubs.SubstrateGatewayStub
+	substrateGateway *stubs.SubstrateGatewayClient
 	m                sync.Mutex
 }
 
-func NewUptime(substrateGateway *stubs.SubstrateGatewayStub, id substrate.Identity) (*Uptime, error) {
+func NewUptime(substrateGateway *stubs.SubstrateGatewayClient, id substrate.Identity) (*Uptime, error) {
 	return &Uptime{
 		id:               id,
 		substrateGateway: substrateGateway,

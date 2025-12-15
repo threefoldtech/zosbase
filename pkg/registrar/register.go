@@ -107,7 +107,7 @@ func registerNode(
 	var (
 		mgr              = stubs.NewIdentityManagerStub(cl)
 		netMgr           = stubs.NewNetworkerStub(cl)
-		substrateGateway = stubs.NewSubstrateGatewayStub(cl)
+		substrateGateway = stubs.NewSubstrateGatewayClient(cl)
 	)
 
 	zosIps, zosMac, err := netMgr.Addrs(ctx, "zos", "")
@@ -217,7 +217,7 @@ func registerNode(
 	return nodeID, twinID, err
 }
 
-func ensureTwin(ctx context.Context, substrateGateway *stubs.SubstrateGatewayStub, sk ed25519.PrivateKey) (uint32, error) {
+func ensureTwin(ctx context.Context, substrateGateway *stubs.SubstrateGatewayClient, sk ed25519.PrivateKey) (uint32, error) {
 	identity, err := substrate.NewIdentityFromEd25519Key(sk)
 	if err != nil {
 		return 0, err

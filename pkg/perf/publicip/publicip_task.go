@@ -79,7 +79,7 @@ func (p *publicIPValidationTask) Run(ctx context.Context) (interface{}, error) {
 		return nil, fmt.Errorf("failed to get namespace %s: %w", testNamespace, err)
 	}
 	cl := perf.MustGetZbusClient(ctx)
-	substrateGateway := stubs.NewSubstrateGatewayStub(cl)
+	substrateGateway := stubs.NewSubstrateGatewayClient(cl)
 	farmID := environment.MustGet().FarmID
 
 	shouldRun, err := isLeastValidNode(ctx, uint32(farmID), substrateGateway)
@@ -205,7 +205,7 @@ func (p *publicIPValidationTask) validateIPs(publicIPs []substrate.PublicIP, mac
 	return report, nil
 }
 
-func isLeastValidNode(ctx context.Context, farmID uint32, substrateGateway *stubs.SubstrateGatewayStub) (bool, error) {
+func isLeastValidNode(ctx context.Context, farmID uint32, substrateGateway *stubs.SubstrateGatewayClient) (bool, error) {
 	env := environment.MustGet()
 	gql, err := graphql.NewGraphQl(env.GraphQL...)
 	if err != nil {

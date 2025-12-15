@@ -161,7 +161,7 @@ func (r *Registrar) register(ctx context.Context, cl zbus.Client, info Registrat
 }
 
 func (r *Registrar) reActivate(ctx context.Context, cl zbus.Client, env environment.Environment) error {
-	substrateGateway := stubs.NewSubstrateGatewayStub(cl)
+	substrateGateway := stubs.NewSubstrateGatewayClient(cl)
 
 	_, err := substrateGateway.EnsureAccount(ctx, env.ActivationURL, tcUrl, tcHash)
 

@@ -55,7 +55,7 @@ type gatewayModule struct {
 	volatile         string
 	cl               zbus.Client
 	resolver         *net.Resolver
-	substrateGateway *stubs.SubstrateGatewayStub
+	substrateGateway *stubs.SubstrateGatewayClient
 	// maps domain to workload id
 	reservedDomains map[string]string
 	domainLock      sync.RWMutex
@@ -280,7 +280,7 @@ func New(ctx context.Context, cl zbus.Client, root string) (pkg.Gateway, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load old domains")
 	}
-	substrateGateway := stubs.NewSubstrateGatewayStub(cl)
+	substrateGateway := stubs.NewSubstrateGatewayClient(cl)
 
 	gw := &gatewayModule{
 		cl:               cl,

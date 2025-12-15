@@ -19,7 +19,7 @@ import (
 
 type PowerServer struct {
 	consumer         *events.RedisConsumer
-	substrateGateway *stubs.SubstrateGatewayStub
+	substrateGateway *stubs.SubstrateGatewayClient
 
 	// enabled means the node can power off!
 	enabled bool
@@ -30,7 +30,7 @@ type PowerServer struct {
 }
 
 func NewPowerServer(
-	substrateGateway *stubs.SubstrateGatewayStub,
+	substrateGateway *stubs.SubstrateGatewayClient,
 	consumer *events.RedisConsumer,
 	enabled bool,
 	farm pkg.FarmID,

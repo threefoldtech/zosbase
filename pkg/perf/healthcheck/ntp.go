@@ -165,6 +165,6 @@ func getTimeChainWithZCL(zcl zbus.Client) (time.Time, error) {
 	if zcl == nil {
 		return time.Time{}, errors.New("zbus client is nil, cannot get time from chain")
 	}
-	gw := stubs.NewSubstrateGatewayStub(zcl)
+	gw := stubs.NewSubstrateGatewayClient(zcl)
 	return gw.GetTime(context.Background())
 }

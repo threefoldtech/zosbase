@@ -11,12 +11,12 @@ import (
 )
 
 type substrateTwins struct {
-	substrateGateway *stubs.SubstrateGatewayStub
+	substrateGateway *stubs.SubstrateGatewayClient
 	mem              *lru.Cache
 }
 
 // NewSubstrateTwins creates a substrate users db that implements the provision.Users interface.
-func NewSubstrateTwins(substrateGateway *stubs.SubstrateGatewayStub) (Twins, error) {
+func NewSubstrateTwins(substrateGateway *stubs.SubstrateGatewayClient) (Twins, error) {
 	cache, err := lru.New(1024)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ type substrateAdmins struct {
 
 // NewSubstrateAdmins creates a substrate twins db that implements the provision.Users interface.
 // but it also make sure the user is an admin
-func NewSubstrateAdmins(substrateGateway *stubs.SubstrateGatewayStub, farmID uint32) (Twins, error) {
+func NewSubstrateAdmins(substrateGateway *stubs.SubstrateGatewayClient, farmID uint32) (Twins, error) {
 	farm, err := substrateGateway.GetFarm(context.Background(), farmID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get farm")

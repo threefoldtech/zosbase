@@ -58,7 +58,7 @@ type ChainVersion struct {
 	VersionLight  string `json:"version_light"`
 }
 
-func getRolloutConfig(ctx context.Context, gw *stubs.SubstrateGatewayStub) (ChainVersion, []uint32, error) {
+func getRolloutConfig(ctx context.Context, gw *stubs.SubstrateGatewayClient) (ChainVersion, []uint32, error) {
 	config, err := environment.GetConfig()
 	if err != nil {
 		return ChainVersion{}, nil, errors.Wrap(err, "failed to get network config")
@@ -289,7 +289,7 @@ func (u *Upgrader) update(ctx context.Context) error {
 	}
 
 	env := environment.MustGet()
-	gw := stubs.NewSubstrateGatewayStub(u.zcl)
+	gw := stubs.NewSubstrateGatewayClient(u.zcl)
 	chainVer, testFarms, err := getRolloutConfig(ctx, gw)
 	if err != nil {
 		return errors.Wrap(err, "failed to get rollout config and version")

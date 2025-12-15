@@ -6,11 +6,12 @@ package stubs
 
 import (
 	"context"
+	"time"
+
 	types "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	tfchainclientgo "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	zbus "github.com/threefoldtech/zbus"
 	pkg "github.com/threefoldtech/zosbase/pkg"
-	"time"
 )
 
 type SubstrateGatewayStub struct {
@@ -30,8 +31,8 @@ func NewSubstrateGatewayStub(client zbus.Client) *SubstrateGatewayStub {
 	}
 }
 
-func (s *SubstrateGatewayStub) CreateNode(ctx context.Context, arg0 tfchainclientgo.Node) (ret0 uint32, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) CreateNode(ctx context.Context, arg0 context.Context, arg1 tfchainclientgo.Node) (ret0 uint32, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "CreateNode", args...)
 	if err != nil {
 		panic(err)
@@ -47,8 +48,8 @@ func (s *SubstrateGatewayStub) CreateNode(ctx context.Context, arg0 tfchainclien
 	return
 }
 
-func (s *SubstrateGatewayStub) CreateTwin(ctx context.Context, arg0 string, arg1 []uint8) (ret0 uint32, ret1 error) {
-	args := []interface{}{arg0, arg1}
+func (s *SubstrateGatewayStub) CreateTwin(ctx context.Context, arg0 context.Context, arg1 string, arg2 []uint8) (ret0 uint32, ret1 error) {
+	args := []interface{}{arg0, arg1, arg2}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "CreateTwin", args...)
 	if err != nil {
 		panic(err)
@@ -64,8 +65,8 @@ func (s *SubstrateGatewayStub) CreateTwin(ctx context.Context, arg0 string, arg1
 	return
 }
 
-func (s *SubstrateGatewayStub) EnsureAccount(ctx context.Context, arg0 []string, arg1 string, arg2 string) (ret0 tfchainclientgo.AccountInfo, ret1 error) {
-	args := []interface{}{arg0, arg1, arg2}
+func (s *SubstrateGatewayStub) EnsureAccount(ctx context.Context, arg0 context.Context, arg1 []string, arg2 string, arg3 string) (ret0 tfchainclientgo.AccountInfo, ret1 error) {
+	args := []interface{}{arg0, arg1, arg2, arg3}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "EnsureAccount", args...)
 	if err != nil {
 		panic(err)
@@ -81,8 +82,8 @@ func (s *SubstrateGatewayStub) EnsureAccount(ctx context.Context, arg0 []string,
 	return
 }
 
-func (s *SubstrateGatewayStub) GetContract(ctx context.Context, arg0 uint64) (ret0 tfchainclientgo.Contract, ret1 pkg.SubstrateError) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetContract(ctx context.Context, arg0 context.Context, arg1 uint64) (ret0 tfchainclientgo.Contract, ret1 pkg.SubstrateError) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetContract", args...)
 	if err != nil {
 		panic(err)
@@ -98,8 +99,8 @@ func (s *SubstrateGatewayStub) GetContract(ctx context.Context, arg0 uint64) (re
 	return
 }
 
-func (s *SubstrateGatewayStub) GetContractIDByNameRegistration(ctx context.Context, arg0 string) (ret0 uint64, ret1 pkg.SubstrateError) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetContractIDByNameRegistration(ctx context.Context, arg0 context.Context, arg1 string) (ret0 uint64, ret1 pkg.SubstrateError) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetContractIDByNameRegistration", args...)
 	if err != nil {
 		panic(err)
@@ -115,8 +116,8 @@ func (s *SubstrateGatewayStub) GetContractIDByNameRegistration(ctx context.Conte
 	return
 }
 
-func (s *SubstrateGatewayStub) GetFarm(ctx context.Context, arg0 uint32) (ret0 tfchainclientgo.Farm, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetFarm(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 tfchainclientgo.Farm, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetFarm", args...)
 	if err != nil {
 		panic(err)
@@ -132,8 +133,8 @@ func (s *SubstrateGatewayStub) GetFarm(ctx context.Context, arg0 uint32) (ret0 t
 	return
 }
 
-func (s *SubstrateGatewayStub) GetNode(ctx context.Context, arg0 uint32) (ret0 tfchainclientgo.Node, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetNode(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 tfchainclientgo.Node, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNode", args...)
 	if err != nil {
 		panic(err)
@@ -149,8 +150,8 @@ func (s *SubstrateGatewayStub) GetNode(ctx context.Context, arg0 uint32) (ret0 t
 	return
 }
 
-func (s *SubstrateGatewayStub) GetNodeByTwinID(ctx context.Context, arg0 uint32) (ret0 uint32, ret1 pkg.SubstrateError) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetNodeByTwinID(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 uint32, ret1 pkg.SubstrateError) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNodeByTwinID", args...)
 	if err != nil {
 		panic(err)
@@ -166,8 +167,8 @@ func (s *SubstrateGatewayStub) GetNodeByTwinID(ctx context.Context, arg0 uint32)
 	return
 }
 
-func (s *SubstrateGatewayStub) GetNodeContracts(ctx context.Context, arg0 uint32) (ret0 []types.U64, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetNodeContracts(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 []types.U64, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNodeContracts", args...)
 	if err != nil {
 		panic(err)
@@ -183,8 +184,8 @@ func (s *SubstrateGatewayStub) GetNodeContracts(ctx context.Context, arg0 uint32
 	return
 }
 
-func (s *SubstrateGatewayStub) GetNodeRentContract(ctx context.Context, arg0 uint32) (ret0 uint64, ret1 pkg.SubstrateError) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetNodeRentContract(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 uint64, ret1 pkg.SubstrateError) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNodeRentContract", args...)
 	if err != nil {
 		panic(err)
@@ -200,8 +201,8 @@ func (s *SubstrateGatewayStub) GetNodeRentContract(ctx context.Context, arg0 uin
 	return
 }
 
-func (s *SubstrateGatewayStub) GetNodes(ctx context.Context, arg0 uint32) (ret0 []uint32, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetNodes(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 []uint32, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetNodes", args...)
 	if err != nil {
 		panic(err)
@@ -217,8 +218,8 @@ func (s *SubstrateGatewayStub) GetNodes(ctx context.Context, arg0 uint32) (ret0 
 	return
 }
 
-func (s *SubstrateGatewayStub) GetPowerTarget(ctx context.Context, arg0 uint32) (ret0 tfchainclientgo.NodePower, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetPowerTarget(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 tfchainclientgo.NodePower, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetPowerTarget", args...)
 	if err != nil {
 		panic(err)
@@ -234,8 +235,8 @@ func (s *SubstrateGatewayStub) GetPowerTarget(ctx context.Context, arg0 uint32) 
 	return
 }
 
-func (s *SubstrateGatewayStub) GetTime(ctx context.Context) (ret0 time.Time, ret1 error) {
-	args := []interface{}{}
+func (s *SubstrateGatewayStub) GetTime(ctx context.Context, arg0 context.Context) (ret0 time.Time, ret1 error) {
+	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetTime", args...)
 	if err != nil {
 		panic(err)
@@ -251,8 +252,8 @@ func (s *SubstrateGatewayStub) GetTime(ctx context.Context) (ret0 time.Time, ret
 	return
 }
 
-func (s *SubstrateGatewayStub) GetTwin(ctx context.Context, arg0 uint32) (ret0 tfchainclientgo.Twin, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetTwin(ctx context.Context, arg0 context.Context, arg1 uint32) (ret0 tfchainclientgo.Twin, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetTwin", args...)
 	if err != nil {
 		panic(err)
@@ -268,8 +269,8 @@ func (s *SubstrateGatewayStub) GetTwin(ctx context.Context, arg0 uint32) (ret0 t
 	return
 }
 
-func (s *SubstrateGatewayStub) GetTwinByPubKey(ctx context.Context, arg0 []uint8) (ret0 uint32, ret1 pkg.SubstrateError) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) GetTwinByPubKey(ctx context.Context, arg0 context.Context, arg1 []uint8) (ret0 uint32, ret1 pkg.SubstrateError) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetTwinByPubKey", args...)
 	if err != nil {
 		panic(err)
@@ -285,8 +286,8 @@ func (s *SubstrateGatewayStub) GetTwinByPubKey(ctx context.Context, arg0 []uint8
 	return
 }
 
-func (s *SubstrateGatewayStub) GetZosVersion(ctx context.Context) (ret0 string, ret1 error) {
-	args := []interface{}{}
+func (s *SubstrateGatewayStub) GetZosVersion(ctx context.Context, arg0 context.Context) (ret0 string, ret1 error) {
+	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "GetZosVersion", args...)
 	if err != nil {
 		panic(err)
@@ -302,8 +303,8 @@ func (s *SubstrateGatewayStub) GetZosVersion(ctx context.Context) (ret0 string, 
 	return
 }
 
-func (s *SubstrateGatewayStub) Report(ctx context.Context, arg0 []tfchainclientgo.NruConsumption) (ret0 types.Hash, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) Report(ctx context.Context, arg0 context.Context, arg1 []tfchainclientgo.NruConsumption) (ret0 types.Hash, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "Report", args...)
 	if err != nil {
 		panic(err)
@@ -319,9 +320,9 @@ func (s *SubstrateGatewayStub) Report(ctx context.Context, arg0 []tfchainclientg
 	return
 }
 
-func (s *SubstrateGatewayStub) SetContractConsumption(ctx context.Context, arg0 ...tfchainclientgo.ContractResources) (ret0 error) {
-	args := []interface{}{}
-	for _, argv := range arg0 {
+func (s *SubstrateGatewayStub) SetContractConsumption(ctx context.Context, arg0 context.Context, arg1 ...tfchainclientgo.ContractResources) (ret0 error) {
+	args := []interface{}{arg0}
+	for _, argv := range arg1 {
 		args = append(args, argv)
 	}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "SetContractConsumption", args...)
@@ -337,8 +338,8 @@ func (s *SubstrateGatewayStub) SetContractConsumption(ctx context.Context, arg0 
 	return
 }
 
-func (s *SubstrateGatewayStub) SetNodePowerState(ctx context.Context, arg0 bool) (ret0 types.Hash, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) SetNodePowerState(ctx context.Context, arg0 context.Context, arg1 bool) (ret0 types.Hash, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "SetNodePowerState", args...)
 	if err != nil {
 		panic(err)
@@ -354,8 +355,8 @@ func (s *SubstrateGatewayStub) SetNodePowerState(ctx context.Context, arg0 bool)
 	return
 }
 
-func (s *SubstrateGatewayStub) UpdateNode(ctx context.Context, arg0 tfchainclientgo.Node) (ret0 uint32, ret1 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) UpdateNode(ctx context.Context, arg0 context.Context, arg1 tfchainclientgo.Node) (ret0 uint32, ret1 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "UpdateNode", args...)
 	if err != nil {
 		panic(err)
@@ -371,8 +372,8 @@ func (s *SubstrateGatewayStub) UpdateNode(ctx context.Context, arg0 tfchainclien
 	return
 }
 
-func (s *SubstrateGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 uint64, arg1 uint64) (ret0 types.Hash, ret1 error) {
-	args := []interface{}{arg0, arg1}
+func (s *SubstrateGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 context.Context, arg1 uint64, arg2 uint64) (ret0 types.Hash, ret1 error) {
+	args := []interface{}{arg0, arg1, arg2}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "UpdateNodeUptimeV2", args...)
 	if err != nil {
 		panic(err)
@@ -388,8 +389,8 @@ func (s *SubstrateGatewayStub) UpdateNodeUptimeV2(ctx context.Context, arg0 uint
 	return
 }
 
-func (s *SubstrateGatewayStub) UpdateSubstrateGatewayConnection(ctx context.Context, arg0 tfchainclientgo.Manager) (ret0 error) {
-	args := []interface{}{arg0}
+func (s *SubstrateGatewayStub) UpdateSubstrateGatewayConnection(ctx context.Context, arg0 context.Context, arg1 tfchainclientgo.Manager) (ret0 error) {
+	args := []interface{}{arg0, arg1}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "UpdateSubstrateGatewayConnection", args...)
 	if err != nil {
 		panic(err)

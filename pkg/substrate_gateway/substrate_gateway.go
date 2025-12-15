@@ -1,6 +1,7 @@
 package substrategw
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"sync"
@@ -33,7 +34,7 @@ func NewSubstrateGateway(manager substrate.Manager, identity substrate.Identity)
 }
 
 // UpdateSubstrateGatewayConnection allow modules to update substrate manager so that the node can recover chain outage
-func (g *substrateGateway) UpdateSubstrateGatewayConnection(manager substrate.Manager) error {
+func (g *substrateGateway) UpdateSubstrateGatewayConnection(ctx context.Context, manager substrate.Manager) error {
 	sub, err := manager.Substrate()
 	if err != nil {
 		return err
@@ -55,14 +56,15 @@ func createBackoff() backoff.BackOff {
 	return exp
 }
 
-func (g *substrateGateway) GetZosVersion() (string, error) {
-	log.Debug().Str("method", "GetZosVersion").Msg("method called")
+func (g *substrateGateway) GetZosVersion(ctx context.Context) (string, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).Str("method", "GetZosVersion").Msg("method called")
 
 	var result string
 	err := backoff.Retry(func() error {
 		version, err := g.sub.GetZosVersion()
 		if err != nil {
-			log.Debug().Err(err).Msg("GetZosVersion failed, retrying")
+			LogDebugWithTrace(ctx).Err(err).Msg("GetZosVersion failed, retrying")
 			return err
 		}
 		result = version
@@ -72,8 +74,9 @@ func (g *substrateGateway) GetZosVersion() (string, error) {
 	return result, err
 }
 
-func (g *substrateGateway) CreateNode(node substrate.Node) (uint32, error) {
-	log.Debug().
+func (g *substrateGateway) CreateNode(ctx context.Context, node substrate.Node) (uint32, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).
 		Str("method", "CreateNode").
 		Uint32("twin id", uint32(node.TwinID)).
 		Uint32("farm id", uint32(node.FarmID)).
@@ -85,7 +88,7 @@ func (g *substrateGateway) CreateNode(node substrate.Node) (uint32, error) {
 	err := backoff.Retry(func() error {
 		nodeID, err := g.sub.CreateNode(g.identity, node)
 		if err != nil {
-			log.Debug().Err(err).Msg("CreateNode failed, retrying")
+			LogDebugWithTrace(ctx).Err(err).Msg("CreateNode failed, retrying")
 			return err
 		}
 		result = nodeID
@@ -95,8 +98,9 @@ func (g *substrateGateway) CreateNode(node substrate.Node) (uint32, error) {
 	return result, err
 }
 
-func (g *substrateGateway) CreateTwin(relay string, pk []byte) (uint32, error) {
-	log.Debug().Str("method", "CreateTwin").Str("relay", relay).Str("pk", hex.EncodeToString(pk)).Msg("method called")
+func (g *substrateGateway) CreateTwin(ctx context.Context, relay string, pk []byte) (uint32, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).Str("method", "CreateTwin").Str("relay", relay).Str("pk", hex.EncodeToString(pk)).Msg("method called")
 
 	var result uint32
 	g.mu.Lock()
@@ -104,7 +108,7 @@ func (g *substrateGateway) CreateTwin(relay string, pk []byte) (uint32, error) {
 	err := backoff.Retry(func() error {
 		twinID, err := g.sub.CreateTwin(g.identity, relay, pk)
 		if err != nil {
-			log.Debug().Err(err).Msg("CreateTwin failed, retrying")
+			LogDebugWithTrace(ctx).Err(err).Msg("CreateTwin failed, retrying")
 			return err
 		}
 		result = twinID
@@ -114,8 +118,9 @@ func (g *substrateGateway) CreateTwin(relay string, pk []byte) (uint32, error) {
 	return result, err
 }
 
-func (g *substrateGateway) EnsureAccount(activationURL []string, termsAndConditionsLink string, termsAndConditionsHash string) (info substrate.AccountInfo, err error) {
-	log.Debug().
+func (g *substrateGateway) EnsureAccount(ctx context.Context, activationURL []string, termsAndConditionsLink string, termsAndConditionsHash string) (info substrate.AccountInfo, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).
 		Str("method", "EnsureAccount").
 		Strs("activation url", activationURL).
 		Str("terms and conditions link", termsAndConditionsLink).
@@ -128,7 +133,7 @@ func (g *substrateGateway) EnsureAccount(activationURL []string, termsAndConditi
 		err = backoff.Retry(func() error {
 			accountInfo, retryErr := g.sub.EnsureAccount(g.identity, url, termsAndConditionsLink, termsAndConditionsHash)
 			if retryErr != nil {
-				log.Debug().Str("activation url", url).Err(retryErr).Msg("EnsureAccount failed, retrying")
+				LogDebugWithTrace(ctx).Str("activation url", url).Err(retryErr).Msg("EnsureAccount failed, retrying")
 				return retryErr
 			}
 			info = accountInfo
@@ -139,18 +144,19 @@ func (g *substrateGateway) EnsureAccount(activationURL []string, termsAndConditi
 		if err == nil || !errors.As(err, &substrate.ActivationServiceError{}) {
 			return
 		}
-		log.Debug().Str("activation url", url).Err(err).Msg("failed to EnsureAccount with ActivationServiceError")
+		LogDebugWithTrace(ctx).Str("activation url", url).Err(err).Msg("failed to EnsureAccount with ActivationServiceError")
 	}
 	return
 }
 
-func (g *substrateGateway) GetContract(id uint64) (result substrate.Contract, serr pkg.SubstrateError) {
-	log.Trace().Str("method", "GetContract").Uint64("id", id).Msg("method called")
+func (g *substrateGateway) GetContract(ctx context.Context, id uint64) (result substrate.Contract, serr pkg.SubstrateError) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetContract").Uint64("contract id", id).Msg("method called")
 
 	err := backoff.Retry(func() error {
 		contract, retryErr := g.sub.GetContract(id)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint64("id", id).Msg("GetContract failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint64("contract id", id).Msg("GetContract failed, retrying")
 			return retryErr
 		}
 		result = *contract
@@ -161,13 +167,14 @@ func (g *substrateGateway) GetContract(id uint64) (result substrate.Contract, se
 	return
 }
 
-func (g *substrateGateway) GetContractIDByNameRegistration(name string) (result uint64, serr pkg.SubstrateError) {
-	log.Trace().Str("method", "GetContractIDByNameRegistration").Str("name", name).Msg("method called")
+func (g *substrateGateway) GetContractIDByNameRegistration(ctx context.Context, name string) (result uint64, serr pkg.SubstrateError) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetContractIDByNameRegistration").Str("name", name).Msg("method called")
 
 	err := backoff.Retry(func() error {
 		contractID, retryErr := g.sub.GetContractIDByNameRegistration(name)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Str("name", name).Msg("GetContractIDByNameRegistration failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Str("name", name).Msg("GetContractIDByNameRegistration failed, retrying")
 			return retryErr
 		}
 		result = contractID
@@ -178,13 +185,14 @@ func (g *substrateGateway) GetContractIDByNameRegistration(name string) (result 
 	return
 }
 
-func (g *substrateGateway) GetFarm(id uint32) (result substrate.Farm, err error) {
-	log.Trace().Str("method", "GetFarm").Uint32("id", id).Msg("method called")
+func (g *substrateGateway) GetFarm(ctx context.Context, id uint32) (result substrate.Farm, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetFarm").Uint32("farm id", id).Msg("method called")
 
 	err = backoff.Retry(func() error {
 		farm, retryErr := g.sub.GetFarm(id)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("id", id).Msg("GetFarm failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("farm id", id).Msg("GetFarm failed, retrying")
 			return retryErr
 		}
 		result = *farm
@@ -194,13 +202,14 @@ func (g *substrateGateway) GetFarm(id uint32) (result substrate.Farm, err error)
 	return
 }
 
-func (g *substrateGateway) GetNode(id uint32) (result substrate.Node, err error) {
-	log.Trace().Str("method", "GetNode").Uint32("id", id).Msg("method called")
+func (g *substrateGateway) GetNode(ctx context.Context, id uint32) (result substrate.Node, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetNode").Uint32("node id", id).Msg("method called")
 
 	err = backoff.Retry(func() error {
 		node, retryErr := g.sub.GetNode(id)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("id", id).Msg("GetNode failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("node id", id).Msg("GetNode failed, retrying")
 			return retryErr
 		}
 		result = *node
@@ -210,13 +219,14 @@ func (g *substrateGateway) GetNode(id uint32) (result substrate.Node, err error)
 	return
 }
 
-func (g *substrateGateway) GetNodeByTwinID(twin uint32) (result uint32, serr pkg.SubstrateError) {
-	log.Trace().Str("method", "GetNodeByTwinID").Uint32("twin", twin).Msg("method called")
+func (g *substrateGateway) GetNodeByTwinID(ctx context.Context, twin uint32) (result uint32, serr pkg.SubstrateError) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetNodeByTwinID").Uint32("twin id", twin).Msg("method called")
 
 	err := backoff.Retry(func() error {
 		nodeID, retryErr := g.sub.GetNodeByTwinID(twin)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("twin", twin).Msg("GetNodeByTwinID failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("twin id", twin).Msg("GetNodeByTwinID failed, retrying")
 			return retryErr
 		}
 		result = nodeID
@@ -227,14 +237,15 @@ func (g *substrateGateway) GetNodeByTwinID(twin uint32) (result uint32, serr pkg
 	return
 }
 
-func (g *substrateGateway) GetNodeContracts(node uint32) ([]types.U64, error) {
-	log.Trace().Str("method", "GetNodeContracts").Uint32("node", node).Msg("method called")
+func (g *substrateGateway) GetNodeContracts(ctx context.Context, node uint32) ([]types.U64, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetNodeContracts").Uint32("node id", node).Msg("method called")
 
 	var result []types.U64
 	err := backoff.Retry(func() error {
 		contracts, retryErr := g.sub.GetNodeContracts(node)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("node", node).Msg("GetNodeContracts failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("node id", node).Msg("GetNodeContracts failed, retrying")
 			return retryErr
 		}
 		result = contracts
@@ -244,13 +255,14 @@ func (g *substrateGateway) GetNodeContracts(node uint32) ([]types.U64, error) {
 	return result, err
 }
 
-func (g *substrateGateway) GetNodeRentContract(node uint32) (result uint64, serr pkg.SubstrateError) {
-	log.Trace().Str("method", "GetNodeRentContract").Uint32("node", node).Msg("method called")
+func (g *substrateGateway) GetNodeRentContract(ctx context.Context, node uint32) (result uint64, serr pkg.SubstrateError) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetNodeRentContract").Uint32("node id", node).Msg("method called")
 
 	err := backoff.Retry(func() error {
 		contractID, retryErr := g.sub.GetNodeRentContract(node)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("node", node).Msg("GetNodeRentContract failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("node id", node).Msg("GetNodeRentContract failed, retrying")
 			return retryErr
 		}
 		result = contractID
@@ -261,14 +273,15 @@ func (g *substrateGateway) GetNodeRentContract(node uint32) (result uint64, serr
 	return
 }
 
-func (g *substrateGateway) GetNodes(farmID uint32) ([]uint32, error) {
-	log.Trace().Str("method", "GetNodes").Uint32("farm id", farmID).Msg("method called")
+func (g *substrateGateway) GetNodes(ctx context.Context, farmID uint32) ([]uint32, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetNodes").Uint32("farm id", farmID).Msg("method called")
 
 	var result []uint32
 	err := backoff.Retry(func() error {
 		nodes, retryErr := g.sub.GetNodes(farmID)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("farm id", farmID).Msg("GetNodes failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("farm id", farmID).Msg("GetNodes failed, retrying")
 			return retryErr
 		}
 		result = nodes
@@ -278,13 +291,14 @@ func (g *substrateGateway) GetNodes(farmID uint32) ([]uint32, error) {
 	return result, err
 }
 
-func (g *substrateGateway) GetPowerTarget(nodeID uint32) (power substrate.NodePower, err error) {
-	log.Trace().Str("method", "GetPowerTarget").Uint32("node id", nodeID).Msg("method called")
+func (g *substrateGateway) GetPowerTarget(ctx context.Context, nodeID uint32) (power substrate.NodePower, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetPowerTarget").Uint32("node id", nodeID).Msg("method called")
 
 	err = backoff.Retry(func() error {
 		nodePower, retryErr := g.sub.GetPowerTarget(nodeID)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("node id", nodeID).Msg("GetPowerTarget failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("node id", nodeID).Msg("GetPowerTarget failed, retrying")
 			return retryErr
 		}
 		power = nodePower
@@ -294,13 +308,14 @@ func (g *substrateGateway) GetPowerTarget(nodeID uint32) (power substrate.NodePo
 	return
 }
 
-func (g *substrateGateway) GetTwin(id uint32) (result substrate.Twin, err error) {
-	log.Trace().Str("method", "GetTwin").Uint32("id", id).Msg("method called")
+func (g *substrateGateway) GetTwin(ctx context.Context, id uint32) (result substrate.Twin, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetTwin").Uint32("twin id", id).Msg("method called")
 
 	err = backoff.Retry(func() error {
 		twin, retryErr := g.sub.GetTwin(id)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint32("id", id).Msg("GetTwin failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint32("twin id", id).Msg("GetTwin failed, retrying")
 			return retryErr
 		}
 		result = *twin
@@ -310,13 +325,14 @@ func (g *substrateGateway) GetTwin(id uint32) (result substrate.Twin, err error)
 	return
 }
 
-func (g *substrateGateway) GetTwinByPubKey(pk []byte) (result uint32, serr pkg.SubstrateError) {
-	log.Trace().Str("method", "GetTwinByPubKey").Str("pk", hex.EncodeToString(pk)).Msg("method called")
+func (g *substrateGateway) GetTwinByPubKey(ctx context.Context, pk []byte) (result uint32, serr pkg.SubstrateError) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "GetTwinByPubKey").Str("pk", hex.EncodeToString(pk)).Msg("method called")
 
 	err := backoff.Retry(func() error {
 		twinID, retryErr := g.sub.GetTwinByPubKey(pk)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Str("pk", hex.EncodeToString(pk)).Msg("GetTwinByPubKey failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Str("pk", hex.EncodeToString(pk)).Msg("GetTwinByPubKey failed, retrying")
 			return retryErr
 		}
 		result = twinID
@@ -327,12 +343,9 @@ func (g *substrateGateway) GetTwinByPubKey(pk []byte) (result uint32, serr pkg.S
 	return
 }
 
-func (g *substrateGateway) Report(consumptions []substrate.NruConsumption) (types.Hash, error) {
-	contractIDs := make([]uint64, 0, len(consumptions))
-	for _, v := range consumptions {
-		contractIDs = append(contractIDs, uint64(v.ContractID))
-	}
-	log.Debug().Str("method", "Report").Uints64("contract ids", contractIDs).Msg("method called")
+func (g *substrateGateway) Report(ctx context.Context, consumptions []substrate.NruConsumption) (types.Hash, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "Report").Int("consumptions count", len(consumptions)).Msg("method called")
 
 	var result types.Hash
 	g.mu.Lock()
@@ -340,7 +353,7 @@ func (g *substrateGateway) Report(consumptions []substrate.NruConsumption) (type
 	err := backoff.Retry(func() error {
 		hash, retryErr := g.sub.Report(g.identity, consumptions)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uints64("contract ids", contractIDs).Msg("Report failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Int("consumptions count", len(consumptions)).Msg("Report failed, retrying")
 			return retryErr
 		}
 		result = hash
@@ -350,19 +363,20 @@ func (g *substrateGateway) Report(consumptions []substrate.NruConsumption) (type
 	return result, err
 }
 
-func (g *substrateGateway) SetContractConsumption(resources ...substrate.ContractResources) error {
+func (g *substrateGateway) SetContractConsumption(ctx context.Context, resources ...substrate.ContractResources) error {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
 	contractIDs := make([]uint64, 0, len(resources))
 	for _, v := range resources {
 		contractIDs = append(contractIDs, uint64(v.ContractID))
 	}
-	log.Debug().Str("method", "SetContractConsumption").Uints64("contract ids", contractIDs).Msg("method called")
+	LogDebugWithTrace(ctx).Str("method", "SetContractConsumption").Uints64("contract ids", contractIDs).Msg("method called")
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	err := backoff.Retry(func() error {
 		retryErr := g.sub.SetContractConsumption(g.identity, resources...)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uints64("contract ids", contractIDs).Msg("SetContractConsumption failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uints64("contract ids", contractIDs).Msg("SetContractConsumption failed, retrying")
 			return retryErr
 		}
 		return nil
@@ -371,15 +385,16 @@ func (g *substrateGateway) SetContractConsumption(resources ...substrate.Contrac
 	return err
 }
 
-func (g *substrateGateway) SetNodePowerState(up bool) (hash types.Hash, err error) {
-	log.Debug().Str("method", "SetNodePowerState").Bool("up", up).Msg("method called")
+func (g *substrateGateway) SetNodePowerState(ctx context.Context, up bool) (hash types.Hash, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).Str("method", "SetNodePowerState").Bool("up", up).Msg("method called")
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	err = backoff.Retry(func() error {
 		resultHash, retryErr := g.sub.SetNodePowerState(g.identity, up)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Bool("up", up).Msg("SetNodePowerState failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Bool("up", up).Msg("SetNodePowerState failed, retrying")
 			return retryErr
 		}
 		hash = resultHash
@@ -389,8 +404,9 @@ func (g *substrateGateway) SetNodePowerState(up bool) (hash types.Hash, err erro
 	return
 }
 
-func (g *substrateGateway) UpdateNode(node substrate.Node) (uint32, error) {
-	log.Debug().Str("method", "UpdateNode").Msg("method called")
+func (g *substrateGateway) UpdateNode(ctx context.Context, node substrate.Node) (uint32, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).Str("method", "UpdateNode").Msg("method called")
 
 	var result uint32
 	g.mu.Lock()
@@ -398,7 +414,7 @@ func (g *substrateGateway) UpdateNode(node substrate.Node) (uint32, error) {
 	err := backoff.Retry(func() error {
 		nodeID, retryErr := g.sub.UpdateNode(g.identity, node)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Msg("UpdateNode failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Msg("UpdateNode failed, retrying")
 			return retryErr
 		}
 		result = nodeID
@@ -408,8 +424,9 @@ func (g *substrateGateway) UpdateNode(node substrate.Node) (uint32, error) {
 	return result, err
 }
 
-func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint64) (hash types.Hash, err error) {
-	log.Debug().
+func (g *substrateGateway) UpdateNodeUptimeV2(ctx context.Context, uptime uint64, timestampHint uint64) (hash types.Hash, err error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	LogDebugWithTrace(ctx).
 		Str("method", "UpdateNodeUptimeV2").
 		Uint64("uptime", uptime).
 		Uint64("timestamp hint", timestampHint).
@@ -420,14 +437,14 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 	err = backoff.Retry(func() error {
 		resultHash, retryErr := g.sub.UpdateNodeUptimeV2(g.identity, uptime, timestampHint)
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Uint64("uptime", uptime).Uint64("timestamp hint", timestampHint).Msg("UpdateNodeUptimeV2 failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Uint64("uptime", uptime).Uint64("timestamp hint", timestampHint).Msg("UpdateNodeUptimeV2 failed, retrying")
 			return retryErr
 		}
 		hash = resultHash
 		return nil
 	}, createBackoff())
 
-	log.Debug().
+	LogDebugWithTrace(ctx).
 		Str("method", "UpdateNodeUptimeV2").
 		Uint64("uptime", uptime).
 		Uint64("timestamp hint", timestampHint).
@@ -436,14 +453,15 @@ func (g *substrateGateway) UpdateNodeUptimeV2(uptime uint64, timestampHint uint6
 	return
 }
 
-func (g *substrateGateway) GetTime() (time.Time, error) {
-	log.Trace().Str("method", "Time").Msg("method called")
+func (g *substrateGateway) GetTime(ctx context.Context) (time.Time, error) {
+	ctx = WithTraceID(ctx, GetTraceID(ctx))
+	log.Trace().Str("trace_id", GetTraceID(ctx)).Str("method", "Time").Msg("method called")
 
 	var result time.Time
 	err := backoff.Retry(func() error {
 		timeResult, retryErr := g.sub.Time()
 		if retryErr != nil {
-			log.Debug().Err(retryErr).Msg("GetTime failed, retrying")
+			LogDebugWithTrace(ctx).Err(retryErr).Msg("GetTime failed, retrying")
 			return retryErr
 		}
 		result = timeResult
