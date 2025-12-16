@@ -111,11 +111,11 @@ func (f *flistModule) cleanUnusedMounts() error {
 		delete(roTargets, info.Pid)
 	}
 	if len(roTargets) == 0 {
-		log.Debug().Msg("no unused mounts detected")
+		log.Info().Msg("no unused mounts detected")
 	}
 	// cleaning up remaining un-used mounts
 	for pid, mount := range roTargets {
-		log.Debug().Int64("source", pid).Msgf("cleaning up mount: %+v", mount)
+		log.Info().Int64("source", pid).Msgf("cleaning up mount: %+v", mount)
 		if err := f.system.Unmount(mount.Target, 0); err != nil {
 			log.Error().Err(err).Str("target", mount.Target).Msg("failed to clean up mount")
 			continue

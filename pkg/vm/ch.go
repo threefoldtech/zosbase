@@ -50,7 +50,7 @@ func (m *Machine) startCloudConsole(ctx context.Context, namespace string, netwo
 		logs,
 	}
 
-	log.Debug().Msgf("running cloud-console : %+v", args)
+	log.Info().Str("vm-id", m.ID).Str("namespace", namespace).Str("console-ip", networkAddr.IP.String()).Msgf("starting cloud-console on port %d", port)
 
 	cmd := exec.CommandContext(ctx, "busybox", args...)
 	if err := cmd.Start(); err != nil {
@@ -100,6 +100,7 @@ func (m *Machine) startCloudConsoleLight(ctx context.Context, namespace string, 
 		fmt.Sprint(port),
 		logs,
 	}
+	log.Info().Str("vm-id", m.ID).Str("namespace", namespace).Str("mycelium-ip", mycIp).Msgf("starting cloud-console on port %d", port)
 	log.Debug().Msgf("running cloud-console : %+v", args)
 
 	cmd := exec.CommandContext(ctx, "busybox", args...)
@@ -228,7 +229,8 @@ func (m *Machine) Run(ctx context.Context, socket, logs string) (pkg.MachineInfo
 	// this.
 	fullArgs = append(fullArgs, "setsid", chBin)
 	fullArgs = append(fullArgs, argsList...)
-	log.Debug().Msgf("ch: %+v", fullArgs)
+	log.Info().Str("vm-id", m.ID).Uint8("cpu", uint8(m.Config.CPU)).Str("memory", m.Config.Mem.String()).Msg("starting cloud-hypervisor VM")
+	log.Info().Msgf("ch: %+v", fullArgs)
 
 	cmd := exec.CommandContext(ctx, "busybox", fullArgs...)
 	cmd.Stdout = logFd
@@ -280,6 +282,11 @@ func (m *Machine) Run(ctx context.Context, socket, logs string) (pkg.MachineInfo
 	if err != nil {
 		return pkg.MachineInfo{}, errors.Wrapf(err, "failed to Inspect vm with id: '%s'", m.ID)
 	}
+
+	logEvent := log.Info().Str("vm-id", m.ID)
+	logEvent = logInterfaceDetails(logEvent, m.Interfaces, m.NetworkInfo)
+	logEvent.Msg("VM started with network interfaces and addresses")
+
 	consoleURL := ""
 	for _, ifc := range m.Interfaces {
 		if ifc.Console != nil {
@@ -323,7 +330,7 @@ func (m *Machine) waitAndAdjOom(ctx context.Context, name string, socket string)
 			ctx,
 		),
 		func(err error, d time.Duration) {
-			log.Debug().Err(err).Str("id", name).Msg("vm is not up yet")
+			log.Info().Err(err).Str("id", name).Msg("vm is not up yet")
 		}); err != nil {
 
 		return err
