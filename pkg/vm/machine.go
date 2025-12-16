@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/vishvananda/netlink"
 )
 
@@ -138,6 +139,8 @@ type Machine struct {
 	// NoKeepAlive is not used by firecracker, but instead a marker
 	// for the vm  mananger to not restart the machine when it stops
 	NoKeepAlive bool `json:"no-keep-alive"`
+	// NetworkInfo holds the full network configuration with IPs (not serialized to config file)
+	NetworkInfo *pkg.VMNetworkInfo `json:"-"`
 }
 
 // Save saves a machine into a file

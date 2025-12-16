@@ -1068,6 +1068,7 @@ func (n *networker) DeleteNR(wl gridtypes.WorkloadID) error {
 		return err
 	}
 
+	log.Info().Str("network-id", string(netID)).Msg("deleting network resource")
 	nr := nr.New(netNR, n.myceliumKeyDir)
 
 	if err := nr.Delete(); err != nil {
@@ -1115,6 +1116,8 @@ func (n *networker) SetPublicConfig(cfg pkg.PublicConfig) error {
 		// nothing to do
 		return nil
 	}
+
+	log.Info().Str("ipv4", cfg.IPv4.String()).Str("ipv6", cfg.IPv6.String()).Str("gateway", cfg.GW4.String()).Msg("configuring public network")
 
 	id := n.identity.NodeID(context.Background())
 	_, err = public.EnsurePublicSetup(id, environment.MustGet().PubVlan, &cfg)

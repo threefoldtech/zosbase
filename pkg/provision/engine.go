@@ -347,6 +347,11 @@ func (e *NativeEngine) Admins() Twins {
 
 // Provision workload
 func (e *NativeEngine) Provision(ctx context.Context, deployment gridtypes.Deployment) error {
+	log.Info().
+		Uint32("twin", deployment.TwinID).
+		Uint64("contract", deployment.ContractID).
+		Msg("scheduling deployment for provision")
+
 	if deployment.Version != 0 {
 		return errors.Wrap(ErrInvalidVersion, "expected version to be 0 on deployment creation")
 	}
@@ -988,6 +993,8 @@ func (e *NativeEngine) updateDeployment(ctx context.Context, ops []gridtypes.Upg
 
 // DecommissionCached implements the zbus interface
 func (e *NativeEngine) DecommissionCached(id string, reason string) error {
+	log.Info().Str("workload-id", id).Str("reason", reason).Msg("decommissioning cached workload")
+
 	globalID := gridtypes.WorkloadID(id)
 	twin, dlID, name, err := globalID.Parts()
 	if err != nil {

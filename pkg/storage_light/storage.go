@@ -193,7 +193,7 @@ func (s *Module) poolType(pool filesystem.Pool, vm bool) (zos.DeviceType, error)
 }
 
 func (s *Module) mountPool(device filesystem.DeviceInfo, vm bool) {
-	log.Debug().Any("device", device).Msg("mounting device")
+	log.Info().Str("device", device.Path).Str("label", device.Label).Msg("mounting storage device")
 
 	if device.IsPXEPartition() {
 		log.Debug().Str("device", device.Path).Msg("skip device has 'ZOSPXE' label")
@@ -231,9 +231,11 @@ func (s *Module) mountPool(device filesystem.DeviceInfo, vm bool) {
 	case zos.SSDDevice:
 		s.totalSSD += usage.Size
 		s.ssds = append(s.ssds, pool)
+		log.Info().Str("device", device.Path).Str("type", "SSD").Str("pool", pool.Name()).Uint64("size", usage.Size).Msg("mounted storage pool")
 	case zos.HDDDevice:
 		s.totalHDD += usage.Size
 		s.hdds = append(s.hdds, pool)
+		log.Info().Str("device", device.Path).Str("type", "HDD").Str("pool", pool.Name()).Uint64("size", usage.Size).Msg("mounted storage pool")
 	default:
 		log.Error().Str("type", string(typ)).Str("device", device.Path).Msg("unknown device type")
 	}

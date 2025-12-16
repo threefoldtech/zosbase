@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
@@ -120,6 +121,8 @@ func (p *mapProvisioner) Initialize(ctx context.Context) error {
 
 // Provision implements provision.Provisioner
 func (p *mapProvisioner) Provision(ctx context.Context, wl *gridtypes.WorkloadWithID) (result gridtypes.Result, err error) {
+	log.Info().Str("workload-id", string(wl.ID)).Str("workload-type", string(wl.Type)).Msg("provisioning workload")
+	
 	manager, ok := p.managers[wl.Type]
 	if !ok {
 		return result, fmt.Errorf("unknown workload type '%s' for reservation id '%s'", wl.Type, wl.ID)
@@ -135,6 +138,8 @@ func (p *mapProvisioner) Provision(ctx context.Context, wl *gridtypes.WorkloadWi
 
 // Decommission implementation for provision.Provisioner
 func (p *mapProvisioner) Deprovision(ctx context.Context, wl *gridtypes.WorkloadWithID) error {
+	log.Info().Str("workload-id", string(wl.ID)).Str("workload-type", string(wl.Type)).Msg("deprovisioning workload")
+	
 	manager, ok := p.managers[wl.Type]
 	if !ok {
 		return fmt.Errorf("unknown workload type '%s' for reservation id '%s'", wl.Type, wl.ID)
@@ -145,6 +150,8 @@ func (p *mapProvisioner) Deprovision(ctx context.Context, wl *gridtypes.Workload
 
 // Pause a workload
 func (p *mapProvisioner) Pause(ctx context.Context, wl *gridtypes.WorkloadWithID) (gridtypes.Result, error) {
+	log.Info().Str("workload-id", string(wl.ID)).Str("workload-type", string(wl.Type)).Msg("pausing workload")
+	
 	if wl.Result.State != gridtypes.StateOk {
 		return wl.Result, fmt.Errorf("can only pause workloads in ok state")
 	}
@@ -172,6 +179,8 @@ func (p *mapProvisioner) Pause(ctx context.Context, wl *gridtypes.WorkloadWithID
 
 // Resume a workload
 func (p *mapProvisioner) Resume(ctx context.Context, wl *gridtypes.WorkloadWithID) (gridtypes.Result, error) {
+	log.Info().Str("workload-id", string(wl.ID)).Str("workload-type", string(wl.Type)).Msg("resuming workload")
+	
 	if wl.Result.State != gridtypes.StatePaused {
 		return wl.Result, fmt.Errorf("can only resume workloads in paused state")
 	}
@@ -198,6 +207,8 @@ func (p *mapProvisioner) Resume(ctx context.Context, wl *gridtypes.WorkloadWithI
 
 // Provision implements provision.Provisioner
 func (p *mapProvisioner) Update(ctx context.Context, wl *gridtypes.WorkloadWithID) (result gridtypes.Result, err error) {
+	log.Info().Str("workload-id", string(wl.ID)).Str("workload-type", string(wl.Type)).Msg("updating workload")
+	
 	manager, ok := p.managers[wl.Type]
 	if !ok {
 		return result, fmt.Errorf("unknown workload type '%s' for reservation id '%s'", wl.Type, wl.ID)
