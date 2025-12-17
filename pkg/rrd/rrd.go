@@ -7,8 +7,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	bolt "go.etcd.io/bbolt"
 )
 
 // RRD is a round robin database of fixed size which is specified on creation

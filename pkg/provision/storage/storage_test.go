@@ -10,10 +10,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/boltdb/bolt"
 	"github.com/stretchr/testify/require"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/provision"
+	bolt "go.etcd.io/bbolt"
 )
 
 const (
