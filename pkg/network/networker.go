@@ -24,7 +24,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/netbase/wireguard"
 	"github.com/threefoldtech/zosbase/pkg/network/bootstrap"
-	"github.com/threefoldtech/zosbase/pkg/network/iperf"
 	"github.com/threefoldtech/zosbase/pkg/network/mycelium"
 	"github.com/threefoldtech/zosbase/pkg/network/ndmz"
 	"github.com/threefoldtech/zosbase/pkg/network/options"
@@ -124,7 +123,7 @@ func NewNetworker(identity *stubs.IdentityManagerStub, ndmz ndmz.DMZ, ygg *yggdr
 	// always add the reserved yggdrasil and mycelium ports to the port set so we make sure they are never
 	// picked for wireguard endpoints
 	// we also add http, https, and traefik metrics ports 8082 to the list.
-	for _, port := range []int{yggdrasil.YggListenTCP, yggdrasil.YggListenTLS, yggdrasil.YggListenLinkLocal, mycelium.MyListenTCP, iperf.IperfPort, 80, 443, 8082} {
+	for _, port := range []int{yggdrasil.YggListenTCP, yggdrasil.YggListenTLS, yggdrasil.YggListenLinkLocal, mycelium.MyListenTCP, 80, 443, 8082} {
 		if err := nw.portSet.Add(uint(port)); err != nil && errors.Is(err, set.ErrConflict{}) {
 			return nil, err
 		}

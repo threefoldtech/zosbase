@@ -227,7 +227,6 @@ func TestGenerateKey(t *testing.T) {
 		{"cpu-benchmark", "perf.cpu-benchmark"},
 		{"public-ip-validation", "perf.public-ip-validation"},
 		{"healthcheck", "perf.healthcheck"},
-		{"iperf", "perf.iperf"},
 		{"", "perf."},
 	}
 

@@ -16,7 +16,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/netlight/bootstrap"
 	"github.com/threefoldtech/zosbase/pkg/netlight/bridge"
 	"github.com/threefoldtech/zosbase/pkg/netlight/ifaceutil"
-	"github.com/threefoldtech/zosbase/pkg/netlight/iperf"
 	"github.com/threefoldtech/zosbase/pkg/netlight/macvlan"
 	"github.com/threefoldtech/zosbase/pkg/netlight/namespace"
 	"github.com/threefoldtech/zosbase/pkg/netlight/options"
@@ -380,9 +379,6 @@ func EnsurePublicSetup(nodeID pkg.Identifier, vlan *uint16, inf *pkg.PublicConfi
 			return nil, errors.Wrap(err, "failed to ensure public namespace setup")
 		}
 
-		if err := iperf.Ensure(zinit.Default()); err != nil {
-			return nil, errors.Wrap(err, "failed to ensure iperf service")
-		}
 	}
 
 	return br, netlink.LinkSetUp(br)
