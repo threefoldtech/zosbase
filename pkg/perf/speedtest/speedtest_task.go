@@ -28,7 +28,7 @@ func (c *SpeedTestTask) ID() string {
 
 // Cron returns task cron schedule.
 func (c *SpeedTestTask) Cron() string {
-	return "*/30 * * * * *"
+	return "0 0 */6 * * *"
 }
 
 // Description returns task description.
