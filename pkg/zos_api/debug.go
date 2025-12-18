@@ -4,8 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
+	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 type debugDeploymentsListItem struct {
@@ -127,5 +131,91 @@ func (g *ZosAPI) debugDeploymentGetHandler(ctx context.Context, payload []byte) 
 	}{
 		Deployment: deployment,
 		History:    transactions,
+	}, nil
+}
+
+func (g *ZosAPI) debugVMInfoHandler(ctx context.Context, payload []byte) (interface{}, error) {
+	var args struct {
+		TwinID     uint32 `json:"twin_id"`
+		ContractID uint64 `json:"contract_id"`
+		VMName     string `json:"vm_name"`
+		FullLogs   bool   `json:"full_logs"`
+	}
+	if err := json.Unmarshal(payload, &args); err != nil {
+		return nil, err
+	}
+	if args.TwinID == 0 {
+		return nil, fmt.Errorf("twin_id is required")
+	}
+	if args.ContractID == 0 {
+		return nil, fmt.Errorf("contract_id is required")
+	}
+	if args.VMName == "" {
+		return nil, fmt.Errorf("vm_name is required")
+	}
+
+	deployment, err := g.provisionStub.Get(ctx, args.TwinID, args.ContractID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	vm, err := deployment.GetType(gridtypes.Name(args.VMName), zos.ZMachineType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get zmachine workload: %w", err)
+	}
+	vmID := vm.ID.String()
+
+	info, err := g.vmStub.Inspect(ctx, vmID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect vm: %w", err)
+	}
+
+	// Logs: tailed by default, full only when requested.
+	var raw string
+	if args.FullLogs {
+		raw, err = g.vmStub.LogsFull(ctx, vmID)
+	} else {
+		raw, err = g.vmStub.Logs(ctx, vmID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get vm logs: %w", err)
+	}
+
+	// Sanitize logs:
+	// - strip NUL bytes
+	// - drop invalid UTF-8 bytes
+	// - normalize CRLF -> LF
+	b := []byte(raw)
+	sanitized := make([]byte, 0, len(b))
+	for _, c := range b {
+		if c != 0x00 {
+			sanitized = append(sanitized, c)
+		}
+	}
+	if !utf8.Valid(sanitized) {
+		valid := make([]byte, 0, len(sanitized))
+		for len(sanitized) > 0 {
+			r, size := utf8.DecodeRune(sanitized)
+			if r == utf8.RuneError && size == 1 {
+				sanitized = sanitized[1:]
+				continue
+			}
+			valid = append(valid, sanitized[:size]...)
+			sanitized = sanitized[size:]
+		}
+		sanitized = valid
+	}
+	logs := string(sanitized)
+	logs = strings.ReplaceAll(logs, "\r\n", "\n")
+	logs = strings.ReplaceAll(logs, "\r", "\n")
+
+	return struct {
+		VMID string     `json:"vm_id"`
+		Info pkg.VMInfo `json:"info"`
+		Logs string     `json:"logs"`
+	}{
+		VMID: vmID,
+		Info: info,
+		Logs: logs,
 	}, nil
 }

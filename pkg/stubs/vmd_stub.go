@@ -6,6 +6,7 @@ package stubs
 
 import (
 	"context"
+
 	zbus "github.com/threefoldtech/zbus"
 	pkg "github.com/threefoldtech/zosbase/pkg"
 )
@@ -110,6 +111,23 @@ func (s *VMModuleStub) Lock(ctx context.Context, arg0 string, arg1 bool) (ret0 e
 func (s *VMModuleStub) Logs(ctx context.Context, arg0 string) (ret0 string, ret1 error) {
 	args := []interface{}{arg0}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "Logs", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret1 = result.CallError()
+	loader := zbus.Loader{
+		&ret0,
+	}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
+func (s *VMModuleStub) LogsFull(ctx context.Context, arg0 string) (ret0 string, ret1 error) {
+	args := []interface{}{arg0}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "LogsFull", args...)
 	if err != nil {
 		panic(err)
 	}
