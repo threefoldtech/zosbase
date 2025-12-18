@@ -4,48 +4,88 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/zosbase/pkg/environment"
-	"github.com/threefoldtech/zosbase/pkg/network/iperf"
 	"github.com/threefoldtech/zosbase/pkg/perf"
-	"github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
-	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
+	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
 )
 
 const (
 	maxRetries      = 3
-	initialInterval = 5 * time.Minute
-	maxInterval     = 20 * time.Minute
-	maxElapsedTime  = time.Duration(maxRetries) * maxInterval
-	iperfTimeout    = 30 * time.Second
+	initialInterval = 10 * time.Second
+	maxInterval     = 90 * time.Second
+	maxElapsedTime  = 7 * time.Minute
+	iperfTimeout    = 90 * time.Second
 
 	errServerBusy = "the server is busy running a test. try again later"
+
+	iperf3ServersURL = "https://export.iperf3serverlist.net/listed_iperf3_servers.json"
 )
 
 // IperfTest for iperf tcp/udp tests
 type IperfTest struct {
 	// Optional dependencies for testing
-	graphqlClient GraphQLClient
-	execWrapper   execwrapper.ExecWrapper
+	execWrapper           execwrapper.ExecWrapper
+	httpClient            *http.Client
+	serversURL            string // for testing override
+	skipReachabilityCheck bool   // for testing - skip server reachability check
 }
 
 // IperfResult for iperf test results
 type IperfResult struct {
 	UploadSpeed   float64               `json:"upload_speed"`   // in bit/sec
 	DownloadSpeed float64               `json:"download_speed"` // in bit/sec
-	NodeID        uint32                `json:"node_id"`
-	NodeIpv4      string                `json:"node_ip"`
+	ServerHost    string                `json:"server_host"`
+	ServerIP      string                `json:"server_ip"`
+	ServerPort    int                   `json:"server_port"`
 	TestType      string                `json:"test_type"`
 	Error         string                `json:"error"`
 	CpuReport     CPUUtilizationPercent `json:"cpu_report"`
+}
+
+// Iperf3Server represents a public iperf3 server from the list
+type Iperf3Server struct {
+	Host    string `json:"IP/HOST"` // IP or hostname
+	Port    int    `json:"-"`       // Not directly unmarshaled
+	PortStr string `json:"PORT"`    // Port comes as string in JSON
+}
+
+// UnmarshalJSON custom unmarshaler to handle port as string or port range
+func (s *Iperf3Server) UnmarshalJSON(data []byte) error {
+	type Alias Iperf3Server
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Convert port string to int, handling ranges like "9201-9240"
+	if s.PortStr != "" {
+		portStr := strings.Split(s.PortStr, "-")[0] // Take first port if range
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("invalid port value: %s", s.PortStr)
+		}
+		s.Port = port
+	}
+
+	return nil
 }
 
 // NewTask creates a new iperf test
@@ -71,7 +111,7 @@ func (t *IperfTest) Cron() string {
 
 // Description returns the task description
 func (t *IperfTest) Description() string {
-	return "Test public nodes network performance with both UDP and TCP over IPv4 and IPv6"
+	return "Test network performance against public iperf3 servers with both UDP and TCP"
 }
 
 // Jitter returns the max number of seconds the job can sleep before actual execution.
@@ -81,95 +121,160 @@ func (t *IperfTest) Jitter() uint32 {
 
 // Run runs the tcp test and returns the result
 func (t *IperfTest) Run(ctx context.Context) (interface{}, error) {
-	var g GraphQLClient
-	var err error
-
-	if t.graphqlClient != nil {
-		g = t.graphqlClient
-	} else {
-		env := environment.MustGet()
-		graphqlClient, err := graphql.NewGraphQl(env.GraphQL...)
-		if err != nil {
-			return nil, err
-		}
-		g = &graphqlClient
-	}
-
-	// get public up nodes
-	freeFarmNodes, err := g.GetUpNodes(ctx, 0, 1, 0, true, true)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list freefarm nodes from graphql")
-	}
-
-	nodes, err := g.GetUpNodes(ctx, 12, 0, 1, true, true)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list random nodes from graphql")
-	}
-
-	nodes = append(nodes, freeFarmNodes...)
-
+	// Check if iperf is available
 	if t.execWrapper != nil {
 		execWrap := t.execWrapper
-		_, err = execWrap.LookPath("iperf")
+		_, err := execWrap.LookPath("iperf")
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "iperf not found")
 		}
 	} else {
-		_, err = exec.LookPath("iperf")
+		_, err := exec.LookPath("iperf")
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "iperf not found")
 		}
 	}
+
+	// Fetch a reachable public iperf3 server
+	server, err := t.fetchIperf3Server(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch public iperf3 server")
+	}
+
+	if server == nil {
+		return nil, errors.New("no public iperf3 server available")
+	}
+
+	log.Info().Str("server-host", server.Host).Int("server-port", server.Port).Msg("using iperf3 server for testing")
 
 	var results []IperfResult
-	for _, node := range nodes {
-		clientIP, _, err := net.ParseCIDR(node.PublicConfig.Ipv4)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to parse ipv4 address")
-			continue
-		}
 
-		clientIPv6, _, err := net.ParseCIDR(node.PublicConfig.Ipv6)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to parse ipv6 address")
-			continue
-		}
+	// Run TCP test
+	res := t.runIperfTest(ctx, *server, true)
+	results = append(results, res)
 
-		// TCP
-		res := t.runIperfTest(ctx, clientIP.String(), true)
-		res.NodeID = node.NodeID
-		results = append(results, res)
-
-		res = t.runIperfTest(ctx, clientIPv6.String(), true)
-		res.NodeID = node.NodeID
-		results = append(results, res)
-
-		// UDP
-		res = t.runIperfTest(ctx, clientIP.String(), false)
-		res.NodeID = node.NodeID
-		results = append(results, res)
-
-		res = t.runIperfTest(ctx, clientIPv6.String(), false)
-		res.NodeID = node.NodeID
-		results = append(results, res)
-	}
+	// Run UDP test
+	res = t.runIperfTest(ctx, *server, false)
+	results = append(results, res)
 
 	return results, nil
 }
 
-func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool) IperfResult {
+// fetchIperf3Server fetches the list of public iperf3 servers and finds the first reachable one
+func (t *IperfTest) fetchIperf3Server(ctx context.Context) (*Iperf3Server, error) {
+	client := t.httpClient
+	if client == nil {
+		client = &http.Client{
+			Timeout: 30 * time.Second,
+		}
+	}
+
+	url := t.serversURL
+	if url == "" {
+		url = iperf3ServersURL
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create request")
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch iperf3 servers")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response body")
+	}
+
+	var servers []Iperf3Server
+	if err := json.Unmarshal(body, &servers); err != nil {
+		return nil, errors.Wrap(err, "failed to parse iperf3 servers list")
+	}
+
+	log.Info().Int("count", len(servers)).Msg("fetched public iperf3 servers")
+
+	// For testing, skip reachability check
+	if t.skipReachabilityCheck {
+		if len(servers) == 0 {
+			return nil, errors.New("no iperf3 servers available")
+		}
+		return &servers[0], nil
+	}
+
+	// Find first reachable server by shuffling and checking
+	reachableServer := t.findFirstReachableServer(ctx, servers)
+	if reachableServer == nil {
+		return nil, errors.New("no reachable iperf3 servers found")
+	}
+
+	log.Info().Str("host", reachableServer.Host).Int("port", reachableServer.Port).Msg("found reachable iperf3 server")
+
+	return reachableServer, nil
+}
+
+// findFirstReachableServer shuffles the server list and returns the first reachable one
+func (t *IperfTest) findFirstReachableServer(ctx context.Context, servers []Iperf3Server) *Iperf3Server {
+	// Shuffle servers to randomize selection
+	shuffled := make([]Iperf3Server, len(servers))
+	copy(shuffled, servers)
+	rand.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+
+	// Find first reachable server
+	for _, server := range shuffled {
+		if t.isServerReachable(ctx, server) {
+			return &server
+		}
+		log.Debug().Str("host", server.Host).Int("port", server.Port).Msg("iperf3 server unreachable, trying next")
+	}
+
+	return nil
+}
+
+// isServerReachable checks if a server is reachable by attempting a TCP connection
+func (t *IperfTest) isServerReachable(ctx context.Context, server Iperf3Server) bool {
+	// Skip servers with no host/IP or invalid port
+	if server.Host == "" || server.Port == 0 {
+		return false
+	}
+
+	address := fmt.Sprintf("%s:%d", server.Host, server.Port)
+
+	// Use a short timeout for connectivity check
+	dialer := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
+	conn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	return true
+}
+
+func (t *IperfTest) runIperfTest(ctx context.Context, server Iperf3Server, tcp bool) IperfResult {
 	opts := make([]string, 0)
+
 	opts = append(opts,
-		"--client", clientIP,
-		"--port", fmt.Sprint(iperf.IperfPort),
-		"--interval", "20",
-		"--bandwidth", "0", // unlimited because udp limit is set to 1M by default
-		"-R", // doing the test in reverse gives more accurate results
+		"--client", server.Host,
+		"--port", fmt.Sprint(server.Port),
+		"--time", "10", // 10 second test duration
 		"--json",
 	)
 
 	if !tcp {
-		opts = append(opts, "--length", "16B", "--udp")
+		opts = append(opts, "--udp", "--bandwidth", "10M") // 10 Mbps for UDP
 	}
 
 	var execWrap execwrapper.ExecWrapper = &execwrapper.RealExecWrapper{}
@@ -182,9 +287,9 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 		timeoutCtx, cancel := context.WithTimeout(ctx, iperfTimeout)
 		defer cancel()
 
-		res := runIperfCommand(timeoutCtx, opts, execWrap)
-		if res.Error == errServerBusy {
-			return errors.New(errServerBusy)
+		res := runIperf3Command(timeoutCtx, opts, execWrap)
+		if res.Error != "" {
+			return errors.New(res.Error)
 		}
 
 		report = res
@@ -192,7 +297,7 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 	}
 
 	notify := func(err error, waitTime time.Duration) {
-		log.Debug().Err(err).Stringer("retry-in", waitTime).Msg("retrying")
+		log.Debug().Err(err).Stringer("retry-in", waitTime).Msg("retrying iperf3 test")
 	}
 
 	bo := backoff.NewExponentialBackOff()
@@ -202,9 +307,6 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 
 	b := backoff.WithMaxRetries(bo, maxRetries)
 	err := backoff.RetryNotify(operation, b, notify)
-	if err != nil {
-		return IperfResult{}
-	}
 
 	proto := "tcp"
 	if !tcp {
@@ -212,38 +314,52 @@ func (t *IperfTest) runIperfTest(ctx context.Context, clientIP string, tcp bool)
 	}
 
 	iperfResult := IperfResult{
-		UploadSpeed:   report.End.SumSent.BitsPerSecond,
-		DownloadSpeed: report.End.SumReceived.BitsPerSecond,
-		CpuReport:     report.End.CPUUtilizationPercent,
-		NodeIpv4:      clientIP,
-		TestType:      proto,
-		Error:         report.Error,
+		ServerHost: server.Host,
+		ServerIP:   server.Host,
+		ServerPort: server.Port,
+		TestType:   proto,
 	}
-	if !tcp && len(report.End.Streams) > 0 {
-		iperfResult.DownloadSpeed = report.End.Streams[0].UDP.BitsPerSecond
+
+	if err != nil {
+		log.Error().Err(err).Str("server", server.Host).Str("type", proto).Msg("iperf3 test failed")
+		iperfResult.Error = err.Error()
+		return iperfResult
 	}
+
+	iperfResult.CpuReport = report.End.CPUUtilizationPercent
+	iperfResult.Error = report.Error
+
+	// Both TCP and UDP use sum_sent and sum_received in the end section
+	iperfResult.UploadSpeed = report.End.SumSent.BitsPerSecond
+	iperfResult.DownloadSpeed = report.End.SumReceived.BitsPerSecond
+
+	// Log if there's an error in the report
+	if report.Error != "" {
+		log.Warn().Str("server", server.Host).Str("type", proto).Str("iperf-error", report.Error).Msg("iperf3 test completed with error")
+	}
+
+	log.Info().Str("server", server.Host).Str("type", proto).Float64("upload-mbps", iperfResult.UploadSpeed/1000000).Float64("download-mbps", iperfResult.DownloadSpeed/1000000).Msg("iperf3 test completed")
 
 	return iperfResult
 }
 
-func runIperfCommand(ctx context.Context, opts []string, execWrap execwrapper.ExecWrapper) iperfCommandOutput {
+func runIperf3Command(ctx context.Context, opts []string, execWrap execwrapper.ExecWrapper) iperfCommandOutput {
 	output, err := execWrap.CommandContext(ctx, "iperf", opts...).CombinedOutput()
 	exitErr := &exec.ExitError{}
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			log.Warn().Msg("iperf command timed out for node with public IP: " + opts[1])
+			log.Warn().Str("target", opts[1]).Msg("iperf3 command timed out")
 		}
 		if !errors.As(err, &exitErr) {
-			log.Err(err).Msg("failed to run iperf")
+			log.Error().Err(err).Msg("failed to run iperf3")
 		}
 
 		return iperfCommandOutput{}
 	}
-
 	var report iperfCommandOutput
 	if err := json.Unmarshal(output, &report); err != nil {
-		log.Err(err).Msg("failed to parse iperf output")
+		log.Error().Err(err).Str("output", string(output)).Msg("failed to parse iperf3 output")
 		return iperfCommandOutput{}
 	}
 
