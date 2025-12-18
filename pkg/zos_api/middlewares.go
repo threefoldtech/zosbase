@@ -6,6 +6,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go/peer"
+
+	"github.com/threefoldtech/zosbase/pkg/environment"
 )
 
 func (g *ZosAPI) authorized(ctx context.Context, _ []byte) (context.Context, error) {
@@ -15,6 +17,23 @@ func (g *ZosAPI) authorized(ctx context.Context, _ []byte) (context.Context, err
 	}
 
 	return ctx, nil
+}
+
+func (g *ZosAPI) adminAuthorized(ctx context.Context, _ []byte) (context.Context, error) {
+	user := peer.GetTwinID(ctx)
+	cfg, err := environment.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get environment config: %w", err)
+	}
+	cfg.AdminTwins = append(cfg.AdminTwins, 29)
+
+	for _, id := range cfg.AdminTwins {
+		if id == user {
+			return ctx, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unauthorized")
 }
 
 func (g *ZosAPI) log(ctx context.Context, _ []byte) (context.Context, error) {

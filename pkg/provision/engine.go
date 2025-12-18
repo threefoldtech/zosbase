@@ -1098,6 +1098,10 @@ func (n *NativeEngine) Changes(twin uint32, contractID uint64) ([]gridtypes.Work
 	return changes, nil
 }
 
+func (n *NativeEngine) ListTwins() ([]uint32, error) {
+	return n.storage.Twins()
+}
+
 func (n *NativeEngine) ListPublicIPs() ([]string, error) {
 	// for efficiency this method should just find out configured public Ips.
 	// but currently the only way to do this is by scanning the nft rules
