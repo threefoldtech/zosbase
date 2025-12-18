@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/provision"
+	bolt "go.etcd.io/bbolt"
 )
 
 var (

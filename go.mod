@@ -11,7 +11,6 @@ require (
 	github.com/alexflint/go-filemutex v1.1.0
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/boltdb/bolt v1.3.1
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
@@ -56,6 +55,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/whs/nacl-sealed-box v0.0.0-20180930164530-92b9ba845d8d
 	github.com/yggdrasil-network/yggdrasil-go v0.4.0
+	go.etcd.io/bbolt v1.3.5
 	go.uber.org/mock v0.5.2
 	golang.org/x/crypto v0.37.0
 	golang.org/x/sys v0.32.0
