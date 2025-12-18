@@ -18,6 +18,8 @@ func (g *ZosAPI) SetupRoutes(router *peer.Router) {
 	debug.Use(g.adminAuthorized)
 	debugDeployments := debug.SubRoute("deployments")
 	debugDeployments.WithHandler("list", g.debugDeploymentsListHandler)
+	debugProvisioning := debug.SubRoute("provisioning")
+	debugProvisioning.WithHandler("health", g.debugProvisioningHealthHandler)
 	debugVM := debug.SubRoute("vm")
 	debugVM.WithHandler("info", g.debugVMInfoHandler)
 	debugDeployment := debug.SubRoute("deployment")
