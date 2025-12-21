@@ -6,7 +6,7 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/debugcmd"
 )
 
-func (g *ZosAPI) debugDeploymentsListHandler(ctx context.Context, payload []byte) (interface{}, error) {
+func (g *ZosAPI) debugDeploymentListHandler(ctx context.Context, payload []byte) (interface{}, error) {
 	req, err := debugcmd.ParseDeploymentsListRequest(payload)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (g *ZosAPI) debugDeploymentGetHandler(ctx context.Context, payload []byte) 
 	return debugcmd.DeploymentGet(ctx, g.debugDeps(), req)
 }
 
-func (g *ZosAPI) debugVMInfoHandler(ctx context.Context, payload []byte) (interface{}, error) {
+func (g *ZosAPI) debugDeploymentVMHandler(ctx context.Context, payload []byte) (interface{}, error) {
 	req, err := debugcmd.ParseVMInfoRequest(payload)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (g *ZosAPI) debugVMInfoHandler(ctx context.Context, payload []byte) (interf
 	return debugcmd.VMInfo(ctx, g.debugDeps(), req)
 }
 
-func (g *ZosAPI) debugProvisioningHealthHandler(ctx context.Context, payload []byte) (interface{}, error) {
+func (g *ZosAPI) debugDeploymentHealthHandler(ctx context.Context, payload []byte) (interface{}, error) {
 	req, err := debugcmd.ParseProvisioningHealthRequest(payload)
 	if err != nil {
 		return nil, err
