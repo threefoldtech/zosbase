@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	execwrapper "github.com/threefoldtech/zosbase/pkg/perf/exec_wrapper"
-	"github.com/threefoldtech/zosbase/pkg/perf/graphql"
 	"go.uber.org/mock/gomock"
 )
 
@@ -16,32 +17,24 @@ func TestIperfTest_Run_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockGraphQL := NewMockGraphQLClient(ctrl)
 	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 	mockCmd := execwrapper.NewMockExecCmd(ctrl)
 
+	// Create mock HTTP server - need to create raw JSON with IP/HOST and PORT fields
+	serversJSON := []byte(`[{"IP/HOST":"192.168.1.100","PORT":"5201"}]`)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write(serversJSON)
+	}))
+	defer server.Close()
+
 	task := &IperfTest{
-		graphqlClient: mockGraphQL,
-		execWrapper:   mockExec,
+		execWrapper:           mockExec,
+		httpClient:            server.Client(),
+		serversURL:            server.URL,
+		skipReachabilityCheck: true,
 	}
-
-	testNodes := []graphql.Node{
-		{
-			NodeID: 123,
-			PublicConfig: graphql.PublicConfig{
-				Ipv4: "192.168.1.100/24",
-				Ipv6: "2001:db8::1/64",
-			},
-		},
-	}
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 0, uint32(1), uint32(0), true, true).
-		Return([]graphql.Node{testNodes[0]}, nil)
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 12, uint32(0), uint32(1), true, true).
-		Return([]graphql.Node{}, nil)
 
 	mockExec.EXPECT().
 		LookPath("iperf").
@@ -56,11 +49,9 @@ func TestIperfTest_Run_Success(t *testing.T) {
 	mockExec.EXPECT().
 		CommandContext(gomock.Any(), "iperf", gomock.Any()).
 		Return(mockCmd).
-		Times(4)
+		Times(2)
 
 	mockCmd.EXPECT().CombinedOutput().Return(tcpOutputBytes, nil)
-	mockCmd.EXPECT().CombinedOutput().Return(tcpOutputBytes, nil)
-	mockCmd.EXPECT().CombinedOutput().Return(udpOutputBytes, nil)
 	mockCmd.EXPECT().CombinedOutput().Return(udpOutputBytes, nil)
 
 	ctx := context.Background()
@@ -71,31 +62,39 @@ func TestIperfTest_Run_Success(t *testing.T) {
 
 	results, ok := result.([]IperfResult)
 	assert.True(t, ok)
-	assert.Len(t, results, 4)
+	assert.Len(t, results, 2)
 
 	firstResult := results[0]
-	assert.Equal(t, uint32(123), firstResult.NodeID)
-	assert.Equal(t, "192.168.1.100", firstResult.NodeIpv4)
+	assert.Equal(t, "192.168.1.100", firstResult.ServerHost)
+	assert.Equal(t, "192.168.1.100", firstResult.ServerIP)
+	assert.Equal(t, 5201, firstResult.ServerPort)
 	assert.Equal(t, "tcp", firstResult.TestType)
 	assert.Equal(t, float64(1000000), firstResult.UploadSpeed)
 	assert.Equal(t, float64(2000000), firstResult.DownloadSpeed)
 }
 
-func TestIperfTest_Run_GraphQLError(t *testing.T) {
+func TestIperfTest_Run_HTTPError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockGraphQL := NewMockGraphQLClient(ctrl)
+	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 
-	// Create test task with injected dependencies
+	// Create mock HTTP server that returns error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
 	task := &IperfTest{
-		graphqlClient: mockGraphQL,
+		execWrapper:           mockExec,
+		httpClient:            server.Client(),
+		serversURL:            server.URL,
+		skipReachabilityCheck: true,
 	}
 
-	// Mock GraphQL error
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 0, uint32(1), uint32(0), true, true).
-		Return(nil, errors.New("graphql connection failed"))
+	mockExec.EXPECT().
+		LookPath("iperf").
+		Return("/usr/bin/iperf", nil)
 
 	// Execute the test
 	ctx := context.Background()
@@ -103,29 +102,20 @@ func TestIperfTest_Run_GraphQLError(t *testing.T) {
 
 	// Verify error
 	assert.Error(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to fetch public iperf3 server")
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "failed to list freefarm nodes from graphql")
 }
 
-func TestIperfTest_Run_IperfNotFound(t *testing.T) {
+func TestIperfTest_Run_Iperf3NotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockGraphQL := NewMockGraphQLClient(ctrl)
 	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 
 	task := &IperfTest{
-		graphqlClient: mockGraphQL,
-		execWrapper:   mockExec,
+		execWrapper: mockExec,
 	}
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 0, uint32(1), uint32(0), true, true).
-		Return([]graphql.Node{}, nil)
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 12, uint32(0), uint32(1), true, true).
-		Return([]graphql.Node{}, nil)
 
 	mockExec.EXPECT().
 		LookPath("iperf").
@@ -135,38 +125,30 @@ func TestIperfTest_Run_IperfNotFound(t *testing.T) {
 	result, err := task.Run(ctx)
 
 	assert.Error(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "iperf not found")
 	assert.Nil(t, result)
 }
 
-func TestIperfTest_Run_InvalidIPAddress(t *testing.T) {
+func TestIperfTest_Run_NoServersAvailable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockGraphQL := NewMockGraphQLClient(ctrl)
 	mockExec := execwrapper.NewMockExecWrapper(ctrl)
 
+	// Create mock HTTP server that returns empty list
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
 	task := &IperfTest{
-		graphqlClient: mockGraphQL,
-		execWrapper:   mockExec,
+		execWrapper:           mockExec,
+		httpClient:            server.Client(),
+		serversURL:            server.URL,
+		skipReachabilityCheck: true,
 	}
-
-	testNodes := []graphql.Node{
-		{
-			NodeID: 123,
-			PublicConfig: graphql.PublicConfig{
-				Ipv4: "invalid-ip",
-				Ipv6: "invalid-ipv6",
-			},
-		},
-	}
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 0, uint32(1), uint32(0), true, true).
-		Return(testNodes, nil)
-
-	mockGraphQL.EXPECT().
-		GetUpNodes(gomock.Any(), 12, uint32(0), uint32(1), true, true).
-		Return([]graphql.Node{}, nil)
 
 	mockExec.EXPECT().
 		LookPath("iperf").
@@ -175,10 +157,10 @@ func TestIperfTest_Run_InvalidIPAddress(t *testing.T) {
 	ctx := context.Background()
 	result, err := task.Run(ctx)
 
-	assert.NoError(t, err)
-	results, ok := result.([]IperfResult)
-	assert.True(t, ok)
-	assert.Len(t, results, 0)
+	assert.Error(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no iperf3 servers available")
+	assert.Nil(t, result)
 }
 
 func TestNewTask(t *testing.T) {
