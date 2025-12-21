@@ -23,8 +23,7 @@ import (
 )
 
 type ProvisioningHealthRequest struct {
-	TwinID     uint32                 `json:"twin_id"`
-	ContractID uint64                 `json:"contract_id"`
+	Deployment string                 `json:"deployment"`        // Format: "twin-id:contract-id"
 	Options    map[string]interface{} `json:"options,omitempty"` // Optional configuration for health checks
 }
 
@@ -66,14 +65,12 @@ func ParseProvisioningHealthRequest(payload []byte) (ProvisioningHealthRequest, 
 }
 
 func ProvisioningHealth(ctx context.Context, deps Deps, req ProvisioningHealthRequest) (ProvisioningHealthResponse, error) {
-	if req.TwinID == 0 {
-		return ProvisioningHealthResponse{}, fmt.Errorf("twin_id is required")
-	}
-	if req.ContractID == 0 {
-		return ProvisioningHealthResponse{}, fmt.Errorf("contract_id is required")
+	twinID, contractID, err := ParseDeploymentID(req.Deployment)
+	if err != nil {
+		return ProvisioningHealthResponse{}, err
 	}
 
-	out := ProvisioningHealthResponse{TwinID: req.TwinID, ContractID: req.ContractID}
+	out := ProvisioningHealthResponse{TwinID: twinID, ContractID: contractID}
 
 	// Check if custom system probe is requested via options
 	hasCustomProbe := false
@@ -87,7 +84,7 @@ func ProvisioningHealth(ctx context.Context, deps Deps, req ProvisioningHealthRe
 
 	// Try to get deployment, but if custom probe is provided, make it non-fatal
 	// This allows system probes to run even when deployment doesn't exist
-	deployment, err := deps.Provision.Get(ctx, req.TwinID, req.ContractID)
+	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
 	if err != nil {
 		// If custom probe is provided, we can still run it without the deployment
 		if hasCustomProbe {
@@ -101,9 +98,9 @@ func ProvisioningHealth(ctx context.Context, deps Deps, req ProvisioningHealthRe
 		for _, wl := range deployment.Workloads {
 			switch wl.Type {
 			case zos.NetworkType:
-				out.Workloads = append(out.Workloads, checkNetworkWorkload(ctx, deps, req.TwinID, req.ContractID, wl))
+				out.Workloads = append(out.Workloads, checkNetworkWorkload(ctx, deps, twinID, contractID, wl))
 			case zos.ZMachineType, zos.ZMachineLightType:
-				out.Workloads = append(out.Workloads, checkZMachineWorkload(ctx, deps, req.TwinID, req.ContractID, wl))
+				out.Workloads = append(out.Workloads, checkZMachineWorkload(ctx, deps, twinID, contractID, wl))
 			default:
 			}
 		}

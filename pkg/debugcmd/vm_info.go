@@ -13,8 +13,7 @@ import (
 )
 
 type VMInfoRequest struct {
-	TwinID     uint32 `json:"twin_id"`
-	ContractID uint64 `json:"contract_id"`
+	Deployment string `json:"deployment"` // Format: "twin-id:contract-id"
 	VMName     string `json:"vm_name"`
 	FullLogs   bool   `json:"full_logs"`
 }
@@ -34,17 +33,16 @@ func ParseVMInfoRequest(payload []byte) (VMInfoRequest, error) {
 }
 
 func VMInfo(ctx context.Context, deps Deps, req VMInfoRequest) (VMInfoResponse, error) {
-	if req.TwinID == 0 {
-		return VMInfoResponse{}, fmt.Errorf("twin_id is required")
-	}
-	if req.ContractID == 0 {
-		return VMInfoResponse{}, fmt.Errorf("contract_id is required")
-	}
 	if req.VMName == "" {
 		return VMInfoResponse{}, fmt.Errorf("vm_name is required")
 	}
 
-	deployment, err := deps.Provision.Get(ctx, req.TwinID, req.ContractID)
+	twinID, contractID, err := ParseDeploymentID(req.Deployment)
+	if err != nil {
+		return VMInfoResponse{}, err
+	}
+
+	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
 	if err != nil {
 		return VMInfoResponse{}, fmt.Errorf("failed to get deployment: %w", err)
 	}

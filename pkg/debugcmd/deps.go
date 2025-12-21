@@ -2,6 +2,9 @@ package debugcmd
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
@@ -33,4 +36,29 @@ type Deps struct {
 	Provision Provision
 	VM        VM
 	Network   Network
+}
+
+// ParseDeploymentID parses a deployment identifier in the format "twin-id:contract-id"
+// and returns the twin ID and contract ID.
+func ParseDeploymentID(deploymentStr string) (uint32, uint64, error) {
+	if deploymentStr == "" {
+		return 0, 0, fmt.Errorf("deployment identifier is required")
+	}
+
+	parts := strings.Split(deploymentStr, ":")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("invalid deployment format: expected 'twin-id:contract-id', got '%s'", deploymentStr)
+	}
+
+	twinID, err := strconv.ParseUint(parts[0], 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid twin ID: %s: %w", parts[0], err)
+	}
+
+	contractID, err := strconv.ParseUint(parts[1], 10, 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid contract ID: %s: %w", parts[1], err)
+	}
+
+	return uint32(twinID), contractID, nil
 }

@@ -3,14 +3,12 @@ package debugcmd
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
 type DeploymentGetRequest struct {
-	TwinID      uint32 `json:"twin_id"`
-	ContractID  uint64 `json:"contract_id"`
+	Deployment  string `json:"deployment"` // Format: "twin-id:contract-id"
 	WithHistory bool   `json:"withhistory"`
 }
 
@@ -37,14 +35,12 @@ func ParseDeploymentGetRequest(payload []byte) (DeploymentGetRequest, error) {
 }
 
 func DeploymentGet(ctx context.Context, deps Deps, req DeploymentGetRequest) (DeploymentGetResponse, error) {
-	if req.TwinID == 0 {
-		return DeploymentGetResponse{}, fmt.Errorf("twin_id is required")
-	}
-	if req.ContractID == 0 {
-		return DeploymentGetResponse{}, fmt.Errorf("contract_id is required")
+	twinID, contractID, err := ParseDeploymentID(req.Deployment)
+	if err != nil {
+		return DeploymentGetResponse{}, err
 	}
 
-	deployment, err := deps.Provision.Get(ctx, req.TwinID, req.ContractID)
+	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
 	if err != nil {
 		return DeploymentGetResponse{}, err
 	}
@@ -52,7 +48,7 @@ func DeploymentGet(ctx context.Context, deps Deps, req DeploymentGetRequest) (De
 		return DeploymentGetResponse{Deployment: deployment}, nil
 	}
 
-	history, err := deps.Provision.Changes(ctx, req.TwinID, req.ContractID)
+	history, err := deps.Provision.Changes(ctx, twinID, contractID)
 	if err != nil {
 		return DeploymentGetResponse{}, err
 	}
