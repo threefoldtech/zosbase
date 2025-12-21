@@ -6,6 +6,7 @@ package stubs
 
 import (
 	"context"
+
 	zbus "github.com/threefoldtech/zbus"
 	gridtypes "github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
@@ -146,6 +147,23 @@ func (s *ProvisionStub) ListPrivateIPs(ctx context.Context, arg0 uint32, arg1 gr
 func (s *ProvisionStub) ListPublicIPs(ctx context.Context) (ret0 []string, ret1 error) {
 	args := []interface{}{}
 	result, err := s.client.RequestContext(ctx, s.module, s.object, "ListPublicIPs", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret1 = result.CallError()
+	loader := zbus.Loader{
+		&ret0,
+	}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}
+
+func (s *ProvisionStub) ListTwins(ctx context.Context) (ret0 []uint32, ret1 error) {
+	args := []interface{}{}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "ListTwins", args...)
 	if err != nil {
 		panic(err)
 	}

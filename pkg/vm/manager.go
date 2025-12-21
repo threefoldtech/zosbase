@@ -583,6 +583,16 @@ func (m *Module) Logs(name string) (string, error) {
 	return m.tail(path)
 }
 
+// LogsFull returns full machine logs for given machine name.
+func (m *Module) LogsFull(name string) (string, error) {
+	path := m.logsPath(name)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // Inspect a machine by name
 func (m *Module) Inspect(name string) (pkg.VMInfo, error) {
 	if !m.Exists(name) {

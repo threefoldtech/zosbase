@@ -1,0 +1,154 @@
+package debugcmd
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+)
+
+type InfoRequest struct {
+	Deployment string `json:"deployment"` // Format: "twin-id:contract-id"
+	Workload   string `json:"workload"`   // Workload name
+	Verbose    bool   `json:"verbose"`    // If true, return full logs
+}
+
+type InfoResponse struct {
+	WorkloadID string      `json:"workload_id"`
+	Type       string      `json:"type"`
+	Name       string      `json:"name"`
+	Info       interface{} `json:"info,omitempty"`
+	Logs       string      `json:"logs,omitempty"`
+}
+
+func ParseInfoRequest(payload []byte) (InfoRequest, error) {
+	var req InfoRequest
+	if err := json.Unmarshal(payload, &req); err != nil {
+		return req, err
+	}
+	return req, nil
+}
+
+func Info(ctx context.Context, deps Deps, req InfoRequest) (InfoResponse, error) {
+	if req.Workload == "" {
+		return InfoResponse{}, fmt.Errorf("workload name is required")
+	}
+
+	twinID, contractID, err := ParseDeploymentID(req.Deployment)
+	if err != nil {
+		return InfoResponse{}, err
+	}
+
+	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
+	if err != nil {
+		return InfoResponse{}, fmt.Errorf("failed to get deployment: %w", err)
+	}
+
+	// Find the workload by name
+	var workload *gridtypes.Workload
+	for i := range deployment.Workloads {
+		if string(deployment.Workloads[i].Name) == req.Workload {
+			workload = &deployment.Workloads[i]
+			break
+		}
+	}
+
+	if workload == nil {
+		return InfoResponse{}, fmt.Errorf("workload '%s' not found in deployment", req.Workload)
+	}
+
+	workloadID, _ := gridtypes.NewWorkloadID(twinID, contractID, workload.Name)
+	resp := InfoResponse{
+		WorkloadID: workloadID.String(),
+		Type:       string(workload.Type),
+		Name:       string(workload.Name),
+	}
+
+	// Handle different workload types
+	switch workload.Type {
+	case zos.ZMachineType, zos.ZMachineLightType:
+		return handleZMachineInfo(ctx, deps, workloadID.String(), req.Verbose, resp)
+	case zos.NetworkType, zos.NetworkLightType:
+		if req.Verbose {
+			return InfoResponse{}, fmt.Errorf("logs not supported for workload type 'network'")
+		}
+		return handleNetworkInfo(ctx, deps, twinID, workload, resp)
+	default:
+		return InfoResponse{}, fmt.Errorf("workload type '%s' not supported for info command", workload.Type)
+	}
+}
+
+func handleZMachineInfo(ctx context.Context, deps Deps, vmID string, verbose bool, resp InfoResponse) (InfoResponse, error) {
+	info, err := deps.VM.Inspect(ctx, vmID)
+	if err != nil {
+		return InfoResponse{}, fmt.Errorf("failed to inspect vm: %w", err)
+	}
+	resp.Info = info
+
+	var raw string
+	if verbose {
+		raw, err = deps.VM.LogsFull(ctx, vmID)
+	} else {
+		raw, err = deps.VM.Logs(ctx, vmID)
+	}
+	if err != nil {
+		return InfoResponse{}, fmt.Errorf("failed to get vm logs: %w", err)
+	}
+
+	resp.Logs = sanitizeLogs(raw)
+	return resp, nil
+}
+
+func handleNetworkInfo(ctx context.Context, deps Deps, twinID uint32, workload *gridtypes.Workload, resp InfoResponse) (InfoResponse, error) {
+	netID := zos.NetworkID(twinID, workload.Name)
+	nsName := deps.Network.Namespace(ctx, netID)
+
+	// Network workloads don't have process logs
+	// Return basic info about the network
+	networkInfo := map[string]interface{}{
+		"net_id":    netID.String(),
+		"namespace": nsName,
+		"state":     string(workload.Result.State),
+	}
+
+	resp.Info = networkInfo
+
+	// Network workloads don't support logs - logs field remains empty
+	return resp, nil
+}
+
+func sanitizeLogs(raw string) string {
+	// Sanitize logs:
+	// - strip NUL bytes
+	// - drop invalid UTF-8 bytes
+	// - normalize CRLF -> LF
+	b := []byte(raw)
+	sanitized := make([]byte, 0, len(b))
+	for _, c := range b {
+		if c != 0x00 {
+			sanitized = append(sanitized, c)
+		}
+	}
+	if !utf8.Valid(sanitized) {
+		valid := make([]byte, 0, len(sanitized))
+		for len(sanitized) > 0 {
+			r, size := utf8.DecodeRune(sanitized)
+			if r == utf8.RuneError && size == 1 {
+				sanitized = sanitized[1:]
+				continue
+			}
+			valid = append(valid, sanitized[:size]...)
+			sanitized = sanitized[size:]
+		}
+		sanitized = valid
+	}
+	logs := string(sanitized)
+	logs = strings.ReplaceAll(logs, "\r\n", "\n")
+	logs = strings.ReplaceAll(logs, "\r", "\n")
+	return logs
+}
+

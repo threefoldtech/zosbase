@@ -14,6 +14,15 @@ func (g *ZosAPI) SetupRoutes(router *peer.Router) {
 	system.WithHandler("diagnostics", g.systemDiagnosticsHandler)
 	system.WithHandler("node_features_get", g.systemNodeFeaturesHandler)
 
+	debug := root.SubRoute("debug")
+	debug.Use(g.adminAuthorized)
+	debugDeployment := debug.SubRoute("deployment")
+	debugDeployment.WithHandler("list", g.debugDeploymentListHandler)
+	debugDeployment.WithHandler("get", g.debugDeploymentGetHandler)
+	debugDeployment.WithHandler("history", g.debugDeploymentHistoryHandler)
+	debugDeployment.WithHandler("info", g.debugDeploymentInfoHandler)
+	debugDeployment.WithHandler("health", g.debugDeploymentHealthHandler)
+
 	perf := root.SubRoute("perf")
 	perf.WithHandler("get", g.perfGetHandler)
 	perf.WithHandler("get_all", g.perfGetAllHandler)

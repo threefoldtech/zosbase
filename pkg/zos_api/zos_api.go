@@ -26,6 +26,7 @@ type ZosAPI struct {
 	systemMonitorStub      *stubs.SystemMonitorStub
 	provisionStub          *stubs.ProvisionStub
 	networkerStub          *stubs.NetworkerStub
+	vmStub                 *stubs.VMModuleStub
 	statisticsStub         *stubs.StatisticsStub
 	storageStub            *stubs.StorageModuleStub
 	performanceMonitorStub *stubs.PerformanceMonitorStub
@@ -51,6 +52,7 @@ func NewZosAPI(manager substrate.Manager, client zbus.Client, msgBrokerCon strin
 		systemMonitorStub:      stubs.NewSystemMonitorStub(client),
 		provisionStub:          stubs.NewProvisionStub(client),
 		networkerStub:          stubs.NewNetworkerStub(client),
+		vmStub:                 stubs.NewVMModuleStub(client),
 		statisticsStub:         stubs.NewStatisticsStub(client),
 		storageStub:            storageModuleStub,
 		performanceMonitorStub: stubs.NewPerformanceMonitorStub(client),
