@@ -7,35 +7,43 @@ import (
 )
 
 func (g *ZosAPI) debugDeploymentListHandler(ctx context.Context, payload []byte) (interface{}, error) {
-	req, err := debugcmd.ParseDeploymentsListRequest(payload)
+	req, err := debugcmd.ParseListRequest(payload)
 	if err != nil {
 		return nil, err
 	}
-	return debugcmd.DeploymentsList(ctx, g.debugDeps(), req)
+	return debugcmd.List(ctx, g.debugDeps(), req)
 }
 
 func (g *ZosAPI) debugDeploymentGetHandler(ctx context.Context, payload []byte) (interface{}, error) {
-	req, err := debugcmd.ParseDeploymentGetRequest(payload)
+	req, err := debugcmd.ParseGetRequest(payload)
 	if err != nil {
 		return nil, err
 	}
-	return debugcmd.DeploymentGet(ctx, g.debugDeps(), req)
+	return debugcmd.Get(ctx, g.debugDeps(), req)
 }
 
-func (g *ZosAPI) debugDeploymentVMHandler(ctx context.Context, payload []byte) (interface{}, error) {
-	req, err := debugcmd.ParseVMInfoRequest(payload)
+func (g *ZosAPI) debugDeploymentHistoryHandler(ctx context.Context, payload []byte) (interface{}, error) {
+	req, err := debugcmd.ParseHistoryRequest(payload)
 	if err != nil {
 		return nil, err
 	}
-	return debugcmd.VMInfo(ctx, g.debugDeps(), req)
+	return debugcmd.History(ctx, g.debugDeps(), req)
+}
+
+func (g *ZosAPI) debugDeploymentInfoHandler(ctx context.Context, payload []byte) (interface{}, error) {
+	req, err := debugcmd.ParseInfoRequest(payload)
+	if err != nil {
+		return nil, err
+	}
+	return debugcmd.Info(ctx, g.debugDeps(), req)
 }
 
 func (g *ZosAPI) debugDeploymentHealthHandler(ctx context.Context, payload []byte) (interface{}, error) {
-	req, err := debugcmd.ParseProvisioningHealthRequest(payload)
+	req, err := debugcmd.ParseHealthRequest(payload)
 	if err != nil {
 		return nil, err
 	}
-	return debugcmd.ProvisioningHealth(ctx, g.debugDeps(), req)
+	return debugcmd.Health(ctx, g.debugDeps(), req)
 }
 
 func (g *ZosAPI) debugDeps() debugcmd.Deps {
