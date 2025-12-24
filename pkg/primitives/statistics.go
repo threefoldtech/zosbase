@@ -283,7 +283,6 @@ func (s *statsStream) ListGPUs() ([]pkg.GPUInfo, error) {
 		}
 		for _, dl := range active.Deployments {
 			for _, wl := range dl.Workloads {
-
 				if wl.Type == zos.ZMachineType || wl.Type == zos.ZMachineLightType {
 					var vm vmType
 					if err := json.Unmarshal(wl.Data, &vm); err != nil {
@@ -294,7 +293,6 @@ func (s *statsStream) ListGPUs() ([]pkg.GPUInfo, error) {
 						gpus[string(gpu)] = dl.ContractID
 					}
 				}
-
 			}
 		}
 		return gpus, nil
@@ -348,4 +346,8 @@ func (s *statsStream) openConnectionsCount() (int, error) {
 		return 0, err
 	}
 	return strconv.Atoi(strings.TrimSpace(string(out)))
+}
+
+func (s *statsStream) OpenConnections() ([]byte, error) {
+	return exec.Command("ss", "-ptn", "state", "established").Output()
 }
