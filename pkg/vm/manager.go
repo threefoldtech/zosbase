@@ -551,6 +551,7 @@ func (m *Module) Run(vm pkg.VM) (pkg.MachineInfo, error) {
 		Disks:       disks,
 		Devices:     vm.Devices,
 		NoKeepAlive: vm.NoKeepAlive,
+		NetworkInfo: &vm.Network,
 	}
 
 	log.Debug().Str("name", vm.Name).Msg("saving machine")
@@ -568,6 +569,78 @@ func (m *Module) Run(vm pkg.VM) (pkg.MachineInfo, error) {
 	if vm.NoKeepAlive {
 		m.failures.Set(vm.Name, permanent, cache.NoExpiration)
 	}
+
+	// Log comprehensive VM configuration before starting
+	logEvent := log.Info().
+		Str("vm-id", vm.Name).
+		Str("hostname", vm.Hostname).
+		Uint8("cpu", uint8(vm.CPU)).
+		Uint64("memory-bytes", uint64(vm.Memory))
+
+	// Log network interfaces with IPs and MACs
+	for idx, nic := range nics {
+		logEvent = logEvent.
+			Str(fmt.Sprintf("interface-%d-tap", idx), nic.Tap).
+			Str(fmt.Sprintf("interface-%d-mac", idx), nic.Mac)
+
+		// Log console info if available
+		if nic.Console != nil {
+			logEvent = logEvent.
+				Str(fmt.Sprintf("interface-%d-console-ip", idx), nic.Console.ListenAddress.IP.String()).
+				Str(fmt.Sprintf("interface-%d-vm-ip", idx), nic.Console.VmAddress.IP.String()).
+				Str(fmt.Sprintf("interface-%d-namespace", idx), nic.Console.Namespace)
+		}
+
+		// Find corresponding interface config to get IPs
+		if idx < len(vm.Network.Ifaces) {
+			ifcfg := vm.Network.Ifaces[idx]
+			if len(ifcfg.IPs) > 0 {
+				ips := make([]string, len(ifcfg.IPs))
+				for i, ip := range ifcfg.IPs {
+					ips[i] = ip.String()
+				}
+				logEvent = logEvent.Strs(fmt.Sprintf("interface-%d-ips", idx), ips)
+			}
+			// Log gateways if present
+			if ifcfg.IP4DefaultGateway != nil {
+				logEvent = logEvent.Str(fmt.Sprintf("interface-%d-gw4", idx), ifcfg.IP4DefaultGateway.String())
+			}
+			if ifcfg.IP6DefaultGateway != nil {
+				logEvent = logEvent.Str(fmt.Sprintf("interface-%d-gw6", idx), ifcfg.IP6DefaultGateway.String())
+			}
+			// Log if this is a public interface
+			if ifcfg.PublicIPv4 {
+				logEvent = logEvent.Bool(fmt.Sprintf("interface-%d-public-ipv4", idx), true)
+			}
+			if ifcfg.PublicIPv6 {
+				logEvent = logEvent.Bool(fmt.Sprintf("interface-%d-public-ipv6", idx), true)
+			}
+			// Log network ID for private networks
+			if ifcfg.NetID != "" {
+				logEvent = logEvent.Str(fmt.Sprintf("interface-%d-network-id", idx), string(ifcfg.NetID))
+			}
+		}
+	}
+
+	// Log mounts
+	if len(cfg.Mounts) > 0 {
+		mountPaths := make([]string, len(cfg.Mounts))
+		for i, mnt := range cfg.Mounts {
+			mountPaths[i] = fmt.Sprintf("%s->%s", mnt.Source, mnt.Target)
+		}
+		logEvent = logEvent.Strs("mounts", mountPaths)
+	}
+
+	// Log disks
+	if len(disks) > 0 {
+		diskPaths := make([]string, len(disks))
+		for i, disk := range disks {
+			diskPaths[i] = disk.Path
+		}
+		logEvent = logEvent.Strs("disks", diskPaths)
+	}
+
+	logEvent.Msg("starting VM with full configuration")
 
 	machineInfo, err := machine.Run(ctx, m.socketPath(vm.Name), m.logsPath(vm.Name))
 	if err != nil {
@@ -615,6 +688,7 @@ func (m *Module) removeConfig(name string) {
 
 // Delete deletes a machine by name (id)
 func (m *Module) Delete(name string) error {
+	log.Info().Str("vm-id", name).Msg("deleting VM")
 	defer m.failures.Delete(name)
 
 	// before we do anything we set failures to permanent to prevent monitoring from trying
@@ -649,7 +723,7 @@ func (m *Module) Delete(name string) error {
 		killAfter = 10 * time.Second
 	)
 
-	log.Debug().Str("name", name).Msg("shutting vm down [client]")
+	log.Info().Str("name", name).Msg("shutting vm down [client]")
 	if err := client.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Str("name", name).Msg("failed to shutdown machine")
 	}
@@ -659,13 +733,13 @@ func (m *Module) Delete(name string) error {
 			return nil
 		}
 
-		log.Debug().Str("name", name).Msg("shutting vm down [sigterm]")
+		log.Info().Str("name", name).Msg("shutting vm down [sigterm]")
 		if time.Since(now) > termAfter {
 			_ = syscall.Kill(ps.Pid, syscall.SIGTERM)
 		}
 
 		if time.Since(now) > killAfter {
-			log.Debug().Str("name", name).Msg("shutting vm down [sigkill]")
+			log.Info().Str("name", name).Msg("shutting vm down [sigkill]")
 			_ = syscall.Kill(ps.Pid, syscall.SIGKILL)
 			break
 		}
