@@ -25,6 +25,7 @@ func NewTask() perf.Task {
 	checks := map[string]checkFunc{
 		"cache":   cacheCheck,
 		"network": networkCheck,
+		"vm":      vmCheck,
 	}
 	return &healthcheckTask{
 		checks: checks,
@@ -97,7 +98,7 @@ func (h *healthcheckTask) Run(ctx context.Context) (interface{}, error) {
 			}
 
 			bo := backoff.NewExponentialBackOff()
-			bo.InitialInterval = 30 * time.Second
+			bo.InitialInterval = 3 * time.Minute
 			bo.MaxInterval = 30 * time.Second
 			bo.MaxElapsedTime = 10 * time.Minute
 
