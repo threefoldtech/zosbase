@@ -42,7 +42,7 @@ type Config struct {
 	Users struct {
 		Authorized []string `json:"authorized"`
 	} `json:"users"`
-	AdminTwins     []uint32 `json:"adminTwins"` // list of twin IDs allowed to access developer/admin-only debug endpoints.
+	AdminTwins     []uint32 `json:"admin_twins"` // list of twin IDs allowed to access debug endpoints.
 	RolloutUpgrade struct {
 		TestFarms []uint32 `json:"test_farms"`
 	} `json:"rollout_upgrade"`

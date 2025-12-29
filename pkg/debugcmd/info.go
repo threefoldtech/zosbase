@@ -48,7 +48,6 @@ func Info(ctx context.Context, deps Deps, req InfoRequest) (InfoResponse, error)
 		return InfoResponse{}, fmt.Errorf("failed to get deployment: %w", err)
 	}
 
-	// Find the workload by name
 	var workload *gridtypes.Workload
 	for i := range deployment.Workloads {
 		if string(deployment.Workloads[i].Name) == req.Workload {
@@ -68,14 +67,11 @@ func Info(ctx context.Context, deps Deps, req InfoRequest) (InfoResponse, error)
 		Name:       string(workload.Name),
 	}
 
-	// Handle different workload types
+	// TODO: Handle different workload types
 	switch workload.Type {
 	case zos.ZMachineType, zos.ZMachineLightType:
 		return handleZMachineInfo(ctx, deps, workloadID.String(), req.Verbose, resp)
 	case zos.NetworkType, zos.NetworkLightType:
-		if req.Verbose {
-			return InfoResponse{}, fmt.Errorf("logs not supported for workload type 'network'")
-		}
 		return handleNetworkInfo(ctx, deps, twinID, workload, resp)
 	default:
 		return InfoResponse{}, fmt.Errorf("workload type '%s' not supported for info command", workload.Type)
@@ -83,6 +79,7 @@ func Info(ctx context.Context, deps Deps, req InfoRequest) (InfoResponse, error)
 }
 
 func handleZMachineInfo(ctx context.Context, deps Deps, vmID string, verbose bool, resp InfoResponse) (InfoResponse, error) {
+	// TODO: extend inspect to view more info of the vm
 	info, err := deps.VM.Inspect(ctx, vmID)
 	if err != nil {
 		return InfoResponse{}, fmt.Errorf("failed to inspect vm: %w", err)
@@ -107,8 +104,6 @@ func handleNetworkInfo(ctx context.Context, deps Deps, twinID uint32, workload *
 	netID := zos.NetworkID(twinID, workload.Name)
 	nsName := deps.Network.Namespace(ctx, netID)
 
-	// Network workloads don't have process logs
-	// Return basic info about the network
 	networkInfo := map[string]interface{}{
 		"net_id":    netID.String(),
 		"namespace": nsName,
@@ -116,8 +111,7 @@ func handleNetworkInfo(ctx context.Context, deps Deps, twinID uint32, workload *
 	}
 
 	resp.Info = networkInfo
-
-	// Network workloads don't support logs - logs field remains empty
+	resp.Logs = "Network workloads don't support logs"
 	return resp, nil
 }
 
@@ -151,4 +145,3 @@ func sanitizeLogs(raw string) string {
 	logs = strings.ReplaceAll(logs, "\r", "\n")
 	return logs
 }
-

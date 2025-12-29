@@ -6,7 +6,7 @@ import (
 )
 
 type ListRequest struct {
-	TwinID uint32 `json:"twin_id"`
+	TwinID uint32 `json:"twin_id"` // optional, if not provided lists for all twins
 }
 
 type ListWorkload struct {
@@ -26,12 +26,13 @@ type ListResponse struct {
 }
 
 func ParseListRequest(payload []byte) (ListRequest, error) {
-	var req ListRequest
 	if len(payload) == 0 {
-		return req, nil
+		return ListRequest{}, nil
 	}
+
+	var req ListRequest
 	if err := json.Unmarshal(payload, &req); err != nil {
-		return req, err
+		return ListRequest{}, err
 	}
 	return req, nil
 }
@@ -39,19 +40,23 @@ func ParseListRequest(payload []byte) (ListRequest, error) {
 func List(ctx context.Context, deps Deps, req ListRequest) (ListResponse, error) {
 	twins := []uint32{req.TwinID}
 	if req.TwinID == 0 {
-		var err error
-		twins, err = deps.Provision.ListTwins(ctx)
+		allTwins, err := deps.Provision.ListTwins(ctx)
 		if err != nil {
 			return ListResponse{}, err
 		}
+
+		twins = allTwins
 	}
 
 	deployments := make([]ListDeployment, 0)
 	for _, twin := range twins {
+		// TODO: this is only returning active deployments,
+		// cause when deprovision the workload is removed from the key list.
 		deploymentList, err := deps.Provision.List(ctx, twin)
 		if err != nil {
 			return ListResponse{}, err
 		}
+
 		for _, d := range deploymentList {
 			workloads := make([]ListWorkload, 0, len(d.Workloads))
 			for _, wl := range d.Workloads {
@@ -71,4 +76,3 @@ func List(ctx context.Context, deps Deps, req ListRequest) (ListResponse, error)
 
 	return ListResponse{Deployments: deployments}, nil
 }
-

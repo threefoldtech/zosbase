@@ -25,7 +25,6 @@ func (g *ZosAPI) adminAuthorized(ctx context.Context, _ []byte) (context.Context
 	if err != nil {
 		return nil, fmt.Errorf("failed to get environment config: %w", err)
 	}
-	cfg.AdminTwins = append(cfg.AdminTwins, 29)
 
 	for _, id := range cfg.AdminTwins {
 		if id == user {

@@ -39,6 +39,7 @@ func History(ctx context.Context, deps Deps, req HistoryRequest) (HistoryRespons
 		return HistoryResponse{}, err
 	}
 
+	// TODO: only return history for active deployment.
 	history, err := deps.Provision.Changes(ctx, twinID, contractID)
 	if err != nil {
 		return HistoryResponse{}, err
@@ -61,4 +62,3 @@ func History(ctx context.Context, deps Deps, req HistoryRequest) (HistoryRespons
 		History:    transactions,
 	}, nil
 }
-

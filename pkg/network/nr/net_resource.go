@@ -222,7 +222,7 @@ func (nr *NetResource) Create() error {
 	return nil
 }
 
-func (nr *NetResource) myceliumServiceName() string {
+func (nr *NetResource) MyceliumServiceName() string {
 	return fmt.Sprintf("mycelium-%s", nr.ID())
 }
 
@@ -286,7 +286,7 @@ func (nr *NetResource) SetMycelium() (err error) {
 		return err
 	}
 
-	name := nr.myceliumServiceName()
+	name := nr.MyceliumServiceName()
 
 	init := zinit.Default()
 	exists, err := init.Exists(name)
@@ -618,7 +618,7 @@ func (nr *NetResource) Delete() error {
 		return err
 	}
 
-	myceliumName := nr.myceliumServiceName()
+	myceliumName := nr.MyceliumServiceName()
 	init := zinit.Default()
 	exists, err := init.Exists(myceliumName)
 	if err == nil && exists {
