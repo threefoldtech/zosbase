@@ -23,82 +23,63 @@ const (
 	myceliumKeyDir      = "mycelium-key"
 )
 
-// CheckNetworkConfig verifies network configuration file exists and is valid
-func CheckNetworkConfig(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "network.config",
-		OK:   false,
-	}
+type NetworkChecker struct {
+	netID      zos.NetID
+	nsName     string
+	netCfgPath string
+	nrr        *nr.NetResource
+}
 
+func (nc *NetworkChecker) Name() string { return "network" }
+
+func (nc *NetworkChecker) Run(ctx context.Context, data *CheckData) []HealthCheck {
 	netID := zos.NetworkID(data.Twin, data.Workload.Name)
-	netCfgPath := filepath.Join(networkdVolatileDir, networksDir, netID.String())
+	nc.netID = netID
+	nc.nsName = data.Network(ctx, netID)
+	nc.netCfgPath = filepath.Join(networkdVolatileDir, networksDir, netID.String())
+	nc.nrr = nr.New(pkg.Network{NetID: netID}, filepath.Join(networkdVolatileDir, myceliumKeyDir))
 
-	_, raw, err := versioned.ReadFile(netCfgPath)
+	return []HealthCheck{
+		nc.checkConfig(),
+		nc.checkNamespace(),
+		nc.checkInterfaces(),
+		nc.checkBridge(),
+		nc.checkMycelium(),
+	}
+}
+
+func (nc *NetworkChecker) checkConfig() HealthCheck {
+	_, raw, err := versioned.ReadFile(nc.netCfgPath)
 	if err != nil {
-		result.Message = fmt.Sprintf("config file not found: %v", err)
-		result.Evidence = map[string]interface{}{"path": netCfgPath, "netid": netID.String()}
-		return result
+		return failure("network.config", fmt.Sprintf("config file not found: %v", err), map[string]interface{}{"path": nc.netCfgPath, "netid": nc.netID.String()})
 	}
 
 	var netCfg pkg.Network
 	if err := json.Unmarshal(raw, &netCfg); err != nil {
-		result.Message = fmt.Sprintf("config file invalid or unparseable: %v", err)
-		result.Evidence = map[string]interface{}{"path": netCfgPath, "netid": netID.String()}
-		return result
+		return failure("network.config", fmt.Sprintf("config file invalid: %v", err), map[string]interface{}{"path": nc.netCfgPath, "netid": nc.netID.String()})
 	}
 
-	if netCfg.NetID != netID {
-		result.Message = fmt.Sprintf("config netid mismatch: expected %s, got %s", netID.String(), netCfg.NetID.String())
-		result.Evidence = map[string]interface{}{"expected": netID.String(), "got": netCfg.NetID.String()}
-		return result
+	if netCfg.NetID != nc.netID {
+		return failure("network.config", fmt.Sprintf("netid mismatch: expected %s, got %s", nc.netID.String(), netCfg.NetID.String()), map[string]interface{}{"expected": nc.netID.String(), "got": netCfg.NetID.String()})
 	}
 
-	result.OK = true
-	result.Message = "config valid"
-	result.Evidence = map[string]interface{}{"path": netCfgPath, "netid": netID.String()}
-	return result
+	return success("network.config", "config valid", map[string]interface{}{"path": nc.netCfgPath, "netid": nc.netID.String()})
 }
 
-// CheckNetworkNamespace verifies network namespace exists and is accessible
-func CheckNetworkNamespace(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "network.namespace",
-		OK:   false,
+func (nc *NetworkChecker) checkNamespace() HealthCheck {
+	if !namespace.Exists(nc.nsName) {
+		return failure("network.namespace", "namespace not found", map[string]interface{}{"namespace": nc.nsName})
 	}
-
-	netID := zos.NetworkID(data.Twin, data.Workload.Name)
-	nsName := data.Network(ctx, netID)
-
-	if !namespace.Exists(nsName) {
-		result.Message = "namespace not found"
-		result.Evidence = map[string]interface{}{"namespace": nsName}
-		return result
-	}
-
-	result.OK = true
-	result.Message = "namespace exists and accessible"
-	result.Evidence = map[string]interface{}{"namespace": nsName}
-	return result
+	return success("network.namespace", "namespace exists", map[string]interface{}{"namespace": nc.nsName})
 }
 
-// CheckNetworkInterfaces verifies required network interfaces exist inside namespace
-func CheckNetworkInterfaces(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "network.interfaces",
-		OK:   false,
-	}
-
-	netID := zos.NetworkID(data.Twin, data.Workload.Name)
-	nsName := data.Network(ctx, netID)
-
-	nrr := nr.New(pkg.Network{NetID: netID}, filepath.Join(networkdVolatileDir, myceliumKeyDir))
-	wgIface, _ := nrr.WGName()  // `w-*` iface
-	nrIface, _ := nrr.NRIface() // `n-*` iface
-	pubIface := "public"        // `public` iface
-	// TODO: add mycelium iface if configured for the network
+func (nc *NetworkChecker) checkInterfaces() HealthCheck {
+	wgIface, _ := nc.nrr.WGName()
+	nrIface, _ := nc.nrr.NRIface()
+	pubIface := "public"
 
 	netnsLinks := map[string]struct{}{}
-	if netNS, err := namespace.GetByName(nsName); err == nil {
+	if netNS, err := namespace.GetByName(nc.nsName); err == nil {
 		_ = netNS.Do(func(_ cnins.NetNS) error {
 			links, err := netlink.LinkList()
 			if err == nil {
@@ -112,90 +93,48 @@ func CheckNetworkInterfaces(ctx context.Context, data *CheckData) HealthCheck {
 	}
 
 	missing := []string{}
-	if _, ok := netnsLinks[wgIface]; !ok {
-		missing = append(missing, wgIface)
-	}
-	if _, ok := netnsLinks[nrIface]; !ok {
-		missing = append(missing, nrIface)
-	}
-	if _, ok := netnsLinks[pubIface]; !ok {
-		missing = append(missing, pubIface)
+	for _, iface := range []string{wgIface, nrIface, pubIface} {
+		if _, ok := netnsLinks[iface]; !ok {
+			missing = append(missing, iface)
+		}
 	}
 
 	if len(missing) > 0 {
-		result.Message = fmt.Sprintf("missing interfaces: %v", missing)
-		result.Evidence = map[string]interface{}{"namespace": nsName, "missing": missing}
-		return result
+		return failure("network.interfaces", fmt.Sprintf("missing interfaces: %v", missing), map[string]interface{}{"namespace": nc.nsName, "missing": missing})
 	}
 
-	result.OK = true
-	result.Message = "all required interfaces present"
-	result.Evidence = map[string]interface{}{"namespace": nsName}
-	return result
+	return success("network.interfaces", "all required interfaces present", map[string]interface{}{"namespace": nc.nsName})
 }
 
-// CheckNetworkBridge verifies network bridge exists and has members
-func CheckNetworkBridge(ctx context.Context, data *CheckData) HealthCheck {
-	netDir := "/sys/class/net"
-	brIfaceDir := "brif"
+func (nc *NetworkChecker) checkBridge() HealthCheck {
+	brName, _ := nc.nrr.BridgeName()
+	brPath := filepath.Join("/sys/class/net", brName)
 
-	result := HealthCheck{
-		Name: "network.bridge",
-		OK:   false,
+	if _, err := os.Stat(brPath); err != nil {
+		return failure("network.bridge", fmt.Sprintf("bridge not found: %v", err), map[string]interface{}{"bridge": brName})
 	}
 
-	netID := zos.NetworkID(data.Twin, data.Workload.Name)
-	nrr := nr.New(pkg.Network{NetID: netID}, filepath.Join(networkdVolatileDir, myceliumKeyDir))
-	brName, _ := nrr.BridgeName()
-
-	if _, err := os.Stat(filepath.Join(netDir, brName)); err != nil {
-		result.Message = fmt.Sprintf("bridge not found: %v", err)
-		result.Evidence = map[string]interface{}{"bridge": brName}
-		return result
-	}
-
-	brifDir := filepath.Join(netDir, brName, brIfaceDir)
+	brifDir := filepath.Join(brPath, "brif")
 	ents, err := os.ReadDir(brifDir)
 	if err != nil || len(ents) == 0 {
-		result.Message = fmt.Sprintf("bridge has no members: %v", err)
-		result.Evidence = map[string]interface{}{"bridge": brName}
-		return result
+		return failure("network.bridge", fmt.Sprintf("bridge has no members: %v", err), map[string]interface{}{"bridge": brName})
 	}
 
-	// TODO: check if the members are up interfaces
-
-	result.OK = true
-	result.Message = "bridge has members"
-	result.Evidence = map[string]interface{}{"bridge": brName}
-	return result
+	return success("network.bridge", "bridge has members", map[string]interface{}{"bridge": brName})
 }
 
-// CheckNetworkMycelium verifies mycelium service is running (if configured)
-func CheckNetworkMycelium(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "network.mycelium",
-		OK:   false,
-	}
-
-	netID := zos.NetworkID(data.Twin, data.Workload.Name)
-	nrr := nr.New(pkg.Network{NetID: netID}, filepath.Join(networkdVolatileDir, myceliumKeyDir))
-	service := nrr.MyceliumServiceName()
-
+func (nc *NetworkChecker) checkMycelium() HealthCheck {
+	service := nc.nrr.MyceliumServiceName()
 	st, err := zinit.Default().Status(service)
 	if err != nil {
-		result.Message = fmt.Sprintf("cannot get service status: %v", err)
-		result.Evidence = map[string]interface{}{"service": service}
-		return result
+		return failure("network.mycelium", fmt.Sprintf("cannot get service status: %v", err), map[string]interface{}{"service": service})
 	}
 
 	if !st.State.Is(zinit.ServiceStateRunning) {
-		result.Message = fmt.Sprintf("service not running: %s", st.State.String())
-		result.Evidence = map[string]interface{}{"service": service, "state": st.State.String()}
-		return result
+		return failure("network.mycelium", fmt.Sprintf("service not running: %s", st.State.String()), map[string]interface{}{"service": service, "state": st.State.String()})
 	}
 
-	result.OK = true
-	result.Message = "service running"
-	result.Evidence = map[string]interface{}{"service": service, "pid": st.Pid}
-	return result
+	return success("network.mycelium", "service running", map[string]interface{}{"service": service, "pid": st.Pid})
 }
+
+var NetworkCheckerInstance = &NetworkChecker{}

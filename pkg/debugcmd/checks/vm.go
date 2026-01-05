@@ -12,177 +12,109 @@ import (
 
 const vmdVolatileDir = "/var/run/cache/vmd"
 
-// CheckVMConfig verifies VM configuration file exists and is valid
-func CheckVMConfig(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "vm.config",
-		OK:   false,
-	}
-
-	workloadID, err := gridtypes.NewWorkloadID(data.Twin, data.Contract, data.Workload.Name)
-	if err != nil { // this should never happen
-		result.Message = fmt.Sprintf("invalid workload ID: %v", err)
-		result.Evidence = map[string]interface{}{"workload_id": workloadID}
-		return result
-	}
-	vmID := workloadID.String()
-	cfgPath := filepath.Join(vmdVolatileDir, vmID)
-
-	if _, err := os.Stat(cfgPath); err != nil {
-		result.Message = fmt.Sprintf("config file not found: %v", err)
-		result.Evidence = map[string]interface{}{"path": cfgPath}
-		return result
-	}
-
-	_, err = vm.MachineFromFile(cfgPath)
-	if err != nil {
-		result.Message = "config file invalid or unparseable"
-		result.Evidence = map[string]interface{}{"path": cfgPath}
-		return result
-	}
-
-	result.OK = true
-	result.Message = "config valid"
-	result.Evidence = map[string]interface{}{"path": cfgPath}
-	return result
+type VMChecker struct {
+	workloadID gridtypes.WorkloadID
+	vmID       string
+	cfgPath    string
+	machine    *vm.Machine
+	vmExists   func(ctx context.Context, id string) bool
 }
 
-// CheckVMVMD verifies VMD reports VM exists
-func CheckVMVMD(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "vm.vmd",
-		OK:   false,
-	}
+func (vc *VMChecker) Name() string { return "vm" }
 
+func (vc *VMChecker) Run(ctx context.Context, data *CheckData) []HealthCheck {
 	workloadID, err := gridtypes.NewWorkloadID(data.Twin, data.Contract, data.Workload.Name)
-	if err != nil { // this should never happen
-		result.Message = fmt.Sprintf("invalid workload ID: %v", err)
-		result.Evidence = map[string]interface{}{"workload_id": workloadID}
-		return result
-	}
-	vmID := workloadID.String()
-
-	if !data.VM(ctx, vmID) {
-		result.Message = "vmd reports VM does not exist"
-		result.Evidence = map[string]interface{}{"vm_id": vmID}
-		return result
+	if err != nil {
+		return []HealthCheck{failure("vm.init", fmt.Sprintf("invalid workload ID: %v", err), nil)}
 	}
 
-	result.OK = true
-	result.Message = "vmd reports VM exists"
-	result.Evidence = map[string]interface{}{"vm_id": vmID}
-	return result
+	vc.workloadID = workloadID
+	vc.vmID = workloadID.String()
+	vc.cfgPath = filepath.Join(vmdVolatileDir, workloadID.String())
+	vc.vmExists = data.VM
+
+	return []HealthCheck{
+		vc.checkConfig(),
+		vc.checkVMD(ctx),
+		vc.checkProcess(),
+		vc.checkDisks(),
+		vc.checkVirtioFS(),
+	}
 }
 
-// CheckVMProcess verifies cloud-hypervisor process is running
-func CheckVMProcess(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "vm.process",
-		OK:   false,
+func (vc *VMChecker) loadMachine() (*vm.Machine, error) {
+	if vc.machine != nil {
+		return vc.machine, nil
 	}
-
-	workloadID, err := gridtypes.NewWorkloadID(data.Twin, data.Contract, data.Workload.Name)
-	if err != nil { // this should never happen
-		result.Message = fmt.Sprintf("invalid workload ID: %v", err)
-		result.Evidence = map[string]interface{}{"workload_id": workloadID}
-		return result
-	}
-	vmID := workloadID.String()
-
-	ps, err := vm.Find(vmID)
+	machine, err := vm.MachineFromFile(vc.cfgPath)
 	if err != nil {
-		result.Message = fmt.Sprintf("process not found: %v", err)
-		result.Evidence = map[string]interface{}{"vm_id": vmID}
-		return result
+		return nil, err
 	}
-
-	result.OK = true
-	result.Message = "process running"
-	result.Evidence = map[string]interface{}{"vm_id": vmID, "pid": ps.Pid}
-	return result
+	vc.machine = machine
+	return machine, nil
 }
 
-// CheckVMDisks verifies all VM disk files exist
-func CheckVMDisks(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "vm.disks",
-		OK:   false,
+func (vc *VMChecker) checkConfig() HealthCheck {
+	if _, err := os.Stat(vc.cfgPath); err != nil {
+		return failure("vm.config", fmt.Sprintf("config file not found: %v", err), map[string]interface{}{"path": vc.cfgPath})
 	}
-
-	workloadID, err := gridtypes.NewWorkloadID(data.Twin, data.Contract, data.Workload.Name)
-	if err != nil { // this should never happen
-		result.Message = fmt.Sprintf("invalid workload ID: %v", err)
-		result.Evidence = map[string]interface{}{"workload_id": workloadID}
-		return result
+	if _, err := vm.MachineFromFile(vc.cfgPath); err != nil {
+		return failure("vm.config", fmt.Sprintf("config file invalid: %v", err), map[string]interface{}{"path": vc.cfgPath})
 	}
-	vmID := workloadID.String()
-	cfgPath := filepath.Join(vmdVolatileDir, vmID)
+	return success("vm.config", "config valid", map[string]interface{}{"path": vc.cfgPath, "vm_id": vc.vmID})
+}
 
-	machine, err := vm.MachineFromFile(cfgPath)
+func (vc *VMChecker) checkVMD(ctx context.Context) HealthCheck {
+	if !vc.vmExists(ctx, vc.vmID) {
+		return failure("vm.vmd", "vmd reports VM does not exist", map[string]interface{}{"vm_id": vc.vmID})
+	}
+	return success("vm.vmd", "vmd reports VM exists", map[string]interface{}{"vm_id": vc.vmID})
+}
+
+func (vc *VMChecker) checkProcess() HealthCheck {
+	ps, err := vm.Find(vc.vmID)
 	if err != nil {
-		result.Message = "config not available"
-		result.Evidence = map[string]interface{}{"vm_id": vmID}
-		return result
+		return failure("vm.process", fmt.Sprintf("process not found: %v", err), map[string]interface{}{"vm_id": vc.vmID})
+	}
+	return success("vm.process", "process running", map[string]interface{}{"vm_id": vc.vmID, "pid": ps.Pid})
+}
+
+func (vc *VMChecker) checkDisks() HealthCheck {
+	machine, err := vc.loadMachine()
+	if err != nil {
+		return failure("vm.disks", "config not available", map[string]interface{}{"vm_id": vc.vmID})
 	}
 
 	for _, disk := range machine.Disks {
 		if disk.Path == "" {
 			continue
 		}
-
-		_, err := os.Stat(disk.Path)
-		if err != nil {
-			result.Message = fmt.Sprintf("disk missing: %s", disk.Path)
-			result.Evidence = map[string]interface{}{"path": disk.Path}
-			return result
+		if _, err := os.Stat(disk.Path); err != nil {
+			return failure("vm.disks", fmt.Sprintf("disk missing: %s", disk.Path), map[string]interface{}{"path": disk.Path, "vm_id": vc.vmID})
 		}
-
-		// TODO: could we check files on disk?
 	}
 
-	result.OK = true
-	result.Message = "all disks valid"
-	result.Evidence = map[string]interface{}{"vm_id": vmID}
-	return result
+	// TODO: check for files on disks?
+
+	return success("vm.disks", "all disks valid", map[string]interface{}{"vm_id": vc.vmID})
 }
 
-// CheckVMVirtioFS verifies virtiofs sockets exist
-func CheckVMVirtioFS(ctx context.Context, data *CheckData) HealthCheck {
-	result := HealthCheck{
-		Name: "vm.virtiofs",
-		OK:   false,
-	}
-
-	workloadID, err := gridtypes.NewWorkloadID(data.Twin, data.Contract, data.Workload.Name)
-	if err != nil { // this should never happen
-		result.Message = fmt.Sprintf("invalid workload ID: %v", err)
-		result.Evidence = map[string]interface{}{"workload_id": workloadID}
-		return result
-	}
-	vmID := workloadID.String()
-	cfgPath := filepath.Join(vmdVolatileDir, vmID)
-
-	machine, err := vm.MachineFromFile(cfgPath)
+func (vc *VMChecker) checkVirtioFS() HealthCheck {
+	machine, err := vc.loadMachine()
 	if err != nil {
-		result.OK = true
-		result.Message = fmt.Sprintf("config file invalid or unparseable: %v", err)
-		result.Evidence = map[string]interface{}{"vm_id": vmID}
-		return result
+		return failure("vm.virtiofs", fmt.Sprintf("config unavailable: %v", err), map[string]interface{}{"vm_id": vc.vmID})
 	}
 
 	for i := range machine.FS {
-		sock := filepath.Join("/var/run", fmt.Sprintf("virtio-%s-%d.socket", vmID, i))
+		sock := filepath.Join("/var/run", fmt.Sprintf("virtio-%s-%d.socket", vc.vmID, i))
 		if _, err := os.Stat(sock); err != nil {
-			result.Message = fmt.Sprintf("socket missing: %s", sock)
-			result.Evidence = map[string]interface{}{"socket": sock}
-			return result
+			return failure("vm.virtiofs", fmt.Sprintf("socket missing: %s", sock), map[string]interface{}{"socket": sock, "vm_id": vc.vmID})
 		}
 	}
 
-	result.OK = true
-	result.Message = "all virtiofs sockets present"
-	result.Evidence = map[string]interface{}{"vm_id": vmID}
-	return result
+	return success("vm.virtiofs", "all virtiofs sockets present", map[string]interface{}{"vm_id": vc.vmID})
 }
 
 // TODO: add cloud-console check
+
+var VMCheckerInstance = &VMChecker{}

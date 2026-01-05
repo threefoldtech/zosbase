@@ -7,6 +7,11 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
+type Checker interface {
+	Name() string
+	Run(ctx context.Context, data *CheckData) []HealthCheck
+}
+
 type HealthCheck struct {
 	Name     string                 `json:"name"`
 	OK       bool                   `json:"ok"`
@@ -22,28 +27,36 @@ type CheckData struct {
 	Network  func(ctx context.Context, id zos.NetID) string
 }
 
-type NetworkCheck func(ctx context.Context, data *CheckData) HealthCheck
-
-var NetworkChecks = []NetworkCheck{
-	CheckNetworkConfig,
-	CheckNetworkNamespace,
-	CheckNetworkInterfaces,
-	CheckNetworkBridge,
-	CheckNetworkMycelium,
+func success(name, message string, evidence map[string]interface{}) HealthCheck {
+	if evidence == nil {
+		evidence = make(map[string]interface{})
+	}
+	return HealthCheck{Name: name, OK: true, Message: message, Evidence: evidence}
 }
 
-type VMCheck func(ctx context.Context, data *CheckData) HealthCheck
-
-var VMChecks = []VMCheck{
-	CheckVMConfig,
-	CheckVMVMD,
-	CheckVMProcess,
-	CheckVMDisks,
-	CheckVMVirtioFS,
+func failure(name, message string, evidence map[string]interface{}) HealthCheck {
+	if evidence == nil {
+		evidence = make(map[string]interface{})
+	}
+	return HealthCheck{Name: name, OK: false, Message: message, Evidence: evidence}
 }
 
-type SystemCheck func(ctx context.Context, data *SystemProbeData) HealthCheck
+func IsHealthy(checks []HealthCheck) bool {
+	for _, check := range checks {
+		if !check.OK {
+			return false
+		}
+	}
+	return true
+}
 
-var SystemProbeCheck = []SystemCheck{
-	CheckSystemProbe,
+func Run(ctx context.Context, workloadType gridtypes.WorkloadType, data *CheckData) []HealthCheck {
+	switch workloadType {
+	case zos.NetworkType, zos.NetworkLightType:
+		return NetworkCheckerInstance.Run(ctx, data)
+	case zos.ZMachineType, zos.ZMachineLightType:
+		return VMCheckerInstance.Run(ctx, data)
+	default:
+		return nil
+	}
 }

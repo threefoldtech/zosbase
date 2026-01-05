@@ -8,47 +8,39 @@ import (
 	"time"
 )
 
-var systemProbeTimeout = 60 * time.Second
+const systemProbeTimeout = 60 * time.Second
 
-type SystemProbeData struct {
-	Command string
+type SystemChecker struct {
+	command string
 }
 
-// CheckSystemProbe executes a custom system probe command
-func CheckSystemProbe(ctx context.Context, data *SystemProbeData) HealthCheck {
-	result := HealthCheck{
-		Name:    "system.probe.custom",
-		OK:      false,
-		Message: "system state probe execution",
-		Evidence: map[string]interface{}{
-			"probe_type": "custom",
-			"exit_code":  0,
-		},
+func (sc *SystemChecker) Name() string { return "system" }
+
+func (sc *SystemChecker) Run(ctx context.Context, data *CheckData) []HealthCheck {
+	if sc.command == "" {
+		return nil
+	}
+
+	parts := strings.Fields(sc.command)
+	if len(parts) == 0 {
+		return []HealthCheck{failure("system.probe", "empty probe command", nil)}
 	}
 
 	probeCtx, cancel := context.WithTimeout(ctx, systemProbeTimeout)
 	defer cancel()
 
-	parts := strings.Fields(data.Command)
-	if len(parts) == 0 {
-		result.Message = "empty probe command"
-		result.Evidence["error"] = "empty probe command"
-		result.OK = false
-		return result
-	}
-
-	execCmd := exec.CommandContext(probeCtx, parts[0], parts[1:]...)
-	output, err := execCmd.CombinedOutput()
+	cmd := exec.CommandContext(probeCtx, parts[0], parts[1:]...)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		result.Message = fmt.Sprintf("probe command failed: %v", err)
-		result.Evidence["error"] = err.Error()
-		result.OK = false
-		return result
+		return []HealthCheck{failure("system.probe", fmt.Sprintf("probe failed: %v", err), map[string]interface{}{"error": err.Error()})}
 	}
 
-	result.OK = true
-	result.Message = "probe command executed successfully"
-	result.Evidence["output"] = string(output)
-	result.Evidence["exit_code"] = execCmd.ProcessState.ExitCode()
-	return result
+	return []HealthCheck{success("system.probe", "probe executed successfully", map[string]interface{}{
+		"output":    string(output),
+		"exit_code": cmd.ProcessState.ExitCode(),
+	})}
+}
+
+func NewSystemChecker(command string) *SystemChecker {
+	return &SystemChecker{command: command}
 }

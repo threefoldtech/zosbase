@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
@@ -96,7 +94,7 @@ func handleZMachineInfo(ctx context.Context, deps Deps, vmID string, verbose boo
 		return InfoResponse{}, fmt.Errorf("failed to get vm logs: %w", err)
 	}
 
-	resp.Logs = sanitizeLogs(raw)
+	resp.Logs = raw
 	return resp, nil
 }
 
@@ -113,35 +111,4 @@ func handleNetworkInfo(ctx context.Context, deps Deps, twinID uint32, workload *
 	resp.Info = networkInfo
 	resp.Logs = "Network workloads don't support logs"
 	return resp, nil
-}
-
-func sanitizeLogs(raw string) string {
-	// Sanitize logs:
-	// - strip NUL bytes
-	// - drop invalid UTF-8 bytes
-	// - normalize CRLF -> LF
-	b := []byte(raw)
-	sanitized := make([]byte, 0, len(b))
-	for _, c := range b {
-		if c != 0x00 {
-			sanitized = append(sanitized, c)
-		}
-	}
-	if !utf8.Valid(sanitized) {
-		valid := make([]byte, 0, len(sanitized))
-		for len(sanitized) > 0 {
-			r, size := utf8.DecodeRune(sanitized)
-			if r == utf8.RuneError && size == 1 {
-				sanitized = sanitized[1:]
-				continue
-			}
-			valid = append(valid, sanitized[:size]...)
-			sanitized = sanitized[size:]
-		}
-		sanitized = valid
-	}
-	logs := string(sanitized)
-	logs = strings.ReplaceAll(logs, "\r\n", "\n")
-	logs = strings.ReplaceAll(logs, "\r", "\n")
-	return logs
 }

@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/debugcmd/checks"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
-	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 )
 
 type HealthRequest struct {
-	Deployment string                 `json:"deployment"`        // Format: "twin-id:contract-id"
-	Options    map[string]interface{} `json:"options,omitempty"` // Optional configuration for health checks
+	Deployment string                 `json:"deployment"`
+	Options    map[string]interface{} `json:"options,omitempty"`
 }
 
 type HealthStatus string
@@ -39,10 +37,7 @@ type HealthResponse struct {
 
 func ParseHealthRequest(payload []byte) (HealthRequest, error) {
 	var req HealthRequest
-	if err := json.Unmarshal(payload, &req); err != nil {
-		return req, err
-	}
-	return req, nil
+	return req, json.Unmarshal(payload, &req)
 }
 
 func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, error) {
@@ -53,23 +48,14 @@ func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, 
 
 	out := HealthResponse{TwinID: twinID, ContractID: contractID}
 
-	if req.Options != nil && req.Options["system_probe"] != nil {
-		probeCmd, ok := req.Options["system_probe"].(string)
-		if !ok {
-			return HealthResponse{}, fmt.Errorf("system_probe must be a string")
+	if req.Options != nil {
+		if probeCmd, ok := req.Options["system_probe"].(string); ok && probeCmd != "" {
+			checkData := &checks.CheckData{Twin: twinID, Contract: contractID}
+			allChecks := checks.NewSystemChecker(probeCmd).Run(ctx, checkData)
+			if len(allChecks) > 0 {
+				out.Workloads = append(out.Workloads, newWorkloadHealth("system", "diagnostic", "system.probe", allChecks))
+			}
 		}
-		hc := checks.SystemProbeCheck[0](ctx, &checks.SystemProbeData{Command: probeCmd})
-		status := HealthUnhealthy
-		if hc.OK {
-			status = HealthHealthy
-		}
-		out.Workloads = append(out.Workloads, WorkloadHealth{
-			WorkloadID: "system",
-			Type:       "diagnostic",
-			Name:       "system.probe",
-			Status:     status,
-			Checks:     []checks.HealthCheck{hc},
-		})
 	}
 
 	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
@@ -80,9 +66,9 @@ func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, 
 	for _, wl := range deployment.Workloads {
 		workloadID, err := gridtypes.NewWorkloadID(twinID, contractID, wl.Name)
 		if err != nil {
-			log.Debug().Err(err).Str("workload_name", string(wl.Name)).Msg("failed to create workload ID")
 			continue
 		}
+
 		checkData := &checks.CheckData{
 			Network:  deps.Network.Namespace,
 			VM:       deps.VM.Exists,
@@ -91,62 +77,30 @@ func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, 
 			Workload: wl,
 		}
 
-		var allChecks []checks.HealthCheck
-		var status HealthStatus
-
-		switch wl.Type {
-		case zos.NetworkType:
-			allChecks, status = runNetworkChecks(ctx, checkData)
-		case zos.ZMachineType, zos.ZMachineLightType:
-			allChecks, status = runVMChecks(ctx, checkData)
-		default:
-			continue
+		allChecks := checks.Run(ctx, wl.Type, checkData)
+		if len(allChecks) > 0 {
+			out.Workloads = append(out.Workloads, newWorkloadHealth(
+				workloadID.String(),
+				string(wl.Type),
+				string(wl.Name),
+				allChecks,
+			))
 		}
-
-		out.Workloads = append(out.Workloads, WorkloadHealth{
-			WorkloadID: workloadID.String(),
-			Type:       string(wl.Type),
-			Name:       string(wl.Name),
-			Status:     status,
-			Checks:     allChecks,
-		})
 	}
 
 	return out, nil
 }
 
-func runNetworkChecks(ctx context.Context, data *checks.CheckData) ([]checks.HealthCheck, HealthStatus) {
-	allChecks := []checks.HealthCheck{}
-
-	for _, check := range checks.NetworkChecks {
-		hc := check(ctx, data)
-		allChecks = append(allChecks, hc)
+func newWorkloadHealth(workloadID, workloadType, name string, allChecks []checks.HealthCheck) WorkloadHealth {
+	status := HealthUnhealthy
+	if checks.IsHealthy(allChecks) {
+		status = HealthHealthy
 	}
-
-	status := HealthHealthy
-	for _, c := range allChecks {
-		if !c.OK {
-			status = HealthUnhealthy
-		}
+	return WorkloadHealth{
+		WorkloadID: workloadID,
+		Type:       workloadType,
+		Name:       name,
+		Status:     status,
+		Checks:     allChecks,
 	}
-
-	return allChecks, status
-}
-
-func runVMChecks(ctx context.Context, data *checks.CheckData) ([]checks.HealthCheck, HealthStatus) {
-	allChecks := []checks.HealthCheck{}
-
-	for _, check := range checks.VMChecks {
-		hc := check(ctx, data)
-		allChecks = append(allChecks, hc)
-	}
-
-	status := HealthHealthy
-	for _, c := range allChecks {
-		if !c.OK {
-			status = HealthUnhealthy
-		}
-	}
-
-	return allChecks, status
 }
