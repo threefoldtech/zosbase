@@ -41,14 +41,24 @@ func ParseHealthRequest(payload []byte) (HealthRequest, error) {
 }
 
 func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, error) {
-	twinID, contractID, err := ParseDeploymentID(req.Deployment)
-	if err != nil {
-		return HealthResponse{}, err
+	var twinID uint32
+	var contractID uint64
+	var err error
+
+	hasSystemProbe := req.Options != nil && req.Options["system_probe"] != nil
+
+	if req.Deployment != "" {
+		twinID, contractID, err = ParseDeploymentID(req.Deployment)
+		if err != nil {
+			return HealthResponse{}, err
+		}
+	} else if !hasSystemProbe {
+		return HealthResponse{}, fmt.Errorf("deployment is required when system_probe is not specified")
 	}
 
 	out := HealthResponse{TwinID: twinID, ContractID: contractID}
 
-	if req.Options != nil {
+	if hasSystemProbe {
 		if probeCmd, ok := req.Options["system_probe"].(string); ok && probeCmd != "" {
 			checkData := &checks.CheckData{Twin: twinID, Contract: contractID}
 			allChecks := checks.NewSystemChecker(probeCmd).Run(ctx, checkData)
@@ -58,33 +68,35 @@ func Health(ctx context.Context, deps Deps, req HealthRequest) (HealthResponse, 
 		}
 	}
 
-	deployment, err := deps.Provision.Get(ctx, twinID, contractID)
-	if err != nil {
-		return HealthResponse{}, fmt.Errorf("failed to get deployment: %w", err)
-	}
-
-	for _, wl := range deployment.Workloads {
-		workloadID, err := gridtypes.NewWorkloadID(twinID, contractID, wl.Name)
+	if req.Deployment != "" {
+		deployment, err := deps.Provision.Get(ctx, twinID, contractID)
 		if err != nil {
-			continue
+			return HealthResponse{}, fmt.Errorf("failed to get deployment: %w", err)
 		}
 
-		checkData := &checks.CheckData{
-			Network:  deps.Network.Namespace,
-			VM:       deps.VM.Exists,
-			Twin:     twinID,
-			Contract: contractID,
-			Workload: wl,
-		}
+		for _, wl := range deployment.Workloads {
+			workloadID, err := gridtypes.NewWorkloadID(twinID, contractID, wl.Name)
+			if err != nil {
+				continue
+			}
 
-		allChecks := checks.Run(ctx, wl.Type, checkData)
-		if len(allChecks) > 0 {
-			out.Workloads = append(out.Workloads, newWorkloadHealth(
-				workloadID.String(),
-				string(wl.Type),
-				string(wl.Name),
-				allChecks,
-			))
+			checkData := &checks.CheckData{
+				Network:  deps.Network.Namespace,
+				VM:       deps.VM.Exists,
+				Twin:     twinID,
+				Contract: contractID,
+				Workload: wl,
+			}
+
+			allChecks := checks.Run(ctx, wl.Type, checkData)
+			if len(allChecks) > 0 {
+				out.Workloads = append(out.Workloads, newWorkloadHealth(
+					workloadID.String(),
+					string(wl.Type),
+					string(wl.Name),
+					allChecks,
+				))
+			}
 		}
 	}
 
