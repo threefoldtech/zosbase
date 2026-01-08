@@ -276,6 +276,7 @@ type VMModule interface {
 	Delete(name string) error
 	Exists(name string) bool
 	Logs(name string) (string, error)
+	LogsFull(name string) (string, error)
 	List() ([]string, error)
 	Metrics() (MachineMetrics, error)
 	// Lock set lock on VM (pause,resume)

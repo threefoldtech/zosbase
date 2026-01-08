@@ -18,6 +18,7 @@ type Provision interface {
 	Get(twin uint32, contractID uint64) (gridtypes.Deployment, error)
 	List(twin uint32) ([]gridtypes.Deployment, error)
 	Changes(twin uint32, contractID uint64) ([]gridtypes.Workload, error)
+	ListTwins() ([]uint32, error)
 	ListPublicIPs() ([]string, error)
 	ListPrivateIPs(twin uint32, network gridtypes.Name) ([]string, error)
 }

@@ -159,3 +159,20 @@ func (s *ProvisionStub) ListPublicIPs(ctx context.Context) (ret0 []string, ret1 
 	}
 	return
 }
+
+func (s *ProvisionStub) ListTwins(ctx context.Context) (ret0 []uint32, ret1 error) {
+	args := []interface{}{}
+	result, err := s.client.RequestContext(ctx, s.module, s.object, "ListTwins", args...)
+	if err != nil {
+		panic(err)
+	}
+	result.PanicOnError()
+	ret1 = result.CallError()
+	loader := zbus.Loader{
+		&ret0,
+	}
+	if err := result.Unmarshal(&loader); err != nil {
+		panic(err)
+	}
+	return
+}

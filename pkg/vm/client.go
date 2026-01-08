@@ -116,6 +116,7 @@ func (c *Client) Inspect(ctx context.Context) (VMData, error) {
 		return VMData{}, fmt.Errorf("got unexpected http code '%s' on machine info, Response: %s", response.Status, string(body))
 	}
 
+	// TODO: use more info like running state, etc.
 	var data struct {
 		Config struct {
 			CPU struct {
