@@ -10,7 +10,7 @@ import (
 	v1 "github.com/containerd/cgroups/stats/v1"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/typeurl"
+	"github.com/containerd/typeurl/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -97,7 +97,7 @@ func monitor(ctx context.Context, task containerd.Task) ([]byte, error) {
 	}
 
 	s := &Metrics{
-		Timestamp:   metric.Timestamp.Unix(),
+		Timestamp:   metric.Timestamp.AsTime().Unix(),
 		MemoryUsage: data.Memory.Usage.Usage,
 		MemoryLimit: data.Memory.Usage.Limit,
 		MemoryCache: data.Memory.TotalCache,
