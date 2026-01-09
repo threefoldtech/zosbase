@@ -551,6 +551,7 @@ func (m *Module) Run(vm pkg.VM) (pkg.MachineInfo, error) {
 		Disks:       disks,
 		Devices:     vm.Devices,
 		NoKeepAlive: vm.NoKeepAlive,
+		NetworkInfo: &vm.Network,
 	}
 
 	log.Debug().Str("name", vm.Name).Msg("saving machine")
@@ -568,6 +569,35 @@ func (m *Module) Run(vm pkg.VM) (pkg.MachineInfo, error) {
 	if vm.NoKeepAlive {
 		m.failures.Set(vm.Name, permanent, cache.NoExpiration)
 	}
+
+	// Log comprehensive VM configuration before starting
+	logEvent := log.Info().
+		Str("vm-id", vm.Name).
+		Str("hostname", vm.Hostname).
+		Uint8("cpu", uint8(vm.CPU)).
+		Uint64("memory-bytes", uint64(vm.Memory))
+
+	logEvent = logInterfaceDetails(logEvent, nics, &vm.Network)
+
+	// Log mounts
+	if len(cfg.Mounts) > 0 {
+		mountPaths := make([]string, len(cfg.Mounts))
+		for i, mnt := range cfg.Mounts {
+			mountPaths[i] = fmt.Sprintf("%s->%s", mnt.Source, mnt.Target)
+		}
+		logEvent = logEvent.Strs("mounts", mountPaths)
+	}
+
+	// Log disks
+	if len(disks) > 0 {
+		diskPaths := make([]string, len(disks))
+		for i, disk := range disks {
+			diskPaths[i] = disk.Path
+		}
+		logEvent = logEvent.Strs("disks", diskPaths)
+	}
+
+	logEvent.Msg("starting VM with full configuration")
 
 	machineInfo, err := machine.Run(ctx, m.socketPath(vm.Name), m.logsPath(vm.Name))
 	if err != nil {
@@ -625,6 +655,7 @@ func (m *Module) removeConfig(name string) {
 
 // Delete deletes a machine by name (id)
 func (m *Module) Delete(name string) error {
+	log.Info().Str("vm-id", name).Msg("deleting VM")
 	defer m.failures.Delete(name)
 
 	// before we do anything we set failures to permanent to prevent monitoring from trying
@@ -659,7 +690,7 @@ func (m *Module) Delete(name string) error {
 		killAfter = 10 * time.Second
 	)
 
-	log.Debug().Str("name", name).Msg("shutting vm down [client]")
+	log.Info().Str("name", name).Msg("shutting vm down [client]")
 	if err := client.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Str("name", name).Msg("failed to shutdown machine")
 	}
@@ -669,13 +700,13 @@ func (m *Module) Delete(name string) error {
 			return nil
 		}
 
-		log.Debug().Str("name", name).Msg("shutting vm down [sigterm]")
+		log.Info().Str("name", name).Msg("shutting vm down [sigterm]")
 		if time.Since(now) > termAfter {
 			_ = syscall.Kill(ps.Pid, syscall.SIGTERM)
 		}
 
 		if time.Since(now) > killAfter {
-			log.Debug().Str("name", name).Msg("shutting vm down [sigkill]")
+			log.Info().Str("name", name).Msg("shutting vm down [sigkill]")
 			_ = syscall.Kill(ps.Pid, syscall.SIGKILL)
 			break
 		}

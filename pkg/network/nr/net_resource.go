@@ -203,6 +203,7 @@ func (nr *NetResource) WGName() (string, error) {
 // Create setup the basic components of the network resource
 // network namespace, bridge, wireguard interface and veth pair
 func (nr *NetResource) Create() error {
+	log.Info().Str("network-id", nr.ID()).Str("subnet", nr.resource.Subnet.String()).Msg("creating network resource")
 	log.Debug().Str("nr", nr.String()).Msg("create network resource")
 
 	if err := nr.ensureNRBridge(); err != nil {
@@ -604,6 +605,8 @@ func (nr *NetResource) ConfigureWG(privateKey string) error {
 
 // Delete removes all the interfaces and namespaces created by the Create method
 func (nr *NetResource) Delete() error {
+	log.Info().Str("network-id", nr.ID()).Str("subnet", nr.resource.Subnet.String()).Msg("deleting network resource")
+	
 	netnsName, err := nr.Namespace()
 	if err != nil {
 		return err
