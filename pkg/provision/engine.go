@@ -680,7 +680,8 @@ func (e *NativeEngine) uninstallWorkload(ctx context.Context, wl *gridtypes.Work
 		Logger()
 
 	_, err := e.storage.Current(twin, deployment, name)
-	if errors.Is(err, ErrWorkloadNotExist) {
+	if errors.Is(err, ErrWorkloadNotExist) || errors.Is(err, ErrDeploymentNotExists) {
+		// workload or deployment doesn't exist in storage, consider it already deleted
 		return nil
 	} else if err != nil {
 		return err

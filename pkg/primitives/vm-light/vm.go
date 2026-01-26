@@ -308,10 +308,12 @@ func (p *Manager) Deprovision(ctx context.Context, wl *gridtypes.WorkloadWithID)
 		log.Error().Err(err).Str("name", volName).Msg("failed to delete rootfs volume")
 	}
 
-	tapName := wl.ID.Unique(string(cfg.Network.Mycelium.Network))
+	if cfg.Network.Mycelium != nil {
+		tapName := wl.ID.Unique(string(cfg.Network.Mycelium.Network))
 
-	if err := network.Detach(ctx, tapName); err != nil {
-		return errors.Wrap(err, "could not clean up tap device")
+		if err := network.Detach(ctx, tapName); err != nil {
+			return errors.Wrap(err, "could not clean up tap device")
+		}
 	}
 
 	return nil
