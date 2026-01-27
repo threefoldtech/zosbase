@@ -484,6 +484,13 @@ func (p *Manager) createZdbContainerLight(ctx context.Context, device pkg.Device
 }
 
 func (p *Manager) zdbRun(ctx context.Context, name string, rootfs string, cmd string, netns string, volumepath string, socketdir string) error {
+	log.Info().
+		Str("zdb-name", name).
+		Str("network-ns", netns).
+		Str("volume", volumepath).
+		Str("rootfs", rootfs).
+		Msg("starting ZDB container")
+
 	cont := stubs.NewContainerModuleStub(p.zbus)
 
 	// we do data migration here because this is called

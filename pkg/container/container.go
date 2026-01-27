@@ -142,7 +142,13 @@ func (c *Module) startup() error {
 
 // Run creates and starts a container
 func (c *Module) Run(ns string, data pkg.Container) (id pkg.ContainerID, err error) {
-	log.Debug().Str("ns", ns).Msg("starting container")
+	log.Info().
+		Str("namespace", ns).
+		Str("name", data.Name).
+		Str("rootfs", data.RootFS).
+		Uint("cpu", data.CPU).
+		Uint64("memory", uint64(data.Memory)).
+		Msgf("starting container")
 
 	// create a new client connected to the default socket path for containerd
 	client, err := containerd.New(c.containerd)
@@ -570,7 +576,7 @@ func (c *Module) SignalDelete(ns string, id pkg.ContainerID) error {
 
 // Delete stops and remove a container
 func (c *Module) Delete(ns string, id pkg.ContainerID) error {
-	log.Debug().Str("id", string(id)).Str("ns", ns).Msg("delete container")
+	log.Info().Str("namespace", ns).Str("container-id", string(id)).Msg("deleting container")
 
 	client, err := containerd.New(c.containerd)
 	if err != nil {

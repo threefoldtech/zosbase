@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 )
 
@@ -166,6 +167,7 @@ func (p *Index) IndexMode(name string) (mode IndexMode, err error) {
 
 // Delete both the data and an index of a namespace
 func (p *Index) Delete(name string) error {
+	log.Info().Str("namespace", name).Str("pool", p.root).Msg("deleting ZDB namespace")
 	if err := p.valid(name); err != nil {
 		return err
 	}
