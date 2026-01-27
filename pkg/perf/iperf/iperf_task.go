@@ -29,8 +29,6 @@ const (
 	maxElapsedTime  = 7 * time.Minute
 	iperfTimeout    = 90 * time.Second
 
-	errServerBusy = "the server is busy running a test. try again later"
-
 	iperf3ServersURL = "https://export.iperf3serverlist.net/listed_iperf3_servers.json"
 )
 

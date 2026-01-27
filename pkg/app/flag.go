@@ -17,6 +17,8 @@ const (
 	ReadonlyCache = "readonly-cache"
 	// NotReachable represents the flag when a grid service is not reachable
 	NotReachable = "not-reachable"
+	// VMTestFailed represents the flag when VM health check fails
+	VMTestFailed = "vm-test-failed"
 )
 
 // SetFlag is used when the /var/cache cannot be mounted on a SSD or HDD,

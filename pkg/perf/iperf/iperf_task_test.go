@@ -25,7 +25,7 @@ func TestIperfTest_Run_Success(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write(serversJSON)
+		_, _ = w.Write(serversJSON)
 	}))
 	defer server.Close()
 
@@ -139,7 +139,7 @@ func TestIperfTest_Run_NoServersAvailable(t *testing.T) {
 	// Create mock HTTP server that returns empty list
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
