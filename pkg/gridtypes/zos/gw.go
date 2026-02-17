@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 
 	"github.com/hashicorp/go-multierror"
@@ -45,14 +46,49 @@ func (b Backend) Valid(tlsPassthrough bool) error {
 	return nil
 }
 
-func ValidateBackends(backends []Backend, tlsPassthrough bool) error {
+func ValidateBackends(backends []Backend, tlsPassthrough bool, nodeIPs ...net.IP) error {
 	var errs error
 	for _, backend := range backends {
 		if err := backend.Valid(tlsPassthrough); err != nil {
 			errs = multierror.Append(errs, errors.Wrapf(err, "failed to validate backend '%s'", backend))
 		}
 	}
-	return errs
+	if errs != nil {
+		return errs
+	}
+
+	// Check that backends don't point to the node's own public IPs (prevents infinite loops)
+	for _, backend := range backends {
+		backendIP, err := backend.ExtractIP()
+		if err != nil {
+			return errors.Wrapf(err, "failed to extract IP from backend '%s'", backend)
+		}
+		if slices.ContainsFunc(nodeIPs, backendIP.Equal) {
+			return fmt.Errorf("backend %s points to the node's own public IP address", backend)
+		}
+	}
+	return nil
+}
+
+// ExtractIP extracts the IP address from a backend string.
+func (b Backend) ExtractIP() (net.IP, error) {
+	// Try ip:port format first
+	if ip, _, err := asIpPort(string(b)); err == nil {
+		return ip, nil
+	}
+
+	// Try URL format
+	u, err := url.Parse(string(b))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse backend: %w", err)
+	}
+
+	ip := net.ParseIP(u.Hostname())
+	if ip == nil {
+		return nil, fmt.Errorf("invalid ip address in backend: %s", u.Hostname())
+	}
+
+	return ip, nil
 }
 
 func asIpPort(a string) (ip net.IP, port uint16, err error) {

@@ -584,6 +584,13 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 		return "", errors.New("node doesn't support name proxy (doesn't have a domain)")
 	}
 
+	// Get public config for node IP validation
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	pubConfig, err := netStub.LoadPublicConfig(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to load public config")
+	}
+
 	if err := g.validateNameContract(config.Name, twinID); err != nil {
 		return "", errors.Wrap(err, "failed to verify name contract")
 	}
@@ -599,7 +606,7 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 		},
 	}
 
-	if err := g.setupRouting(ctx, wlID, fqdn, gatewayTLSConfig, config.GatewayBase); err != nil {
+	if err := g.setupRouting(ctx, wlID, fqdn, gatewayTLSConfig, config.GatewayBase, pubConfig.IPv4.IP, pubConfig.IPv6.IP); err != nil {
 		return "", err
 	}
 
@@ -618,6 +625,13 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 		return err
 	}
 
+	// Get public config for node IP validation
+	netStub := stubs.NewNetworkerLightStub(g.cl)
+	pubConfig, err := netStub.LoadPublicConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to load public config")
+	}
+
 	if domain != "" && strings.HasSuffix(config.FQDN, domain) {
 		return errors.New("can't create a fqdn workload with a subdomain of the gateway's managed domain")
 	}
@@ -633,14 +647,14 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 		},
 	}
 
-	return g.setupRouting(ctx, wlID, config.FQDN, gatewayTLSConfig, config.GatewayBase)
+	return g.setupRouting(ctx, wlID, config.FQDN, gatewayTLSConfig, config.GatewayBase, pubConfig.IPv4.IP, pubConfig.IPv6.IP)
 }
 
-func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn string, tlsConfig TlsConfig, config zos.GatewayBase) error {
+func (g *gatewayModule) setupRouting(ctx context.Context, wlID string, fqdn string, tlsConfig TlsConfig, config zos.GatewayBase, nodeIPs ...net.IP) error {
 	g.domainLock.Lock()
 	defer g.domainLock.Unlock()
 
-	if err := zos.ValidateBackends(config.Backends, config.TLSPassthrough); err != nil {
+	if err := zos.ValidateBackends(config.Backends, config.TLSPassthrough, nodeIPs...); err != nil {
 		return err
 	}
 
