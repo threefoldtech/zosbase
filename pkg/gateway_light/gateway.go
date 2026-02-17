@@ -586,7 +586,10 @@ func (g *gatewayModule) SetNamedProxy(wlID string, config zos.GatewayNameProxy) 
 
 	// Get public config for node IP validation
 	netStub := stubs.NewNetworkerLightStub(g.cl)
-	pubConfig, _ := netStub.LoadPublicConfig(ctx)
+	pubConfig, err := netStub.LoadPublicConfig(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to load public config")
+	}
 
 	if err := g.validateNameContract(config.Name, twinID); err != nil {
 		return "", errors.Wrap(err, "failed to verify name contract")
@@ -624,7 +627,10 @@ func (g *gatewayModule) SetFQDNProxy(wlID string, config zos.GatewayFQDNProxy) e
 
 	// Get public config for node IP validation
 	netStub := stubs.NewNetworkerLightStub(g.cl)
-	pubConfig, _ := netStub.LoadPublicConfig(ctx)
+	pubConfig, err := netStub.LoadPublicConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to load public config")
+	}
 
 	if domain != "" && strings.HasSuffix(config.FQDN, domain) {
 		return errors.New("can't create a fqdn workload with a subdomain of the gateway's managed domain")
