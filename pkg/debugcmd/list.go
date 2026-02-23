@@ -73,4 +73,3 @@ func List(ctx context.Context, deps Deps, req ListRequest) (ListResponse, error)
 
 	return ListResponse{Deployments: deployments}, nil
 }
-
