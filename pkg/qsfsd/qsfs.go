@@ -125,7 +125,7 @@ func (q *QSFS) Mount(wlID string, cfg zos.QuantumSafeFS) (info pkg.QSFSInfo, err
 	}
 
 	env := environment.MustGet()
-	qsfsFlist, err := url.JoinPath(env.HubURL, "tf-autobuilder", "qsfs-0.2.0-rc2.flist")
+	qsfsFlist, err := url.JoinPath(env.HubURL, "tf-autobuilder", "qsfs-0.2.0-rc1.flist")
 	if err != nil {
 		err = errors.Wrap(err, "failed to construct url")
 		return
@@ -140,6 +140,10 @@ func (q *QSFS) Mount(wlID string, cfg zos.QuantumSafeFS) (info pkg.QSFSInfo, err
 	}
 	if lerr := q.writeQSFSConfig(flistPath, zstorConfig); lerr != nil {
 		err = errors.Wrap(lerr, "couldn't write qsfs config")
+		return
+	}
+	if lerr := q.writeHosts(flistPath); lerr != nil {
+		err = errors.Wrap(lerr, "couldn't write /etc/hosts")
 		return
 	}
 	mountPath := q.mountPath(wlID)
@@ -308,9 +312,16 @@ func (q *QSFS) prepareMountPath(path string) error {
 	return nil
 }
 
+// for some reason hosts file was corrupted in the flist, we need to rewrite it for zstor to be able to resolve localhost
+func (q *QSFS) writeHosts(root string) error {
+	hostsPath := filepath.Join(root, "etc/hosts")
+	const hosts = "127.0.0.1\tlocalhost\n::1\t\tlocalhost ip6-localhost ip6-loopback\n"
+	return os.WriteFile(hostsPath, []byte(hosts), 0644)
+}
+
 func (q *QSFS) writeQSFSConfig(root string, cfg zstorConfig) error {
 	cfgPath := filepath.Join(root, "data/zstor.toml")
-	f, err := os.OpenFile(cfgPath, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(cfgPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return errors.Wrap(err, "couldn't open zstor config file")
 	}

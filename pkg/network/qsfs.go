@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg/netbase/nft"
 	"github.com/threefoldtech/zosbase/pkg/network/ifaceutil"
 	"github.com/threefoldtech/zosbase/pkg/network/namespace"
+	"github.com/vishvananda/netlink"
 )
 
 var _nft = `
@@ -88,6 +90,12 @@ func (n networker) QSFSPrepare(id string) (string, string, error) {
 		return "", "", err
 	}
 
+	if n.mycelium != nil {
+		if _, err := n.attachMycelium(id, netNs); err != nil {
+			return "", "", errors.Wrap(err, "failed to attach mycelium to qsfs namespace")
+		}
+	}
+
 	return netNSName, ip.IP.String(), err
 }
 
@@ -107,6 +115,15 @@ func (n networker) QSFSDestroy(id string) error {
 	if err := n.detachYgg(id, netNs); err != nil {
 		// log and continue cleaning up
 		log.Error().Err(err).Msg("couldn't detach ygg interface")
+	}
+	if err := netNs.Do(func(_ ns.NetNS) error {
+		link, err := netlink.LinkByName(ZDBMyceliumIface)
+		if err != nil {
+			return err
+		}
+		return netlink.LinkDel(link)
+	}); err != nil {
+		log.Error().Err(err).Msg("couldn't detach mycelium interface")
 	}
 	return n.destroy(netNSName)
 }
