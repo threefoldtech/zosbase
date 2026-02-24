@@ -156,7 +156,21 @@ func MakeVethPair(name, master string, mtu int, netNs ns.NetNS) error {
 		}
 	}
 
-	peerName := fmt.Sprintf("p-%s", name)
+	peerPrefix := "p"
+	if netNs != nil {
+		nsName := filepath.Base(netNs.Path())
+
+		// Use last 4 characters of namespace name, or full name if less than 4
+		peerPrefix = nsName
+		if len(nsName) >= 4 {
+			peerPrefix = nsName[len(nsName)-4:]
+		}
+
+	}
+	peerName := fmt.Sprintf("%s-%s", peerPrefix, name)
+	if len(peerName) > 15 {
+		peerName = peerName[0:15]
+	}
 	if _, err = netlink.LinkByName(peerName); err == nil {
 		return fmt.Errorf("peer already exists %q", peerName)
 	}
