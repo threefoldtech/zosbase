@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
@@ -121,8 +122,12 @@ func registerNode(
 			IPs: func() []string {
 				ips := make([]string, 0)
 				for _, ip := range infs.Interfaces["zos"].IPs {
-
-					ips = append(ips, ip.IP.String())
+					s := ip.IP.String()
+					if net.ParseIP(s) == nil {
+						log.Warn().Str("ip", s).Msg("skipping invalid IP from zos bridge")
+						continue
+					}
+					ips = append(ips, s)
 				}
 				return ips
 			}(),
