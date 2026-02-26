@@ -123,7 +123,12 @@ func registerNode(
 				var ips []string
 				for _, ip := range zosIps {
 					ipV := net.IP(ip)
-					ips = append(ips, ipV.String())
+					s := ipV.String()
+					if net.ParseIP(s) == nil {
+						log.Warn().Str("ip", s).Msg("skipping invalid IP from zos bridge")
+						continue
+					}
+					ips = append(ips, s)
 				}
 				return ips
 			}(),
