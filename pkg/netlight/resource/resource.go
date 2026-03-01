@@ -433,10 +433,6 @@ func (r *Resource) AttachMyceliumZDB(id string, zdbNS ns.NetNS) (err error) {
 				return fmt.Errorf("failed to set lo up for namespace '%s': %w", nsName, err)
 			}
 
-			if err := options.SetIPv6Forwarding(true); err != nil {
-				return fmt.Errorf("failed to enable ipv6 forwarding in namespace %q: %w", nsName, err)
-			}
-
 			return netlink.RouteAdd(&netlink.Route{
 				Dst: &net.IPNet{
 					IP:   net.ParseIP("400::"),
