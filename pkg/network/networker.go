@@ -27,7 +27,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/network/iperf"
 	"github.com/threefoldtech/zosbase/pkg/network/mycelium"
 	"github.com/threefoldtech/zosbase/pkg/network/ndmz"
-	"github.com/threefoldtech/zosbase/pkg/network/options"
 	"github.com/threefoldtech/zosbase/pkg/network/public"
 	"github.com/threefoldtech/zosbase/pkg/network/tuntap"
 	"github.com/threefoldtech/zosbase/pkg/network/yggdrasil"
@@ -272,10 +271,6 @@ func attachWithVeth(ifName, bridge string, netNs ns.NetNS, ip *net.IPNet, routes
 
 		if err := ifaceutil.SetLoUp(); err != nil {
 			return fmt.Errorf("failed to set lo up for namespace '%s': %w", nsName, err)
-		}
-
-		if err := options.SetIPv6Forwarding(true); err != nil {
-			return fmt.Errorf("failed to enable ipv6 forwarding in namespace %q: %w", nsName, err)
 		}
 
 		for _, route := range routes {
