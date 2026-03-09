@@ -1,3 +1,7 @@
+// Package set provides a thread-safe set of unsigned integers.
+// It is used by the network modules to track allocated ports and
+// prevent conflicts when multiple workloads request port reservations
+// concurrently.
 package set
 
 import (
@@ -5,8 +9,8 @@ import (
 	"sync"
 )
 
-// ErrConflict is return when trying to add a port
-// in the set that is already present
+// ErrConflict is returned when trying to add a value
+// that is already present in the set.
 type ErrConflict struct {
 	Port uint
 }
