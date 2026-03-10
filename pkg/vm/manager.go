@@ -574,7 +574,7 @@ func (m *Module) Run(vm pkg.VM) (pkg.MachineInfo, error) {
 	logEvent := log.Info().
 		Str("vm-id", vm.Name).
 		Str("hostname", vm.Hostname).
-		Uint8("cpu", uint8(vm.CPU)).
+		Uint8("cpu", vm.CPU).
 		Uint64("memory-bytes", uint64(vm.Memory))
 
 	logEvent = logInterfaceDetails(logEvent, nics, &vm.Network)
