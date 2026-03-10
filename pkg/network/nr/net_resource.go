@@ -606,7 +606,7 @@ func (nr *NetResource) ConfigureWG(privateKey string) error {
 // Delete removes all the interfaces and namespaces created by the Create method
 func (nr *NetResource) Delete() error {
 	log.Info().Str("network-id", nr.ID()).Str("subnet", nr.resource.Subnet.String()).Msg("deleting network resource")
-	
+
 	netnsName, err := nr.Namespace()
 	if err != nil {
 		return err
