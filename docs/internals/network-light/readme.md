@@ -1,109 +1,194 @@
+# Network Light Module
 
-# Network Light
+## ZBus
 
-> WIP:  This is still a draft proposal
+Network light module is available on zbus over the following channel
 
-Network light is a new version of network daemon that simplifies zos setup on most of cloud providers so ZOS can be deployed and hosted on the cloud. This version of networking has a small set of requirements and features as follows:
+| module | object | version |
+|--------|--------|---------|
+| network | [network](#interface) | 0.0.1 |
 
-- VMs have (Always) two IPs.
-  - A local private IP. This only allows the VM to have access to the public internet via NATting. So far it's not relevant if that IP subnet and IP is assigned by the user or ZOS itself
-  - A mycelium IP. The mycelium IP subnet is chosen by the user during deployment for his entire *network space* on that node (by providing the seed) and then he can chose individual IPs per VM that is deployed in that space.
-- Different *network space* has isolated networks. VMs from different spaces can't communicate over their private Ips, but only over their mycelium Ips.
-- If the user wants his VMs across multiple node to communicate it's up to him to setup mycelium ips white lists or other means of authentication.
-- There is NO public IP support.
-- ZDBs only have mycelium IPs.
-- No yggdrasil
-- No public config
+## Home Directory
 
-## Network layout
+| directory | path |
+|-----------|------|
+| root | `/var/cache/modules/networkd` (volatile) |
+| networks | `{root}/networks/` — persisted NR configs |
+| link | `{root}/networks/link/` — workload-to-network symlinks |
+| ndmz leases | `{root}/ndmz-lease/` — IPv4 IPAM allocations |
+| mycelium seeds | `/tmp/network/mycelium/` — per-NR mycelium seed files |
 
-This is to layout the simplified version of networkd. This version makes sure that ZOS gets only a single IP (via the cloud provider) and then all traffic from that node is basically NATted over this IP.
+## Introduction
 
-### Host namespace
+Network light is a simplified version of the [network module](../network/readme.md) designed for cloud-hosted ZOS nodes. It uses Mycelium as the primary overlay network and drops features that require complex infrastructure (Yggdrasil, public IPs, dual-NIC detection with IPv6 SLAAC).
 
-![host](png/host.png)
+### Key differences from the full network module
 
-- The physical (only) nic is directly attached to the ZOS bridge.
-- There is a dhcp client instance running on zos bridge that gets an IP from the physica network.
-- There is created an **ndmz** bridge that is set to UP and statically assigned an IP address `100.127.0.1`
-  - This bridge will be wired later to other namespaces
-- The `br-my` bridge is created.
-  - This bridge will be wired later to `zdb` namespaces so they can get mycelium IPs.
-- nft rule to drop connection to `100.172.0.1`
+| Feature | Network Light | Full Network |
+|---------|--------------|--------------|
+| Primary overlay | Mycelium (`400::/7`) | Yggdrasil (`200::/7`) + Mycelium |
+| Yggdrasil | Not available | Full support with `br-ygg` bridge |
+| Public IPs for VMs | Not supported | Supported via `br-pub` + nftables |
+| NDMZ | Simple bridge at `100.127.0.1/16` | Full namespace with dual-stack (IPv4 DHCP + IPv6 SLAAC) |
+| ZDB connectivity | Mycelium only (via `br-hmy`) | Public IPv6 + Yggdrasil + Mycelium |
+| WireGuard | Optional per-NR | Always present per-NR |
+| NIC setup | Single NIC assumed | Auto-detects single/dual NIC |
 
-The usage of `br-ndmz` and `br-my` bridges will be clear later
+### What VMs get
 
-> **SAFETY:** All incoming connections to ip `100.127.0.1` is dropped via nft rule. This will prevent VMs from being able to connect to the node directly.
+- A **local private IP** (e.g., `10.x.x.x`) for internet via NAT through the node's IP
+- A **mycelium IP** (`400::/7`) for end-to-end encrypted communication. The user controls the subnet via their seed
+- Optional **WireGuard** access for direct private network connectivity
 
-## Ndmz namespace
+## Architecture
 
-![ndmz](png/ndmz.png)
-The ndmz namespace is a much simplified version of the previous layout.
-The key difference here is that ndmz does **NOT** have an IP from the physical LAN instead it is also natted over the same node IP.
+### Host Namespace
 
-The reason we need it is we can safely run services that need to be accessed remotely over the node mycelium IP. Like the NODE openRPC api. But also prevent attackers from reaching to other services directly running inside the host
+```
+                        ┌──────────┐
+                        │   NIC    │
+                        └────┬─────┘
+                             │ attached
+                             ▼
+  ┌──────────────────────────────────────────────────────────────────┐
+  │                          Host                                    │
+  │                                                                  │
+  │  ┌──────────┐  ┌─────┐  ┌──────────┐          ┌──────────┐      │
+  │  │  br-hmy  │  │ my0 │  │   zos    │- - - - - │ br-ndmz  │      │
+  │  │  (ZDB)   │  │(tun)│  │  (DHCP)  │  NAT'd   │100.127.0.1      │
+  │  └──────────┘  └─────┘  └──────────┘          └──────────┘      │
+  │       │           │                                              │
+  │       │      mycelium-host                                       │
+  │       │      zinit service                                       │
+  └──────────────────────────────────────────────────────────────────┘
+```
 
-The node mycelium instance will also be running inside `ndmz` this process will then create the `my0` interface and give it the seed associated ip address. For example let's assume `my0` gets ip `58a:1059:b9a9:bc3:a1e8:5909:8957:d956/7`
+- The physical NIC is attached to the `zos` bridge
+- DHCP client runs on `zos` to get the node's IP
+- `br-ndmz` bridge is created with static IP `100.127.0.1/16`
+- `my0` tunnel and `br-hmy` bridge run directly on the host (moved from ndmz namespace in the original design)
+- `mycelium-host` zinit service creates the `my0` tunnel for host-level mycelium
+- `br-hmy` connects ZDB namespaces to the host mycelium
+- nftables rule drops inbound connections to `100.127.0.1`
 
-According to mycelium docs the entire `/64` prefix is assigned also to that node. We then can do the following:
+### Bridges
 
-- Assign the IP `58a:1059:b9a9:bc3::1/64` to nmy
-- make sure forwarding is enabled for ipv6
-- set routing of `58a:1059:b9a9:bc3::/64` over dev `nmy`
-- make sure that `200::/7` is routed over `my0`
-- make sure default gw is set to `100.127.0.1` (the br-ndmz on the host)
-- enable ipv4 forwarding, and set any needed masquerading rules as needed. `oifname "public" masquerade fully-random`
+| Bridge | Purpose |
+|--------|---------|
+| `zos` | Management bridge; DHCP from physical network |
+| `br-pub` | Public bridge; exit NIC or veth to zos |
+| `br-ndmz` | NDMZ routing bridge at `100.127.0.1/16`; all NR namespaces connect here |
+| `br-hmy` | Host mycelium bridge; ZDB namespaces connect here for mycelium IPs |
+| `r<name>` | Per-NR private bridge; VMs attach TAPs here |
+| `m<name>` | Per-NR mycelium bridge; VMs attach mycelium TAPs here |
 
-Later, containers wired to `br-my` can then get IPs inside the range `58a:1059:b9a9:bc3::/64` and they then can send traffic (and receive traffic) over mycelium network
+### Namespaces
 
-> Note: Again the reason we still have ndmz is to run mycelium isolated from the host, and run API services isolated from rest of the system. It's still possible to simply create the same setup on the host name space directly. Jan?
+| Namespace | Purpose |
+|-----------|---------|
+| `public` | Optional — only when farmer sets a public config |
+| `n<name>` | Per-user network resource with private bridge, mycelium, optional WireGuard |
+| `n<hash>` | Per-ZDB container; wired to `br-hmy` for mycelium access |
 
-## NR (Network Resource)
+Unlike the full network module, network light has **no ndmz namespace**. The `br-ndmz` bridge lives directly on the host at `100.127.0.1/16` and provides NAT'd internet to all NR namespaces through the node's IP. Mycelium runs inside each NR namespace individually (not in a shared daemon).
 
-![nr](png/nr.png)
+## Network Resources (NR)
 
-The network resource is yet a simplified version of NR namesapce on original setup but here it looks and behaves more like `ndmz` in the sense that it only to isolate VMs from rest of the system. All public traffic is natter over `public` interface, which is wired to br-ndmz
+```
+                         ┌──────┐
+                         │  VM  │
+                         └──┬┬──┘
+                            ││
+              ┌─────────────┘└──────────┐
+              │ tap (b-<hash>)     tap  │ (m-<hash>)
+              ▼                         ▼
+  r-<NR>                             m-<NR>       br-ndmz
+    ○                                  ○             ○
+    │ veth                             │ veth        │ veth
+    │                                  │             │
+  ┌─┼──────────────────────────────────┼─────────────┼──┐
+  │ │              n-<NR>              │             │  │
+  │ ▼                                  ▼             ▼  │
+  │ ┌─────────┐  ┌──────────┐  ┌─────────┐             │
+  │ │ private │  │ mycelium │  │ public  │             │
+  │ │<sub>.1  │  │ (myc daemon  │100.127. │             │
+  │ │  gw     │  │  runs here) │ x.x/16 │             │
+  │ └─────────┘  └──────────┘  └─────────┘             │
+  │       ▲                         │                   │
+  │  VM private                  default route          │
+  │  traffic                     via 100.127.0.1        │
+  └─────────────────────────────────────────────────────┘
+```
 
-The `my0`, `nmy`, and `m-<NR>` work in exactly similar way as the ones in `ndmz`. The only difference is that those are user network specific. The user provides the seed and hence control what IP range, and Ips assigned to the VMs. All routing rules has to be done here.
+Each user network gets an isolated namespace `n<name>` with:
 
-The `b-<NR>` is where all VMs will be connected. Each VM must get an IP range from a private range as follows:
+**Interfaces:**
+- `private` veth → `r<name>` bridge (private VM traffic). Gateway at `<subnet>.1`
+- `public` veth → `br-ndmz` (internet via NAT). IP from `100.127.0.2–100.127.255.254`
+- `mycelium` veth → `m<name>` bridge (per-NR mycelium)
+- `w-<name>` WireGuard interface (optional)
 
-- the private range doesn't really matter, it can be fixed by ZOS forever (say range `10.0.0.0/8`) or allowed to be chosen by the user.
-  - I personally prefer to make it fixed to `10.0.0.0/8` range and allow the user to choose individual VMs ips in the private range.
-- `private` interface becomes the `gw` hence it can get the first ip in the range as per convention. So `10.0.0.1`
-- make sure routing is set as follows:
-  - default gw is `100.127.0.1` (the br-ndmz on the host)
-- enable ipv4 forwarding, and set any needed masquerading rules as needed. `oifname "public" masquerade fully-random`
+**Mycelium:**
+Each NR runs its own mycelium daemon inside its namespace with the user's seed. This gives the user control over the IP range. VMs get deterministic IPs from the NR's `/64` subnet: `<prefix>::ff0f:<vm-seed>/64`.
 
-What happens now is:
+**Private networking:**
+- VMs in the same NR communicate directly over the `r<name>` bridge
+- Different NRs are completely isolated — overlapping private IPs are fine
+- Internet access is NAT'd through `public` → `br-ndmz` → node IP
 
-- VMs inside a single space can communicate directly over their bridge.
-- Different networks resource can (and well) have conflicting IP and ranges but with no issue since each network is completely isolated from the other ones.
+**Firewall:** nftables masquerade on traffic from the `private` interface so VMs can reach the internet via NAT.
 
-## Private Networks
+## ZDB Networking
 
-To reach vms on local nodes using wireguard you need to:
+```
+     br-hmy
+       ○
+       │ veth
+       │
+  ┌────┼──────────────────┐
+  │    │    n-<hash>       │
+  │    ▼                   │
+  │ ┌──────┐               │
+  │ │ eth0 │               │
+  │ └──────┘               │
+  │    │                   │
+  │  mycelium IP from      │
+  │  DMZ /64 subnet        │
+  │  route 400::/7 via gw  │
+  └────────────────────────┘
+```
 
-- Deploy a networkwith valid pairs so you can be able to connect to the vm from your machine and add a container to this network.
-For example:
+ZDB containers get a dedicated namespace with mycelium-only connectivity:
+
+1. Namespace `n<hash>` is created
+2. A veth pair connects the namespace to `br-hmy` (host mycelium bridge)
+3. A mycelium IP from the DMZ's `/64` subnet is assigned
+4. Route `400::/7` via the mycelium gateway
+
+ZDBs are accessible exclusively over mycelium.
+
+## Private Networks (WireGuard)
+
+WireGuard is optional in network light. To access VMs on a node using WireGuard:
+
+1. Deploy a network with valid WireGuard peers:
 
 ```go
 WGPrivateKey: wgKey,
 WGListenPort: 3011,
 Peers: []zos.Peer{
- {
-  Subnet:      gridtypes.MustParseIPNet("10.1.2.0/24"),
-  WGPublicKey: "4KTvZS2KPWYfMr+GbiUUly0ANVg8jBC7xP9Bl79Z8zM=",
-
-  AllowedIPs: []gridtypes.IPNet{
-   gridtypes.MustParseIPNet("10.1.2.0/24"),
-   gridtypes.MustParseIPNet("100.64.1.2/32"),
-
+    {
+        Subnet:      gridtypes.MustParseIPNet("10.1.2.0/24"),
+        WGPublicKey: "4KTvZS2KPWYfMr+GbiUUly0ANVg8jBC7xP9Bl79Z8zM=",
+        AllowedIPs: []gridtypes.IPNet{
+            gridtypes.MustParseIPNet("10.1.2.0/24"),
+            gridtypes.MustParseIPNet("100.64.1.2/32"),
+        },
+    },
+},
 ```
 
-> **Note:** make sure to use valid two wg key pairs for the container and your local machine.
-
-- After the deployment the network can be accessed through wg with the following config.
+2. Configure WireGuard on your local machine:
 
 ```conf
 [Interface]
@@ -117,15 +202,110 @@ PersistentKeepalive = 25
 Endpoint = 192.168.123.32:3011
 ```
 
-- Bring wireguard interface up `wg-quick up <config file>`
-- Test the connection `wg`
-![image](https://github.com/user-attachments/assets/ca0d37e2-d586-4e0f-ae98-2d70188492bd)
+3. Bring the interface up: `wg-quick up <config file>`
+4. Test: `ping 10.1.1.2`
 
-- Then you should be able to ping/access the container `ping 10.1.1.2`
-![image](https://github.com/user-attachments/assets/d625a573-3d07-4980-afc0-4570acd7a21f)
-
-- Then you should be able to ping to the container `ping 10.1.1.2`
+WireGuard IPs use CGNAT space: `100.64.<a>.<b>/16` derived from the NR subnet.
 
 ### Full Picture
 
-![full](png/full.png)
+```
+                           ┌──────┐
+                           │  VM  │
+                           └─┬──┬─┘
+                             │  │
+            tap (b-<hash>)   │  │   tap (m-<hash>)
+                             │  │
+  ┌──────────────────────────┼──┼──────────────────────────────────────┐
+  │                  Host    │  │                                      │
+  │                          │  │                                      │
+  │  ┌─────────┐  r-<NR>    │  │  m-<NR>  ┌──────────┐  ┌──────────┐ │
+  │  │my0 (tun)│    ○───────┘  └────○     │ br-ndmz  │  │  br-hmy  │ │
+  │  │mycelium │    │                │     │100.127.  │  └────┬─────┘ │
+  │  │ -host   │    │                │     │  0.1/16  │       │       │
+  │  └─────────┘    │                │     └────┬─────┘       │       │
+  │            ┌────┘          ┌─────┘          │             │       │
+  │   ┌────┐   │  veth         │  veth     veth │        veth │       │
+  │   │NIC │   │               │                │             │       │
+  │   └─┬──┘   │               │                │             │       │
+  │     │att.  │               │                │             │       │
+  │     ▼      │               │                │             │       │
+  │  ┌──────┐  │               │                │             │       │
+  │  │ zos  │  │               │                │             │       │
+  │  │(DHCP)│  │               │                │             │       │
+  │  └──────┘  │               │                │             │       │
+  └────────────┼───────────────┼────────────────┼─────────────┼───────┘
+               │               │                │             │
+  ┌────────────┼───────────────┼────────────────┼──┐    ┌─────┼─────┐
+  │            ▼    n-<NR>     ▼                ▼  │    │ n-<hash>  │
+  │  ┌─────────┐  ┌──────────┐  ┌─────────┐       │    │     ▼     │
+  │  │ private │  │ mycelium │  │ public  │       │    │  ┌──────┐ │
+  │  │<sub>.1  │  │ (myc     │  │100.127. │       │    │  │ eth0 │ │
+  │  │  gw     │  │  daemon) │  │ x.x/16 │       │    │  └──────┘ │
+  │  └─────────┘  └──────────┘  └─────────┘       │    │  myc IP   │
+  │                                  │             │    └───────────┘
+  │                        default route           │
+  │                        via 100.127.0.1         │
+  └────────────────────────────────────────────────┘
+```
+
+## VM TAP Devices
+
+VMs connect via TAP devices created by the networker:
+
+| TAP name | Bridge | Purpose |
+|----------|--------|---------|
+| `b-<hash>` | `r<name>` | Private NR network (IPv4) |
+| `m-<hash>` | `m<name>` | Per-NR mycelium (IPv6 in `400::/7`) |
+
+TAP names are derived from MD5 hash of the workload ID, Base58-encoded, truncated to 13 characters.
+
+## Subpackages
+
+| Package | Purpose |
+|---------|---------|
+| `bootstrap/` | Node boot: detect NICs, create `zos` bridge, DHCP probing |
+| `bridge/` | Bridge create/delete/attach with VLAN filtering |
+| `dhcp/` | DHCP probing via `udhcpc` and `dhcpcd` zinit service |
+| `ifaceutil/` | Veth pairs, deterministic MAC/device-name from input bytes |
+| `ipam/` | IPv4 IPAM from `100.127.0.3–100.127.255.254` via CNI host-local |
+| `iperf/` | iperf3 service in public namespace |
+| `macvlan/` | Macvlan device creation and IP/route installation |
+| `macvtap/` | Macvtap device creation |
+| `namespace/` | Network namespace create/delete/list/monitor |
+| `options/` | sysctl wrappers: IPv6 forwarding, accept_ra, proxy_arp |
+| `public/` | Public namespace setup, config persistence, exit NIC detection |
+| `resource/` | NR lifecycle: bridges, namespace, mycelium daemon, WireGuard, nftables |
+| `tuntap/` | TAP device creation for VM network interfaces |
+| `types/` | Bridge/namespace name constants |
+
+## Interface
+
+```go
+type NetworkerLight interface {
+    Create(name string, wl gridtypes.WorkloadWithID, network Network) (string, error)
+    Delete(name string) error
+
+    AttachPrivate(name, id string, vmIp net.IP) (TapDevice, error)
+    AttachMycelium(name, id string, seed []byte) (TapDevice, error)
+    Detach(id string) error
+
+    AttachZDB(id string) (string, error)
+    ZDBIPs(nsName string) ([]net.IP, error)
+
+    GetSubnet(networkID NetID) (net.IPNet, error)
+    GetNet(networkID NetID) (net.IPNet, string, error)
+    GetDefaultGwIP(networkID NetID) (net.IP, error)
+
+    Interfaces(iface string, netns string) (Interfaces, error)
+    ZOSAddresses(ctx context.Context) (<-chan NetlinkAddresses, error)
+    WireguardPorts() ([]uint, error)
+    Namespace(id string) (string, error)
+
+    SetPublicConfig(cfg PublicConfig) error
+    LoadPublicConfig() (*PublicConfig, error)
+    UnSetPublicConfig() error
+
+    Ready() error
+}
+```
