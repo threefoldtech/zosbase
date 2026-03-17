@@ -48,7 +48,7 @@ const (
 var (
 	ErrTwinIDMismatch       = fmt.Errorf("twin id mismatch")
 	ErrContractNotReserved  = fmt.Errorf("a name contract with the given name must be reserved first")
-	ErrInvalidContractState = fmt.Errorf("the name contract must be in Created state")
+	ErrInvalidContractState = fmt.Errorf("the name contract must be in Created or GracePeriod state")
 
 	_ pkg.Gateway = (*gatewayModule)(nil)
 )
@@ -556,7 +556,7 @@ func (g *gatewayModule) validateNameContract(name string, twinID uint32) error {
 	} else if subErr.IsError() {
 		return subErr.Err
 	}
-	if !contract.State.IsCreated {
+	if !contract.State.IsCreated && !contract.State.IsGracePeriod {
 		return ErrInvalidContractState
 	}
 	if uint32(contract.TwinID) != twinID {
