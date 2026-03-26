@@ -247,19 +247,20 @@ func (f *flistModule) mountRO(url, storage, nsName string) (string, error) {
 	}
 
 	var command string
-	if flistExt == ".flist" {
+	switch flistExt {
+	case ".flist":
 		args = append([]string{
 			"--storage-url", storage,
 			// this is always read-only
 			"--ro",
 		}, args...)
 		command = "g8ufs"
-	} else if flistExt == ".fl" {
+	case ".fl":
 		args = append([]string{
 			"mount",
 		}, args...)
 		command = "rfs"
-	} else {
+	default:
 		return "", errors.Errorf("unknown extension: '%s'", flistExt)
 	}
 

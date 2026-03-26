@@ -465,7 +465,7 @@ func (e entry) Entrypoint() string {
 		buf.WriteString(e.Args.Name)
 		for _, arg := range e.Args.Args {
 			buf.WriteRune(' ')
-			arg = strings.Replace(arg, "\"", "\\\"", -1)
+			arg = strings.ReplaceAll(arg, "\"", "\\\"")
 			buf.WriteRune('"')
 			buf.WriteString(arg)
 			buf.WriteRune('"')

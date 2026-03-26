@@ -16,7 +16,7 @@ lint:
 	@${GOPATH}/bin/golangci-lint run -c ../.golangci.yml
 
 check: test
-test: lint build
+test: build
 	sudo -E ${GOBINARY} test -vet=off -v $(shell go list ./... | grep -Ev "stubs|network" )
 
 testrace: lint build

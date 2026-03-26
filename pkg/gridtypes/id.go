@@ -25,7 +25,7 @@ func (i DeploymentID) ToPath() string {
 		panic("id is not set")
 	}
 
-	return strings.Replace(string(i), "-", "/", -1)
+	return strings.ReplaceAll(string(i), "-", "/")
 }
 
 // Parts split id into building parts
@@ -43,7 +43,7 @@ func (i WorkloadID) ToPath() string {
 		panic("id is not set")
 	}
 
-	return strings.Replace(string(i), "-", "/", -1)
+	return strings.ReplaceAll(string(i), "-", "/")
 }
 
 func (i WorkloadID) String() string {

@@ -55,7 +55,7 @@ func applyQSFSFirewall(netns string) error {
 func (n networker) QSFSNamespace(id string) string {
 	netId := "qsfs:" + id
 	hw := ifaceutil.HardwareAddrFromInputBytes([]byte(netId))
-	return qsfsNamespacePrefix + strings.Replace(hw.String(), ":", "", -1)
+	return qsfsNamespacePrefix + strings.ReplaceAll(hw.String(), ":", "")
 }
 func (n networker) QSFSYggIP(id string) (string, error) {
 	hw := ifaceutil.HardwareAddrFromInputBytes([]byte("ygg:" + id))

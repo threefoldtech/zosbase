@@ -70,9 +70,9 @@ type Interface struct {
 // asTap returns the command line argument for this interface as a tap device
 func (i Interface) asTap() string {
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("tap=%s", i.Tap))
+	fmt.Fprintf(&buf, "tap=%s", i.Tap)
 	if len(i.Mac) > 0 {
-		buf.WriteString(fmt.Sprintf(",mac=%s", i.Mac))
+		fmt.Fprintf(&buf, ",mac=%s", i.Mac)
 	}
 
 	return buf.String()

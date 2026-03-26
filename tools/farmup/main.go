@@ -66,10 +66,6 @@ func run(opt options) error {
 		return fmt.Errorf("unknown network '%s'", opt.network)
 	}
 
-	const (
-		limit = 100
-	)
-
 	cl, err := substrate.NewManager(urls.Substrate).Substrate()
 	if err != nil {
 		return err

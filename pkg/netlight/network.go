@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/zosbase/pkg"
-	localPkg "github.com/threefoldtech/zosbase/pkg"
 	"github.com/threefoldtech/zosbase/pkg/cache"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
@@ -59,9 +58,9 @@ type networker struct {
 	linkDirPath string
 }
 
-var _ localPkg.NetworkerLight = (*networker)(nil)
+var _ pkg.NetworkerLight = (*networker)(nil)
 
-func NewNetworker() (localPkg.NetworkerLight, error) {
+func NewNetworker() (pkg.NetworkerLight, error) {
 	vd, err := cache.VolatileDir("networkd", 50*mib)
 	if err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("failed to create networkd cache directory: %w", err)
@@ -148,7 +147,7 @@ func (n *networker) Delete(name string) error {
 	return os.Remove(path)
 }
 
-func (n *networker) AttachPrivate(name, id string, vmIp net.IP) (device localPkg.TapDevice, err error) {
+func (n *networker) AttachPrivate(name, id string, vmIp net.IP) (device pkg.TapDevice, err error) {
 	resource, err := resource.Get(name)
 	if err != nil {
 		return
@@ -156,7 +155,7 @@ func (n *networker) AttachPrivate(name, id string, vmIp net.IP) (device localPkg
 	return resource.AttachPrivate(id, vmIp)
 }
 
-func (n *networker) AttachMycelium(name, id string, seed []byte) (device localPkg.TapDevice, err error) {
+func (n *networker) AttachMycelium(name, id string, seed []byte) (device pkg.TapDevice, err error) {
 	resource, err := resource.Get(name)
 	if err != nil {
 		return

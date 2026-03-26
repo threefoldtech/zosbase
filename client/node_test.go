@@ -15,7 +15,10 @@ func ExampleClient() {
 
 	node := NewNodeClient(10, client)
 
-	node.Counters(context.Background())
+	_, err = node.Counters(context.Background())
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println("ok")
 	//Output: ok
 }

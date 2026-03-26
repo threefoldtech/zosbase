@@ -228,7 +228,7 @@ func (s *Module) ensureFS(disk string) error {
 		return errors.Wrapf(err, "failed to format disk '%s'", string(output))
 	}
 
-	if exitErr.ProcessState.ExitCode() == 1 &&
+	if exitErr.ExitCode() == 1 &&
 		strings.Contains(string(output), "ERROR: use the -f option to force overwrite") {
 		// disk already have filesystem
 		return nil

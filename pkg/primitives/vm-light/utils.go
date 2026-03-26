@@ -15,7 +15,6 @@ import (
 	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
 	"github.com/threefoldtech/zosbase/pkg/stubs"
-	localStubs "github.com/threefoldtech/zosbase/pkg/stubs"
 )
 
 // fill up the VM (machine) object with write boot config for a full virtual machine (with a disk image)
@@ -174,7 +173,7 @@ func (p *Manager) prepContainer(
 }
 
 func (p *Manager) newMyceliumNetworkInterface(ctx context.Context, dl gridtypes.Deployment, wl *gridtypes.WorkloadWithID, config *zos.MyceliumIP) (pkg.VMIface, error) {
-	network := localStubs.NewNetworkerLightStub(p.zbus)
+	network := stubs.NewNetworkerLightStub(p.zbus)
 	netID := zos.NetworkID(dl.TwinID, config.Network)
 
 	tapName := wl.ID.Unique(string(config.Network))
@@ -198,7 +197,7 @@ func (p *Manager) newMyceliumNetworkInterface(ctx context.Context, dl gridtypes.
 }
 
 func (p *Manager) newPrivNetworkInterface(ctx context.Context, dl gridtypes.Deployment, wl *gridtypes.WorkloadWithID, inf zos.MachineInterface) (pkg.VMIface, error) {
-	network := localStubs.NewNetworkerLightStub(p.zbus)
+	network := stubs.NewNetworkerLightStub(p.zbus)
 	netID := zos.NetworkID(dl.TwinID, inf.Network)
 
 	subnet, err := network.GetSubnet(ctx, netID)
@@ -351,7 +350,7 @@ func (e entry) Entrypoint() string {
 		buf.WriteString(e.Args.Name)
 		for _, arg := range e.Args.Args {
 			buf.WriteRune(' ')
-			arg = strings.Replace(arg, "\"", "\\\"", -1)
+			arg = strings.ReplaceAll(arg, "\"", "\\\"")
 			buf.WriteRune('"')
 			buf.WriteString(arg)
 			buf.WriteRune('"')
