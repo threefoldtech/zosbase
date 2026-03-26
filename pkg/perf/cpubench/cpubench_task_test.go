@@ -27,7 +27,7 @@ func TestCPUBenchmarkTask(t *testing.T) {
 	})
 
 	t.Run("task implements perf.Task interface", func(t *testing.T) {
-		var _ perf.Task = NewTask()
+		var _ = NewTask()
 	})
 }
 

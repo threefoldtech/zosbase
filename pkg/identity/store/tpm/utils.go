@@ -63,7 +63,7 @@ func (p PCRSelector) String() string {
 			if i != 0 {
 				buf.WriteRune(',')
 			}
-			buf.WriteString(fmt.Sprint(id))
+			fmt.Fprint(&buf, id)
 		}
 	}
 

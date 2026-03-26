@@ -132,7 +132,7 @@ func (i *IPNet) UnmarshalText(text []byte) error {
 
 // MarshalJSON dumps iprange as a string
 func (i IPNet) MarshalJSON() ([]byte, error) {
-	if len(i.IPNet.IP) == 0 {
+	if len(i.IP) == 0 {
 		return []byte(`""`), nil
 	}
 	v := fmt.Sprint("\"", i.String(), "\"")
@@ -141,7 +141,7 @@ func (i IPNet) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON dumps iprange as a string
 func (i IPNet) MarshalText() ([]byte, error) {
-	if len(i.IPNet.IP) == 0 {
+	if len(i.IP) == 0 {
 		return []byte{}, nil
 	}
 	return []byte(i.String()), nil

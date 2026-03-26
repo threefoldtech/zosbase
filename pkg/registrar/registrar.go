@@ -177,11 +177,12 @@ func (r *Registrar) TwinID() (uint32, error) {
 }
 
 func (r *Registrar) returnIfDone(v uint32) (uint32, error) {
-	if r.state.State == Failed {
+	switch r.state.State {
+	case Failed:
 		return 0, errors.Wrap(ErrFailed, r.state.Msg)
-	} else if r.state.State == Done {
+	case Done:
 		return v, nil
-	} else {
+	default:
 		// InProgress
 		return 0, ErrInProgress
 	}

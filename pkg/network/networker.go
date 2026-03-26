@@ -293,7 +293,7 @@ func attachWithVeth(ifName, bridge string, netNs ns.NetNS, ip *net.IPNet, routes
 // and make sure it's wired to the bridge on host namespace
 func (n *networker) ensurePrepare(id, prefix, bridge string) (string, error) {
 	hw := ifaceutil.HardwareAddrFromInputBytes([]byte("pub:" + id))
-	netNSName := prefix + strings.Replace(hw.String(), ":", "", -1)
+	netNSName := prefix + strings.ReplaceAll(hw.String(), ":", "")
 	netNs, err := createNetNS(netNSName)
 	if err != nil {
 		return "", err

@@ -200,7 +200,7 @@ func filterName(reservationID string) string {
 // modified version of: https://github.com/MalteJ/docker/blob/f09b7897d2a54f35a0b26f7cbe750b3c9383a553/daemon/networkdriver/bridge/driver.go#L585
 func predictedSlaac(base net.IPNet, mac string) (gridtypes.IPNet, error) {
 	// TODO: get pub ipv6 prefix
-	hx := strings.Replace(mac, ":", "", -1)
+	hx := strings.ReplaceAll(mac, ":", "")
 	hw, err := hex.DecodeString(hx)
 	if err != nil {
 		return gridtypes.IPNet{}, errors.New("Could not parse MAC address " + mac)

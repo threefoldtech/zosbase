@@ -103,7 +103,7 @@ func defaultDeviceManager(exec executer) DeviceManager {
 // Devices gets available block devices
 func (l *lsblkDeviceManager) Seektime(ctx context.Context, device string) (zos.DeviceType, error) {
 	log.Debug().Str("device", device).Msg("checking seektim for device")
-	out, err := l.executer.run(ctx, "seektime", "-j", device)
+	out, err := l.run(ctx, "seektime", "-j", device)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to check device seektime")
 	}

@@ -933,10 +933,10 @@ func isPublic(ip net.IP) bool {
 		return false
 	}
 
-	return !(ip.IsLoopback() ||
-		ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() ||
-		ip.IsInterfaceLocalMulticast())
+	return !ip.IsLoopback() &&
+		!ip.IsLinkLocalUnicast() &&
+		!ip.IsLinkLocalMulticast() &&
+		!ip.IsInterfaceLocalMulticast()
 }
 
 // isPublic check if ip is a part of the yggdrasil 200::/7 range

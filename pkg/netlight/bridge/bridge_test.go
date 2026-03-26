@@ -39,7 +39,7 @@ func TestDeleteBridge(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure bridge now exists
-	link, err := netlink.LinkByName(br.LinkAttrs.Name)
+	link, err := netlink.LinkByName(br.Name)
 	require.NoError(t, err)
 	_, ok := link.(*netlink.Bridge)
 	assert.True(t, ok)
@@ -49,7 +49,7 @@ func TestDeleteBridge(t *testing.T) {
 	assert.NoError(t, err)
 
 	// ensure bridge now it's gone
-	_, err = netlink.LinkByName(br.LinkAttrs.Name)
+	_, err = netlink.LinkByName(br.Name)
 	require.Error(t, err)
 }
 

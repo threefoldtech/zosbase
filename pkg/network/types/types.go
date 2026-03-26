@@ -14,10 +14,10 @@ type MacAddress struct{ net.HardwareAddr }
 func (mac MacAddress) MarshalText() ([]byte, error) {
 	if mac.HardwareAddr == nil {
 		return nil, nil
-	} else if mac.HardwareAddr.String() == "" {
+	} else if mac.String() == "" {
 		return nil, nil
 	}
-	return []byte(mac.HardwareAddr.String()), nil
+	return []byte(mac.String()), nil
 }
 
 // UnmarshalText loads a macaddress from a string

@@ -706,7 +706,7 @@ func (e *NativeEngine) uninstallWorkload(ctx context.Context, wl *gridtypes.Work
 
 	result.Created = gridtypes.Timestamp(time.Now().Unix())
 
-	if err := e.storage.Transaction(twin, deployment, wl.Workload.WithResults(result)); err != nil {
+	if err := e.storage.Transaction(twin, deployment, wl.WithResults(result)); err != nil {
 		return err
 	}
 
@@ -769,7 +769,7 @@ func (e *NativeEngine) installWorkload(ctx context.Context, wl *gridtypes.Worklo
 	return e.storage.Transaction(
 		twin,
 		deployment,
-		wl.Workload.WithResults(result))
+		wl.WithResults(result))
 }
 
 func (e *NativeEngine) updateWorkload(ctx context.Context, wl *gridtypes.WorkloadWithID) error {
@@ -804,7 +804,7 @@ func (e *NativeEngine) updateWorkload(ctx context.Context, wl *gridtypes.Workloa
 		return err
 	}
 
-	return e.storage.Transaction(twin, deployment, wl.Workload.WithResults(result))
+	return e.storage.Transaction(twin, deployment, wl.WithResults(result))
 }
 
 func (e *NativeEngine) lockWorkload(ctx context.Context, wl *gridtypes.WorkloadWithID, lock bool) error {
@@ -851,7 +851,7 @@ func (e *NativeEngine) lockWorkload(ctx context.Context, wl *gridtypes.WorkloadW
 	return e.storage.Transaction(
 		twin,
 		deployment,
-		wl.Workload.WithResults(result))
+		wl.WithResults(result))
 }
 
 func (e *NativeEngine) uninstallDeployment(ctx context.Context, dl *gridtypes.Deployment, reason string) {

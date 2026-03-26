@@ -116,12 +116,13 @@ func (f *flistModule) resolve(path string) (g8ufsInfo, error) {
 		return g8ufsInfo{}, err
 	}
 
-	if info.FSType == fsTypeG8ufs {
+	switch info.FSType {
+	case fsTypeG8ufs:
 		return info.AsG8ufs(), nil
-	} else if info.FSType == fsTypeOverlay {
+	case fsTypeOverlay:
 		overlay := info.AsOverlay()
 		return f.resolve(overlay.LowerDir)
-	} else {
+	default:
 		return g8ufsInfo{}, fmt.Errorf("invalid mount fs type: '%s'", info.FSType)
 	}
 }
