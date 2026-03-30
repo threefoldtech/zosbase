@@ -25,7 +25,6 @@ func NewTask() perf.Task {
 	checks := map[string]checkFunc{
 		"cache":   cacheCheck,
 		"network": networkCheck,
-		"vm":      vmCheck,
 	}
 	return &healthcheckTask{
 		checks: checks,
